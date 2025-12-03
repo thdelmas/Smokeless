@@ -1,10 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="green">#00FF0A</color>
-    <color name="orange">#FF6702</color>
-    <color name="red">#FF1100</color>
-    <color name="yellow">#FFC107</color>
-    <color name="cyan">#00BCD4</color>
+    
+    <!-- Background - Deep space gradient base -->
+    <color name="background_dark">#080810</color>
+    <color name="background_gradient_start">#0A0A14</color>
+    <color name="background_gradient_end">#12101C</color>
+    
+    <!-- Surface colors - Elevated glass effect -->
+    <color name="surface_elevated">#1C1A28</color>
+    <color name="surface_card">#15131F</color>
+    <color name="surface_card_highlight">#221F30</color>
+    <color name="surface_glass">#20FFFFFF</color>
+    
+    <!-- Text colors -->
+    <color name="text_primary">#F5F5FA</color>
+    <color name="text_secondary">#9896A8</color>
+    <color name="text_tertiary">#5C5A6A</color>
+    <color name="text_bright">#FFFFFF</color>
+    
+    <!-- Primary accent - Electric Mint -->
+    <color name="accent_primary">#00E5A0</color>
+    <color name="accent_primary_dim">#00A070</color>
+    <color name="accent_primary_glow">#4000E5A0</color>
+    
+    <!-- Secondary accent - Golden Hour -->
+    <color name="accent_amber">#FFB830</color>
+    <color name="accent_amber_dim">#CC9020</color>
+    <color name="accent_amber_glow">#40FFB830</color>
+    
+    <!-- Accent spectrum -->
+    <color name="accent_green">#00E5A0</color>
+    <color name="accent_teal">#00D4C8</color>
+    <color name="accent_blue">#3B82F6</color>
+    <color name="accent_purple">#A855F7</color>
+    <color name="accent_pink">#EC4899</color>
+    <color name="accent_red">#F43F5E</color>
+    <color name="accent_orange">#F97316</color>
+    <color name="accent_yellow">#FBBF24</color>
+    
+    <!-- Status gradient colors (performance tiers) -->
+    <color name="status_champion">#00E5A0</color>
+    <color name="status_champion_dim">#00B880</color>
+    <color name="status_strong">#00D4C8</color>
+    <color name="status_strong_dim">#00A8A0</color>
+    <color name="status_steady">#A855F7</color>
+    <color name="status_steady_dim">#8040C8</color>
+    <color name="status_building">#FBBF24</color>
+    <color name="status_building_dim">#D09810</color>
+    <color name="status_starting">#F97316</color>
+    <color name="status_starting_dim">#D05A10</color>
+    <color name="status_reset">#F43F5E</color>
+    <color name="status_reset_dim">#C83050</color>
+    
+    <!-- Legacy status colors -->
+    <color name="status_red">#F43F5E</color>
+    <color name="status_orange">#F97316</color>
+    <color name="status_yellow">#FBBF24</color>
+    <color name="status_white">#E5E5F0</color>
+    <color name="status_green">#00E5A0</color>
+    
+    <!-- Component colors -->
+    <color name="progress_track">#28263A</color>
+    <color name="progress_track_dim">#1A1824</color>
+    <color name="divider">#2A2838</color>
+    <color name="ripple">#30FFFFFF</color>
+    
+    <!-- Card accent borders -->
+    <color name="card_border_glow">#1500E5A0</color>
+    <color name="card_border_dim">#10FFFFFF</color>
+    
+    <!-- Legacy aliases -->
+    <color name="green">#00E5A0</color>
+    <color name="orange">#F97316</color>
+    <color name="red">#F43F5E</color>
+    <color name="yellow">#FBBF24</color>
+    <color name="cyan">#00D4C8</color>
+    <color name="switch_thumb">@color/accent_primary</color>
+    <color name="switch_track">@color/progress_track</color>
 </resources>

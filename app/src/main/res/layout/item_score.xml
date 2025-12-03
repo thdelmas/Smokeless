@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingVertical="10dp"
+    android:paddingHorizontal="4dp">
+
+    <!-- Circular Progress Ring Container -->
+    <FrameLayout
+        android:id="@+id/progressContainer"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!-- Background Ring -->
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progressBackground"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_gravity="center"
+            android:progress="100"
+            app:indicatorColor="@color/progress_track"
+            app:trackColor="@android:color/transparent"
+            app:indicatorSize="48dp"
+            app:trackThickness="4dp"
+            app:trackCornerRadius="2dp" />
+
+        <!-- Active Progress Ring -->
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progressRing"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_gravity="center"
+            android:progress="0"
+            app:indicatorColor="@color/accent_primary"
+            app:trackColor="@android:color/transparent"
+            app:indicatorSize="48dp"
+            app:trackThickness="4dp"
+            app:trackCornerRadius="2dp" />
+
+        <!-- Center Percentage Text -->
+        <TextView
+            android:id="@+id/textPercent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
+            tools:text="75%" />
+
+    </FrameLayout>
+
+    <!-- Label & Value Container -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:orientation="vertical"
+        app:layout_constraintStart_toEndOf="@id/progressContainer"
+        app:layout_constraintEnd_toStartOf="@id/textValue"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            android:id="@+id/textLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="Best of Month" />
+
+        <!-- Status Badge -->
+        <TextView
+            android:id="@+id/textStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/accent_primary"
+            android:textSize="10sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:textAllCaps="true"
+            android:visibility="gone"
+            tools:text="CHAMPION"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+    <!-- Value Display -->
+    <TextView
+        android:id="@+id/textValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="end"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:text="02:45:30" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

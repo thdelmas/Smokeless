@@ -1,10 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    
+    <!-- Base application theme -->
     <style name="Base.Theme.SmokeLess" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
-
-        <!-- Set the background color to black -->
-        <item name="android:windowBackground">@android:color/black</item>
+        <!-- Primary colors - Electric Mint -->
+        <item name="colorPrimary">@color/accent_primary</item>
+        <item name="colorPrimaryContainer">@color/surface_elevated</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorOnPrimaryContainer">@color/text_primary</item>
+        
+        <!-- Secondary colors - Golden Hour -->
+        <item name="colorSecondary">@color/accent_amber</item>
+        <item name="colorSecondaryContainer">@color/surface_card</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorOnSecondaryContainer">@color/text_primary</item>
+        
+        <!-- Tertiary colors - Teal -->
+        <item name="colorTertiary">@color/accent_teal</item>
+        <item name="colorTertiaryContainer">@color/surface_card_highlight</item>
+        <item name="colorOnTertiary">@color/black</item>
+        <item name="colorOnTertiaryContainer">@color/text_primary</item>
+        
+        <!-- Background colors -->
+        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="colorSurface">@color/background_dark</item>
+        <item name="colorSurfaceVariant">@color/surface_card</item>
+        <item name="colorSurfaceContainer">@color/surface_card</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_elevated</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        
+        <!-- Outline colors -->
+        <item name="colorOutline">@color/divider</item>
+        <item name="colorOutlineVariant">@color/card_border_dim</item>
+        
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:navigationBarColor">@color/background_dark</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        
+        <!-- Chip styling -->
+        <item name="chipStyle">@style/Widget.App.Chip</item>
     </style>
+    
+    <!-- Main app theme -->
+    <style name="Theme.SmokeLess" parent="Base.Theme.SmokeLess" />
+    
+    <!-- Shape appearances -->
+    <style name="ShapeAppearance.Pill" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+    
+    <style name="ShapeAppearance.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+    
+    <style name="ShapeAppearance.Card.Large" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.Card.Medium" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+    
+    <!-- Custom chip style -->
+    <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/surface_card</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipMinHeight">36dp</item>
+        <item name="chipCornerRadius">18dp</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+    
+    <!-- Progress indicator styles -->
+    <style name="Widget.App.CircularProgress" parent="Widget.Material3.CircularProgressIndicator">
+        <item name="indicatorColor">@color/accent_primary</item>
+        <item name="trackColor">@color/progress_track</item>
+        <item name="trackThickness">4dp</item>
+        <item name="trackCornerRadius">2dp</item>
+    </style>
+    
+    <style name="Widget.App.LinearProgress" parent="Widget.Material3.LinearProgressIndicator">
+        <item name="indicatorColor">@color/accent_primary</item>
+        <item name="trackColor">@color/progress_track</item>
+        <item name="trackThickness">10dp</item>
+        <item name="trackCornerRadius">5dp</item>
+    </style>
+    
 </resources>

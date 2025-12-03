@@ -1,601 +1,626 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@drawable/bg_gradient">
 
-    <TextView
-        android:id="@+id/menuIconView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:textSize="21sp"
-        android:text="⚙️"
-        android:clickable="true"
-        android:onClick="onMenuIconClicked" />
-
-    <ImageView
-        android:id="@+id/logoImageView"
-        android:layout_width="84dp"
-        android:layout_height="84dp"
-        android:layout_gravity="center_horizontal"
-        android:src="@mipmap/ic_launcher_round" />
-
-    <ScrollView
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        app:elevation="0dp">
 
-        <TableLayout
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@android:color/transparent"
+            app:navigationIcon="@drawable/ic_settings"
+            app:navigationIconTint="@color/text_secondary" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:stretchColumns="1,2,3,4">
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="100dp">
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- HERO SECTION - Current Streak -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingTop="8dp"
+                android:paddingBottom="24dp">
+
+                <!-- App Branding -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🌿 Smokeless"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.08" />
+
+                <TextView
+                    android:id="@+id/textViewQuestion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Your journey continues"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
+
+            <!-- Main Timer Card -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="28dp">
+
+                <LinearLayout
+                    android:id="@+id/cardCurrentScore"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_hero_card"
+                    android:padding="28dp"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/labelCurrentStreak"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SMOKE-FREE FOR"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:letterSpacing="0.2"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <!-- Big Timer Display -->
+                    <TextView
+                        android:id="@+id/textViewCurrentScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="00:00:00"
+                        android:textColor="@color/accent_primary"
+                        android:textSize="52sp"
+                        android:fontFamily="sans-serif-black"
+                        android:includeFontPadding="false"
+                        android:letterSpacing="-0.02" />
+
+                    <!-- Goal Progress Section -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="24dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Goal Progress"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/textViewPercentage"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0%"
+                                android:textColor="@color/accent_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-bold" />
+
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/progressIndicator"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            app:indicatorColor="@color/accent_primary"
+                            app:trackColor="@color/progress_track"
+                            app:trackCornerRadius="6dp"
+                            app:trackThickness="10dp" />
+
+                        <TextView
+                            android:id="@+id/textViewGoalLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:layout_gravity="end"
+                            android:text="Target: --"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="11sp"
+                            android:fontFamily="sans-serif" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- QUICK STATS - Today's Highlights -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
 
             <TextView
-                android:id="@+id/textViewQuestion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:paddingBottom="12sp"
-                android:textAlignment="center"
-                android:text="How long can you live without smoking ?"
+                android:layout_marginBottom="12dp"
+                android:text="Today's Progress"
+                android:textColor="@color/text_primary"
                 android:textSize="18sp"
-                android:textStyle="bold" />
+                android:fontFamily="sans-serif-bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="24dp"
+                android:baselineAligned="false">
+
+                <!-- Best Today Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    app:cardBackgroundColor="@color/surface_card"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/card_border_dim">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:gravity="center">
+
+                        <FrameLayout
+                            android:layout_width="56dp"
+                            android:layout_height="56dp">
+
+                            <com.google.android.material.progressindicator.CircularProgressIndicator
+                                android:id="@+id/progressBestToday"
+                                android:layout_width="56dp"
+                                android:layout_height="56dp"
+                                android:layout_gravity="center"
+                                app:indicatorColor="@color/accent_teal"
+                                app:trackColor="@color/progress_track"
+                                app:indicatorSize="52dp"
+                                app:trackThickness="5dp"
+                                app:trackCornerRadius="3dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:text="⭐"
+                                android:textSize="18sp" />
+
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/textBestTodayValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="--"
+                            android:textColor="@color/text_primary"
+                            android:textSize="17sp"
+                            android:fontFamily="sans-serif-bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Best Today"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Cigarettes Avoided Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    app:cardBackgroundColor="@color/surface_card"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/card_border_dim">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:gravity="center">
+
+                        <FrameLayout
+                            android:layout_width="56dp"
+                            android:layout_height="56dp">
+
+                            <com.google.android.material.progressindicator.CircularProgressIndicator
+                                android:id="@+id/progressCountToday"
+                                android:layout_width="56dp"
+                                android:layout_height="56dp"
+                                android:layout_gravity="center"
+                                app:indicatorColor="@color/accent_amber"
+                                app:trackColor="@color/progress_track"
+                                app:indicatorSize="52dp"
+                                app:trackThickness="5dp"
+                                app:trackCornerRadius="3dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:text="🚬"
+                                android:textSize="18sp" />
+
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/textCountTodayValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="0"
+                            android:textColor="@color/text_primary"
+                            android:textSize="17sp"
+                            android:fontFamily="sans-serif-bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Smoked Today"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- STATISTICS DASHBOARD -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:paddingBottom="12sp"
-                android:textAlignment="center"
-                android:text="\nScoreboard"
-                android:textSize="16sp" />
+                android:layout_marginBottom="12dp"
+                android:text="Statistics"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:fontFamily="sans-serif-bold" />
 
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusBestScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
+            <!-- Horizontal Tab Selector -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:layout_marginBottom="16dp"
+                android:clipToPadding="false">
 
-                <TextView
-                    android:id="@+id/labelBestScoreAll"
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupPeriod"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Best of All"
-                    />
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
 
-                <TextView
-                    android:id="@+id/valueBestScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentBestScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipToday"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Today"
+                        android:textColor="@color/chip_text_color"
+                        app:chipBackgroundColor="@color/chip_background_color"
+                        app:chipStrokeWidth="0dp"
+                        app:checkedIconVisible="false" />
 
-            </TableRow>
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipWeek"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Week"
+                        android:textColor="@color/chip_text_color"
+                        app:chipBackgroundColor="@color/chip_background_color"
+                        app:chipStrokeWidth="0dp"
+                        app:checkedIconVisible="false" />
 
-            <TableRow
-                android:paddingVertical="2dp">
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipMonth"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Month"
+                        android:textColor="@color/chip_text_color"
+                        app:chipBackgroundColor="@color/chip_background_color"
+                        app:chipStrokeWidth="0dp"
+                        app:checkedIconVisible="false"
+                        android:checked="true" />
 
-                <TextView
-                    android:id="@+id/statusAverageScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipYear"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Year"
+                        android:textColor="@color/chip_text_color"
+                        app:chipBackgroundColor="@color/chip_background_color"
+                        app:chipStrokeWidth="0dp"
+                        app:checkedIconVisible="false" />
 
-                <TextView
-                    android:id="@+id/labelAverageScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Average of All"
-                    />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipAllTime"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="All Time"
+                        android:textColor="@color/chip_text_color"
+                        app:chipBackgroundColor="@color/chip_background_color"
+                        app:chipStrokeWidth="0dp"
+                        app:checkedIconVisible="false" />
 
-                <TextView
-                    android:id="@+id/valueAverageScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentAverageScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
+                </com.google.android.material.chip.ChipGroup>
 
-            </TableRow>
+            </HorizontalScrollView>
 
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusMedianScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
+            <!-- Stats Card with RecyclerView -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/card_border_dim">
 
-                <TextView
-                    android:id="@+id/labelMedianScoreAll"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Median of All"
-                    />
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-                <TextView
-                    android:id="@+id/valueMedianScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentMedianScoreAll"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-            </TableRow>
-            <TableRow
-                android:paddingVertical="2dp"
-                android:paddingTop="8dp">
-                <TextView
-                    android:id="@+id/statusBestScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
+                    <!-- Period Header -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
 
-                <TextView
-                    android:id="@+id/labelBestScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Best of Year"
-                    />
+                        <TextView
+                            android:id="@+id/textPeriodIcon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📊"
+                            android:textSize="20sp" />
 
-                <TextView
-                    android:id="@+id/valueBestScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentBestScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
+                        <TextView
+                            android:id="@+id/textPeriodTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="10dp"
+                            android:text="This Month"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium" />
 
-            </TableRow>
+                        <TextView
+                            android:id="@+id/textPeriodCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="4dp"
+                            android:background="@drawable/bg_stat_chip"
+                            android:text="12 sessions"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp"
+                            android:fontFamily="sans-serif-medium" />
 
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusAverageScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
+                    </LinearLayout>
 
-                <TextView
-                    android:id="@+id/labelAverageScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Average of Year"
-                    />
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider"
+                        android:layout_marginBottom="8dp" />
 
-                <TextView
-                    android:id="@+id/valueAverageScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentAverageScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
+                    <!-- Stats RecyclerView -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recyclerStats"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never" />
 
-            </TableRow>
+                </LinearLayout>
 
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusMedianScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
+            </com.google.android.material.card.MaterialCardView>
 
-                <TextView
-                    android:id="@+id/labelMedianScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Median of Year"
-                    />
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- RECORDS SECTION -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
 
-                <TextView
-                    android:id="@+id/valueMedianScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentMedianScoreYear"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-            </TableRow>
-            <TableRow
-                android:paddingVertical="2dp"
-                android:paddingTop="8dp">
             <TextView
-                    android:id="@+id/statusBestScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelBestScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Best of Month"
-                    />
-
-                <TextView
-                    android:id="@+id/valueBestScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentBestScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-
-            </TableRow>
-
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusAverageScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelAverageScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Average of Month"
-                    />
-
-                <TextView
-                    android:id="@+id/valueAverageScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentAverageScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-
-            </TableRow>
-
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusMedianScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelMedianScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingLeft="4dp"
-                    android:text="Median of Month"
-                    />
-
-                <TextView
-                    android:id="@+id/valueMedianScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-
-                <TextView
-                    android:id="@+id/percentMedianScoreMonth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-            </TableRow>
-            <TableRow
-                android:paddingVertical="2dp"
-                android:paddingTop="8dp">
-                <TextView
-                    android:id="@+id/statusBestScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelBestScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Best of Week"
-                    android:paddingLeft="4dp"
-                    />
-
-                <TextView
-                    android:id="@+id/valueBestScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-                <TextView
-                    android:id="@+id/percentBestScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-
-            </TableRow>
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusAverageScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelAverageScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Average of Week"
-                    android:paddingLeft="4dp"
-                    />
-
-                <TextView
-                    android:id="@+id/valueAverageScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-
-                <TextView
-                    android:id="@+id/percentAverageScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-
-            </TableRow>
-            <TableRow
-                android:paddingVertical="2dp">
-                <TextView
-                    android:id="@+id/statusMedianScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelMedianScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Median of Week"
-                    android:paddingLeft="4dp"
-                    />
-
-                <TextView
-                    android:id="@+id/valueMedianScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-
-                <TextView
-                    android:id="@+id/percentMedianScoreWeek"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-            </TableRow>
-            <TableRow
-                android:paddingVertical="2dp"
-                android:layout_marginVertical="12dp">
-                <TextView
-                    android:id="@+id/statusLatestScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="❌"
-                    />
-
-                <TextView
-                    android:id="@+id/labelLatestScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Latest Score"
-                    android:paddingLeft="4dp"
-                    />
-
-                <TextView
-                    android:id="@+id/valueLatestScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="∞"
-                    />
-
-                <TextView
-                    android:id="@+id/percentLatestScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:text="0%"
-                    />
-            </TableRow>
-            <TableRow
-            android:paddingVertical="2dp"
-            android:layout_marginVertical="12dp">
-            <TextView
-                android:id="@+id/statusCurrentGoal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="4dp"
-                android:text="⏳"
-                />
+                android:layout_marginBottom="12dp"
+                android:text="Personal Records"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:fontFamily="sans-serif-bold" />
 
-            <TextView
-                android:id="@+id/labelCurrentGoal"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Goal"
-                android:paddingLeft="4dp"
-                android:textStyle="bold"
-                />
+                android:orientation="horizontal"
+                android:baselineAligned="false">
 
-            <TextView
-                android:id="@+id/valueCurrentGoal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="right"
-                android:textStyle="bold"
-                android:text="∞"
-                />
-
-            <TextView
-                android:id="@+id/percentCurrentGoal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="right"
-                android:textStyle="bold"
-                android:text="0%"
-                />
-        </TableRow>
-            <TableRow
-                android:paddingVertical="2dp"
-                android:layout_marginVertical="12dp">
-                <TextView
-                    android:id="@+id/statusCurrentScore"
-                    android:layout_width="wrap_content"
+                <!-- All-Time Best Record -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="4dp"
-                    android:text="⏳"
-                    />
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    app:cardBackgroundColor="@color/surface_card"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/card_border_dim">
 
-                <TextView
-                    android:id="@+id/labelCurrentScore"
-                    android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:gravity="center">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🏆"
+                            android:textSize="28sp" />
+
+                        <TextView
+                            android:id="@+id/textAllTimeBest"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="--"
+                            android:textColor="@color/accent_primary"
+                            android:textSize="18sp"
+                            android:fontFamily="sans-serif-bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Best Ever"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Total Streak -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Score"
-                    android:paddingLeft="4dp"
-                    android:textStyle="bold"
-                    />
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    app:cardBackgroundColor="@color/surface_card"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/card_border_dim">
 
-                <TextView
-                    android:id="@+id/valueCurrentScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:textStyle="bold"
-                    android:text="∞"
-                    />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp"
+                        android:gravity="center">
 
-                <TextView
-                    android:id="@+id/percentCurrentScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="right"
-                    android:textStyle="bold"
-                    android:text="0%"
-                    />
-            </TableRow>
-        </TableLayout>
-    </ScrollView>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📈"
+                            android:textSize="28sp" />
 
-    <Button
-        android:id="@+id/buttonImSmoking"
+                        <TextView
+                            android:id="@+id/textTotalSessions"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="0"
+                            android:textColor="@color/accent_purple"
+                            android:textSize="18sp"
+                            android:fontFamily="sans-serif-bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Total Sessions"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Floating Action Button -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fabSmoke"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:padding="8dp"
-        android:text="Try Again"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:text="I Smoked"
         android:textColor="@color/black"
-        android:layout_gravity="center"
-        android:textAlignment="center"
-        android:textStyle="bold"
-        android:textSize="18sp"
-        android:onClick="onButtonImSmokingClicked" />
+        android:textSize="15sp"
+        android:fontFamily="sans-serif-medium"
+        app:icon="@drawable/ic_refresh"
+        app:iconTint="@color/black"
+        app:iconSize="20dp"
+        app:backgroundTint="@color/accent_amber"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
+        app:elevation="8dp" />
 
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
