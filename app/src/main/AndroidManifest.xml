@@ -35,6 +35,9 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".OnboardingActivity"
+            android:theme="@style/Base.Theme.SmokeLess" />
+        <activity
             android:name=".SettingsActivity"
             android:label="Settings"
             android:parentActivityName=".MainActivity"

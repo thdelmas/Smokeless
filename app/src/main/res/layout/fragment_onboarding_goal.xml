@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingHorizontal="32dp"
+    android:paddingTop="48dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🎯"
+        android:textSize="56sp"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="What's your goal?"
+        android:textColor="@color/text_primary"
+        android:textSize="24sp"
+        android:fontFamily="sans-serif-bold"
+        android:gravity="center"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="This helps us tailor the experience for you"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <RadioGroup
+        android:id="@+id/radioGoal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/radioQuit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Quit completely"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_stat_chip"
+            android:buttonTint="@color/accent_primary" />
+
+        <RadioButton
+            android:id="@+id/radioReduce"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Reduce gradually"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_stat_chip"
+            android:buttonTint="@color/accent_primary"
+            android:checked="true" />
+
+        <RadioButton
+            android:id="@+id/radioTrack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Just tracking"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:background="@drawable/bg_stat_chip"
+            android:buttonTint="@color/accent_primary" />
+
+    </RadioGroup>
+
+</LinearLayout>
