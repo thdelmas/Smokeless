@@ -19,7 +19,8 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:navigationIcon="@drawable/ic_settings"
-            app:navigationIconTint="@color/text_secondary" />
+            app:navigationIconTint="@color/text_secondary"
+            app:menu="@menu/main_menu" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -46,8 +47,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center"
-                android:paddingTop="8dp"
-                android:paddingBottom="24dp">
+                android:paddingTop="16dp"
+                android:paddingBottom="20dp">
 
                 <!-- App Branding -->
                 <TextView
@@ -55,20 +56,22 @@
                     android:layout_height="wrap_content"
                     android:text="🌿 Smokeless"
                     android:textColor="@color/text_tertiary"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:fontFamily="sans-serif-medium"
                     android:letterSpacing="0.08" />
 
+                <!-- Motivational Message -->
                 <TextView
-                    android:id="@+id/textViewQuestion"
+                    android:id="@+id/textViewMotivation"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="Your journey continues"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="15sp"
-                    android:fontFamily="sans-serif" />
+                    android:text="Every hour counts"
+                    android:textColor="@color/accent_primary"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:alpha="0.9" />
 
             </LinearLayout>
 
@@ -76,7 +79,7 @@
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="28dp">
+                android:layout_marginBottom="24dp">
 
                 <LinearLayout
                     android:id="@+id/cardCurrentScore"
@@ -84,8 +87,24 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:background="@drawable/bg_hero_card"
-                    android:padding="28dp"
+                    android:paddingTop="32dp"
+                    android:paddingBottom="28dp"
+                    android:paddingHorizontal="24dp"
                     android:gravity="center">
+
+                    <!-- Status Badge -->
+                    <TextView
+                        android:id="@+id/textStatusBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="6dp"
+                        android:background="@drawable/bg_stat_chip"
+                        android:text="🌟 Going Strong"
+                        android:textColor="@color/accent_primary"
+                        android:textSize="12sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginBottom="16dp" />
 
                     <TextView
                         android:id="@+id/labelCurrentStreak"
@@ -102,35 +121,68 @@
                         android:id="@+id/textViewCurrentScore"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="12dp"
                         android:text="00:00:00"
                         android:textColor="@color/accent_primary"
-                        android:textSize="52sp"
+                        android:textSize="56sp"
                         android:fontFamily="sans-serif-black"
                         android:includeFontPadding="false"
                         android:letterSpacing="-0.02" />
+
+                    <!-- Contextual Message -->
+                    <TextView
+                        android:id="@+id/textStreakContext"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Keep going, you're doing great!"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif"
+                        android:gravity="center" />
 
                     <!-- Goal Progress Section -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginTop="24dp">
+                        android:layout_marginTop="28dp"
+                        android:background="@drawable/bg_stat_chip"
+                        android:padding="18dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:gravity="center_vertical">
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
 
-                            <TextView
+                            <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Goal Progress"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="12sp"
-                                android:fontFamily="sans-serif-medium" />
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/textGoalProgressLabel"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Goal Progress"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="13sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/textViewGoalLabel"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:text="Target: --"
+                                    android:textColor="@color/text_tertiary"
+                                    android:textSize="11sp"
+                                    android:fontFamily="sans-serif" />
+
+                            </LinearLayout>
 
                             <TextView
                                 android:id="@+id/textViewPercentage"
@@ -138,8 +190,8 @@
                                 android:layout_height="wrap_content"
                                 android:text="0%"
                                 android:textColor="@color/accent_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-bold" />
+                                android:textSize="22sp"
+                                android:fontFamily="sans-serif-black" />
 
                         </LinearLayout>
 
@@ -147,22 +199,10 @@
                             android:id="@+id/progressIndicator"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
                             app:indicatorColor="@color/accent_primary"
                             app:trackColor="@color/progress_track"
-                            app:trackCornerRadius="6dp"
-                            app:trackThickness="10dp" />
-
-                        <TextView
-                            android:id="@+id/textViewGoalLabel"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:layout_gravity="end"
-                            android:text="Target: --"
-                            android:textColor="@color/text_tertiary"
-                            android:textSize="11sp"
-                            android:fontFamily="sans-serif" />
+                            app:trackCornerRadius="8dp"
+                            app:trackThickness="12dp" />
 
                     </LinearLayout>
 
@@ -171,23 +211,43 @@
             </FrameLayout>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
-            <!-- QUICK STATS - Today's Highlights -->
+            <!-- QUICK STATS - Period Highlights -->
             <!-- ═══════════════════════════════════════════════════════════ -->
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:text="Today's Progress"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:fontFamily="sans-serif-bold" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="24dp"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:id="@+id/textQuickStatsTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Period Highlights"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp"
+                    android:fontFamily="sans-serif-bold" />
+
+                <TextView
+                    android:id="@+id/textQuickStatsHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📊 Your progress"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="28dp"
                 android:baselineAligned="false">
 
                 <!-- Best Today Card -->
@@ -195,9 +255,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="8dp"
                     app:cardBackgroundColor="@color/surface_card"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="22dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="1dp"
                     app:strokeColor="@color/card_border_dim">
@@ -206,22 +266,23 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:padding="20dp"
+                        android:gravity="center"
+                        android:minHeight="160dp">
 
                         <FrameLayout
-                            android:layout_width="56dp"
-                            android:layout_height="56dp">
+                            android:layout_width="64dp"
+                            android:layout_height="64dp">
 
                             <com.google.android.material.progressindicator.CircularProgressIndicator
                                 android:id="@+id/progressBestToday"
-                                android:layout_width="56dp"
-                                android:layout_height="56dp"
+                                android:layout_width="64dp"
+                                android:layout_height="64dp"
                                 android:layout_gravity="center"
                                 app:indicatorColor="@color/accent_teal"
                                 app:trackColor="@color/progress_track"
-                                app:indicatorSize="52dp"
-                                app:trackThickness="5dp"
+                                app:indicatorSize="60dp"
+                                app:trackThickness="6dp"
                                 app:trackCornerRadius="3dp" />
 
                             <TextView
@@ -229,7 +290,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="center"
                                 android:text="⭐"
-                                android:textSize="18sp" />
+                                android:textSize="24sp" />
 
                         </FrameLayout>
 
@@ -237,19 +298,21 @@
                             android:id="@+id/textBestTodayValue"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="14dp"
                             android:text="--"
                             android:textColor="@color/text_primary"
-                            android:textSize="17sp"
-                            android:fontFamily="sans-serif-bold" />
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-black" />
 
                         <TextView
+                            android:id="@+id/textBestTodayLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Best Today"
+                            android:layout_marginTop="4dp"
+                            android:text="Clean Streak"
                             android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
+                            android:textSize="12sp"
+                            android:gravity="center" />
 
                     </LinearLayout>
 
@@ -260,9 +323,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     app:cardBackgroundColor="@color/surface_card"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="22dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="1dp"
                     app:strokeColor="@color/card_border_dim">
@@ -271,30 +334,34 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:padding="20dp"
+                        android:gravity="center"
+                        android:minHeight="160dp">
 
                         <FrameLayout
-                            android:layout_width="56dp"
-                            android:layout_height="56dp">
+                            android:layout_width="64dp"
+                            android:layout_height="64dp">
 
                             <com.google.android.material.progressindicator.CircularProgressIndicator
                                 android:id="@+id/progressCountToday"
-                                android:layout_width="56dp"
-                                android:layout_height="56dp"
+                                android:layout_width="64dp"
+                                android:layout_height="64dp"
                                 android:layout_gravity="center"
+                                android:max="100"
+                                android:progress="100"
                                 app:indicatorColor="@color/accent_amber"
                                 app:trackColor="@color/progress_track"
-                                app:indicatorSize="52dp"
-                                app:trackThickness="5dp"
-                                app:trackCornerRadius="3dp" />
+                                app:indicatorSize="60dp"
+                                app:trackThickness="6dp"
+                                app:trackCornerRadius="3dp"
+                                app:indicatorDirectionCircular="clockwise" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="center"
                                 android:text="🚬"
-                                android:textSize="18sp" />
+                                android:textSize="24sp" />
 
                         </FrameLayout>
 
@@ -302,19 +369,21 @@
                             android:id="@+id/textCountTodayValue"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="14dp"
                             android:text="0"
                             android:textColor="@color/text_primary"
-                            android:textSize="17sp"
-                            android:fontFamily="sans-serif-bold" />
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-black" />
 
                         <TextView
+                            android:id="@+id/textCountTodayLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Smoked Today"
+                            android:layout_marginTop="4dp"
+                            android:text="Smoked"
                             android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
+                            android:textSize="12sp"
+                            android:gravity="center" />
 
                     </LinearLayout>
 
@@ -326,14 +395,30 @@
             <!-- STATISTICS DASHBOARD -->
             <!-- ═══════════════════════════════════════════════════════════ -->
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:text="Statistics"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:fontFamily="sans-serif-bold" />
+                android:orientation="vertical"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Detailed Statistics"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp"
+                    android:fontFamily="sans-serif-bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Choose a time period to explore your progress"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
 
             <!-- Horizontal Tab Selector -->
             <HorizontalScrollView
@@ -487,32 +572,207 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- PROGRESS CHARTS -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Visual Trends"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp"
+                    android:fontFamily="sans-serif-bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Track your patterns and improvements over time"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
+
+            <!-- Line Chart - Smoke-Free Duration Trend -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/card_border_dim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📈"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:id="@+id/textTrendChartTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="10dp"
+                            android:text="7-Day Average Trend"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/textChartTrend"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:background="@drawable/bg_stat_chip"
+                            android:text="↗ Improving"
+                            android:textColor="@color/accent_primary"
+                            android:textSize="11sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                    </LinearLayout>
+
+                    <com.github.mikephil.charting.charts.LineChart
+                        android:id="@+id/lineChart"
+                        android:layout_width="match_parent"
+                        android:layout_height="180dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Bar Chart - Cigarettes per Day -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/card_border_dim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🚬"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:id="@+id/textBarChartTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="10dp"
+                            android:text="Daily Cigarettes"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/textBarChartAvg"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:background="@drawable/bg_stat_chip"
+                            android:text="Avg: 0/day"
+                            android:textColor="@color/accent_amber"
+                            android:textSize="11sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                    </LinearLayout>
+
+                    <com.github.mikephil.charting.charts.BarChart
+                        android:id="@+id/barChart"
+                        android:layout_width="match_parent"
+                        android:layout_height="160dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
             <!-- RECORDS SECTION -->
             <!-- ═══════════════════════════════════════════════════════════ -->
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:text="Personal Records"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:fontFamily="sans-serif-bold" />
+                android:orientation="vertical"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Your Achievements"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp"
+                    android:fontFamily="sans-serif-bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Celebrate your milestones and progress"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:baselineAligned="false"
+                android:layout_marginBottom="16dp">
 
                 <!-- All-Time Best Record -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="8dp"
                     app:cardBackgroundColor="@color/surface_card"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="22dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="1dp"
                     app:strokeColor="@color/card_border_dim">
@@ -521,32 +781,34 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:padding="20dp"
+                        android:gravity="center"
+                        android:minHeight="140dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="🏆"
-                            android:textSize="28sp" />
+                            android:textSize="36sp" />
 
                         <TextView
                             android:id="@+id/textAllTimeBest"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="12dp"
                             android:text="--"
                             android:textColor="@color/accent_primary"
-                            android:textSize="18sp"
-                            android:fontFamily="sans-serif-bold" />
+                            android:textSize="22sp"
+                            android:fontFamily="sans-serif-black" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Best Ever"
+                            android:layout_marginTop="4dp"
+                            android:text="Best Streak"
                             android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
+                            android:textSize="12sp"
+                            android:gravity="center" />
 
                     </LinearLayout>
 
@@ -557,9 +819,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     app:cardBackgroundColor="@color/surface_card"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="22dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="1dp"
                     app:strokeColor="@color/card_border_dim">
@@ -568,32 +830,34 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:padding="20dp"
+                        android:gravity="center"
+                        android:minHeight="140dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="📈"
-                            android:textSize="28sp" />
+                            android:text="📊"
+                            android:textSize="36sp" />
 
                         <TextView
                             android:id="@+id/textTotalSessions"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="12dp"
                             android:text="0"
-                            android:textColor="@color/accent_purple"
-                            android:textSize="18sp"
-                            android:fontFamily="sans-serif-bold" />
+                            android:textColor="@color/accent_amber"
+                            android:textSize="22sp"
+                            android:fontFamily="sans-serif-black" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Total Sessions"
+                            android:layout_marginTop="4dp"
+                            android:text="Total Smoked"
                             android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
+                            android:textSize="12sp"
+                            android:gravity="center" />
 
                     </LinearLayout>
 
@@ -601,26 +865,274 @@
 
             </LinearLayout>
 
+            <!-- Money Saved Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="22dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/card_border_dim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center"
+                    android:minHeight="120dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="💰"
+                        android:textSize="36sp" />
+
+                    <TextView
+                        android:id="@+id/textMoneySaved"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="$0.00"
+                        android:textColor="@color/status_champion"
+                        android:textSize="28sp"
+                        android:fontFamily="sans-serif-black" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Money Saved"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:gravity="center" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="From avoiding cigarettes on clean days"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="11sp"
+                        android:gravity="center" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- INSIGHTS & TIPS SECTION -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Daily Insight"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp"
+                    android:fontFamily="sans-serif-bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Tips to help you on your journey"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+
+            </LinearLayout>
+
+            <!-- Insight Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/card_border_dim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="💡"
+                            android:textSize="28sp"
+                            android:layout_marginEnd="12dp" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Helpful Tip"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-bold" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/textInsightMessage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="The first 72 hours are the hardest. After 3 days, nicotine withdrawal symptoms significantly decrease. You're making great progress!"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:lineSpacingMultiplier="1.4"
+                        android:fontFamily="sans-serif" />
+
+                    <!-- Health Benefits Progress -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="16dp"
+                        android:padding="16dp"
+                        android:background="@drawable/bg_stat_chip">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Health Progress"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/textHealthProgress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0/17 milestones"
+                                android:textColor="@color/accent_primary"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/progressHealth"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            app:indicatorColor="@color/accent_primary"
+                            app:trackColor="@color/progress_track"
+                            app:trackCornerRadius="6dp"
+                            app:trackThickness="8dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:id="@+id/textCurrentHealthMilestone"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🌱 Your journey begins"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/textNextHealthMilestone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Next: ❤️ 20 min - Heart rate normalizes"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="11sp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Floating Action Button -->
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fabSmoke"
+    <!-- Floating Action Buttons -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="24dp"
-        android:text="I Smoked"
-        android:textColor="@color/black"
-        android:textSize="15sp"
-        android:fontFamily="sans-serif-medium"
-        app:icon="@drawable/ic_refresh"
-        app:iconTint="@color/black"
-        app:iconSize="20dp"
-        app:backgroundTint="@color/accent_amber"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
-        app:elevation="8dp" />
+        android:layout_marginBottom="32dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <!-- I Resisted Button -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fabResist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:text="I Resisted"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:fontFamily="sans-serif-bold"
+            android:paddingVertical="14dp"
+            android:paddingHorizontal="24dp"
+            app:icon="@drawable/ic_check"
+            app:iconTint="@color/white"
+            app:iconSize="20dp"
+            app:backgroundTint="@color/status_champion"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
+            app:elevation="12dp" />
+
+        <!-- I Smoked Button -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fabSmoke"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="I Smoked"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-bold"
+            android:paddingVertical="16dp"
+            android:paddingHorizontal="32dp"
+            app:icon="@drawable/ic_refresh"
+            app:iconTint="@color/black"
+            app:iconSize="22dp"
+            app:backgroundTint="@color/accent_amber"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
+            app:elevation="12dp" />
+
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

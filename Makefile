@@ -1,6 +1,6 @@
 # Makefile for building and running PreuJust on connected devices
 
-APP_ID := com.preujust/.MainActivity
+APP_ID := com.smokless.smokeless/.MainActivity
 
 # Device IDs
 SAMSUNG_ID := 616ecbcf
@@ -35,7 +35,7 @@ devices:
 
 .PHONY: logs
 logs:
-	adb logcat --pid=$$(adb shell pidof com.preujust)
+	adb logcat --pid=$$(adb shell pidof com.smokless.smokeless)
 
 # === Git utilities ===
 
