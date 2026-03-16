@@ -119,6 +119,7 @@ class OnboardingActivity : AppCompatActivity() {
             })
             .apply()
 
+        com.smokless.smokeless.util.ReminderReceiver.schedule(this)
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }

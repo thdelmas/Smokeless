@@ -105,6 +105,44 @@ object NotificationHelper {
         }
     }
     
+    fun showDailyCheckIn(context: Context) {
+        createNotificationChannel(context)
+
+        val messages = listOf(
+            Pair("🌿 Evening Check-in", "How did today go? Open the app to log your progress."),
+            Pair("💪 Daily Reminder", "Every day without smoking is a victory. How are you doing?"),
+            Pair("🌟 Check In", "Take a moment to reflect on your progress today."),
+            Pair("💚 You've Got This", "Remember why you started. Log your day and keep going!"),
+            Pair("⭐ Time to Check In", "Your streak is building! Tap to see your progress.")
+        )
+
+        val message = messages.random()
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_check)
+            .setContentTitle(message.first)
+            .setContentText(message.second)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_BASE + 9000, notification)
+        } catch (e: SecurityException) {
+            // Permission not granted
+        }
+    }
+
     fun showEncouragementNotification(context: Context, hours: Int) {
         createNotificationChannel(context)
         

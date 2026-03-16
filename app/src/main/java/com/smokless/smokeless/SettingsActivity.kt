@@ -29,6 +29,7 @@ class SettingsActivity : AppCompatActivity() {
         setupPriceInputs()
         setupExportButtons()
         setupResetButton()
+        setupNotificationPrefs()
         setupSocialLinks()
         observeViewModel()
     }
@@ -146,6 +147,50 @@ class SettingsActivity : AppCompatActivity() {
                 .setNegativeButton("Cancel", null)
                 .show()
         }
+    }
+
+    private fun setupNotificationPrefs() {
+        val prefs = getSharedPreferences("SmokelessPrefs", MODE_PRIVATE)
+        val enabled = prefs.getBoolean("remindersEnabled", true)
+        val hour = prefs.getInt("reminderHour", 20)
+
+        binding.switchReminders.isChecked = enabled
+        binding.textReminderTime.text = formatHour(hour)
+        binding.layoutReminderTime.visibility = if (enabled) android.view.View.VISIBLE else android.view.View.GONE
+
+        binding.switchReminders.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("remindersEnabled", isChecked).apply()
+            binding.layoutReminderTime.visibility = if (isChecked) android.view.View.VISIBLE else android.view.View.GONE
+            if (isChecked) {
+                com.smokless.smokeless.util.ReminderReceiver.schedule(this)
+            } else {
+                com.smokless.smokeless.util.ReminderReceiver.cancel(this)
+            }
+        }
+
+        binding.layoutReminderTime.setOnClickListener {
+            val currentHour = prefs.getInt("reminderHour", 20)
+            com.google.android.material.timepicker.MaterialTimePicker.Builder()
+                .setHour(currentHour)
+                .setMinute(0)
+                .setTitleText("Reminder Time")
+                .build()
+                .apply {
+                    addOnPositiveButtonClickListener {
+                        prefs.edit().putInt("reminderHour", this.hour).apply()
+                        binding.textReminderTime.text = formatHour(this.hour)
+                        com.smokless.smokeless.util.ReminderReceiver.schedule(this@SettingsActivity)
+                    }
+                }
+                .show(supportFragmentManager, "timePicker")
+        }
+    }
+
+    private fun formatHour(hour: Int): String {
+        return if (hour == 0) "12:00 AM"
+        else if (hour < 12) "$hour:00 AM"
+        else if (hour == 12) "12:00 PM"
+        else "${hour - 12}:00 PM"
     }
 
     private fun setupSocialLinks() {
