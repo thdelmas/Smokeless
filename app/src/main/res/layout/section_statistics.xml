@@ -54,7 +54,8 @@
                 android:textColor="@color/chip_text_color"
                 app:chipBackgroundColor="@color/chip_background_color"
                 app:chipStrokeWidth="0dp"
-                app:checkedIconVisible="false" />
+                app:checkedIconVisible="false"
+                app:chipMinHeight="48dp" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipWeek"
@@ -65,7 +66,8 @@
                 android:textColor="@color/chip_text_color"
                 app:chipBackgroundColor="@color/chip_background_color"
                 app:chipStrokeWidth="0dp"
-                app:checkedIconVisible="false" />
+                app:checkedIconVisible="false"
+                app:chipMinHeight="48dp" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipMonth"
@@ -77,7 +79,8 @@
                 app:chipBackgroundColor="@color/chip_background_color"
                 app:chipStrokeWidth="0dp"
                 app:checkedIconVisible="false"
-                android:checked="true" />
+                android:checked="true"
+                app:chipMinHeight="48dp" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipYear"
@@ -88,7 +91,8 @@
                 android:textColor="@color/chip_text_color"
                 app:chipBackgroundColor="@color/chip_background_color"
                 app:chipStrokeWidth="0dp"
-                app:checkedIconVisible="false" />
+                app:checkedIconVisible="false"
+                app:chipMinHeight="48dp" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipAllTime"
@@ -99,7 +103,8 @@
                 android:textColor="@color/chip_text_color"
                 app:chipBackgroundColor="@color/chip_background_color"
                 app:chipStrokeWidth="0dp"
-                app:checkedIconVisible="false" />
+                app:checkedIconVisible="false"
+                app:chipMinHeight="48dp" />
 
         </com.google.android.material.chip.ChipGroup>
 

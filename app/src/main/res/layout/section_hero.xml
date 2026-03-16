@@ -90,7 +90,9 @@
                 android:textSize="56sp"
                 android:fontFamily="sans-serif-black"
                 android:includeFontPadding="false"
-                android:letterSpacing="-0.02" />
+                android:letterSpacing="-0.02"
+                android:contentDescription="Smoke-free timer"
+                android:accessibilityLiveRegion="polite" />
 
             <!-- Contextual Message -->
             <TextView
@@ -165,7 +167,8 @@
                     app:indicatorColor="@color/accent_primary"
                     app:trackColor="@color/progress_track"
                     app:trackCornerRadius="8dp"
-                    app:trackThickness="12dp" />
+                    app:trackThickness="12dp"
+                    android:contentDescription="Goal progress indicator" />
 
             </LinearLayout>
 

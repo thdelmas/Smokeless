@@ -534,12 +534,24 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setupFab() {
-        binding.fabSmoke.setOnClickListener {
-            viewModel.recordSmoke()
-            updateButtonState(0.0)
+        binding.fabSmoke.setOnClickListener { view ->
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+            viewModel.recordSmokeWithId { sessionId ->
+                updateButtonState(0.0)
+                com.google.android.material.snackbar.Snackbar
+                    .make(binding.root, "Smoke recorded", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    .setAction("UNDO") {
+                        viewModel.undoSmoke(sessionId)
+                    }
+                    .setBackgroundTint(ContextCompat.getColor(this, R.color.surface_elevated))
+                    .setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+                    .setActionTextColor(ContextCompat.getColor(this, R.color.accent_amber))
+                    .show()
+            }
         }
-        
-        binding.fabResist.setOnClickListener {
+
+        binding.fabResist.setOnClickListener { view ->
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             viewModel.recordCravingResisted()
             showResistConfirmation()
         }

@@ -31,6 +31,14 @@ class SmokingRepository(application: Application) {
     fun recordSmoke() {
         insert(SmokingSession(System.currentTimeMillis()))
     }
+
+    fun recordSmokeSync(): Long {
+        return smokingDao.insert(SmokingSession(System.currentTimeMillis()))
+    }
+
+    fun deleteSession(id: Long) {
+        smokingDao.deleteById(id)
+    }
     
     fun recordCraving() {
         AppDatabase.databaseExecutor.execute { 

@@ -94,6 +94,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             refreshData()
         }
     }
+
+    fun recordSmokeWithId(callback: (Long) -> Unit) {
+        AppDatabase.databaseExecutor.execute {
+            val id = repository.recordSmokeSync()
+            refreshData()
+            android.os.Handler(android.os.Looper.getMainLooper()).post { callback(id) }
+        }
+    }
+
+    fun undoSmoke(id: Long) {
+        AppDatabase.databaseExecutor.execute {
+            repository.deleteSession(id)
+            refreshData()
+        }
+    }
     
     /**
      * Record a craving resisted

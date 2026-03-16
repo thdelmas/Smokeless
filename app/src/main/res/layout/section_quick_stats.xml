@@ -74,7 +74,8 @@
                         app:trackColor="@color/progress_track"
                         app:indicatorSize="60dp"
                         app:trackThickness="6dp"
-                        app:trackCornerRadius="3dp" />
+                        app:trackCornerRadius="3dp"
+                        android:contentDescription="Clean streak progress" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -145,7 +146,8 @@
                         app:indicatorSize="60dp"
                         app:trackThickness="6dp"
                         app:trackCornerRadius="3dp"
-                        app:indicatorDirectionCircular="clockwise" />
+                        app:indicatorDirectionCircular="clockwise"
+                        android:contentDescription="Cigarette count progress" />
 
                     <TextView
                         android:layout_width="wrap_content"

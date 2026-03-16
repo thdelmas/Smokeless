@@ -30,6 +30,9 @@ interface SmokingSessionDao {
     @Query("SELECT COUNT(*) FROM smoking_sessions WHERE timestamp >= :startTime")
     fun getSessionCountSince(startTime: Long): Int
     
+    @Query("DELETE FROM smoking_sessions WHERE id = :id")
+    fun deleteById(id: Long)
+
     @Query("DELETE FROM smoking_sessions")
     fun deleteAll()
 }
