@@ -125,12 +125,12 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupRecyclerView() {
         statsAdapter = ScoreAdapter()
-        binding.recyclerStats.layoutManager = LinearLayoutManager(this)
-        binding.recyclerStats.adapter = statsAdapter
+        binding.sectionStatistics.recyclerStats.layoutManager = LinearLayoutManager(this)
+        binding.sectionStatistics.recyclerStats.adapter = statsAdapter
     }
     
     private fun setupChipGroup() {
-        binding.chipGroupPeriod.setOnCheckedStateChangeListener { _, checkedIds ->
+        binding.sectionStatistics.chipGroupPeriod.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
             
             val checkedId = checkedIds[0]
@@ -180,7 +180,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Set initial selection
-        binding.chipMonth.isChecked = true
+        binding.sectionStatistics.chipMonth.isChecked = true
     }
     
     /**
@@ -196,7 +196,7 @@ class MainActivity : AppCompatActivity() {
             "all" -> "Long-term Trend"
             else -> "Trend"
         }
-        binding.textTrendChartTitle.text = trendTitle
+        binding.sectionCharts.textTrendChartTitle.text = trendTitle
         
         // Update bar chart title based on period
         val barTitle = when (currentPeriod) {
@@ -207,12 +207,12 @@ class MainActivity : AppCompatActivity() {
             "all" -> "Daily Count"
             else -> "Cigarette Count"
         }
-        binding.textBarChartTitle.text = barTitle
+        binding.sectionCharts.textBarChartTitle.text = barTitle
     }
     
     private fun updatePeriodHeader(icon: String, title: String) {
-        binding.textPeriodIcon.text = icon
-        binding.textPeriodTitle.text = title
+        binding.sectionStatistics.textPeriodIcon.text = icon
+        binding.sectionStatistics.textPeriodTitle.text = title
         
         // Update quick stats title and labels based on period
         val quickStatsTitle = when (currentPeriod) {
@@ -223,7 +223,7 @@ class MainActivity : AppCompatActivity() {
             "all" -> "All-Time Highlights"
             else -> "Period Highlights"
         }
-        binding.textQuickStatsTitle.text = quickStatsTitle
+        binding.sectionQuickStats.textQuickStatsTitle.text = quickStatsTitle
         
         // Update card labels
         val streakLabel = when (currentPeriod) {
@@ -234,7 +234,7 @@ class MainActivity : AppCompatActivity() {
             "all" -> "Best Streak"
             else -> "Clean Streak"
         }
-        binding.textBestTodayLabel.text = streakLabel
+        binding.sectionQuickStats.textBestTodayLabel.text = streakLabel
         
         val countLabel = when (currentPeriod) {
             "day" -> "Today"
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity() {
             "all" -> "All Time"
             else -> "Total"
         }
-        binding.textCountTodayLabel.text = countLabel
+        binding.sectionQuickStats.textCountTodayLabel.text = countLabel
     }
     
     /**
@@ -260,7 +260,7 @@ class MainActivity : AppCompatActivity() {
             "all" -> "Overall Progress"
             else -> "Goal Progress"
         }
-        binding.textGoalProgressLabel.text = progressLabel
+        binding.sectionHero.textGoalProgressLabel.text = progressLabel
         
         // Update target label
         val labelText = when (currentPeriod) {
@@ -275,7 +275,7 @@ class MainActivity : AppCompatActivity() {
             "all" -> String.format("Target: ≤%.1f/day avg", goal)
             else -> String.format("Target: %.1f cigs/day", goal)
         }
-        binding.textViewGoalLabel.text = labelText
+        binding.sectionHero.textViewGoalLabel.text = labelText
     }
     
     private fun updateStatsForPeriod() {
@@ -299,16 +299,16 @@ class MainActivity : AppCompatActivity() {
         for (score in scores) {
             if (score.type == ScoreData.StatType.COUNT) {
                 val count = score.value
-                binding.textPeriodCount.text = "$count ${if (count == 1L) "cigarette" else "cigarettes"}"
+                binding.sectionStatistics.textPeriodCount.text = "$count ${if (count == 1L) "cigarette" else "cigarettes"}"
                 return
             }
         }
-        binding.textPeriodCount.text = "0 cigarettes"
+        binding.sectionStatistics.textPeriodCount.text = "0 cigarettes"
     }
     
     private fun setupCharts() {
         // Setup Bar Chart (Daily Cigarettes)
-        val barChart = binding.barChart
+        val barChart = binding.sectionCharts.barChart
         barChart.setBackgroundColor(Color.TRANSPARENT)
         barChart.description.isEnabled = false
         barChart.setTouchEnabled(true)
@@ -343,7 +343,7 @@ class MainActivity : AppCompatActivity() {
         barChart.axisRight.isEnabled = false
         
         // Setup Line Chart (Moving Average Trend)
-        val lineChart = binding.lineChart
+        val lineChart = binding.sectionCharts.lineChart
         lineChart.setBackgroundColor(Color.TRANSPARENT)
         lineChart.description.isEnabled = false
         lineChart.setTouchEnabled(true)
@@ -379,10 +379,10 @@ class MainActivity : AppCompatActivity() {
     
     private fun updateCharts(data: ChartData?) {
         if (data == null) {
-            binding.lineChart.clear()
-            binding.barChart.clear()
-            binding.textChartTrend.text = "No data yet"
-            binding.textBarChartAvg.text = "Avg: 0/day"
+            binding.sectionCharts.lineChart.clear()
+            binding.sectionCharts.barChart.clear()
+            binding.sectionCharts.textChartTrend.text = "No data yet"
+            binding.sectionCharts.textBarChartAvg.text = "Avg: 0/day"
             return
         }
         
@@ -417,11 +417,11 @@ class MainActivity : AppCompatActivity() {
             }
             
             // Apply consistent Y-axis scaling
-            binding.barChart.axisLeft.axisMaximum = kotlin.math.max(chartMaxValue, 1f)
-            binding.barChart.xAxis.valueFormatter = IndexAxisValueFormatter(getLimitedLabels(data.labels))
-            binding.barChart.xAxis.setLabelCount(getLimitedLabelCount(data.labels.size), false)
-            binding.barChart.data = barData
-            binding.barChart.invalidate()
+            binding.sectionCharts.barChart.axisLeft.axisMaximum = kotlin.math.max(chartMaxValue, 1f)
+            binding.sectionCharts.barChart.xAxis.valueFormatter = IndexAxisValueFormatter(getLimitedLabels(data.labels))
+            binding.sectionCharts.barChart.xAxis.setLabelCount(getLimitedLabelCount(data.labels.size), false)
+            binding.sectionCharts.barChart.data = barData
+            binding.sectionCharts.barChart.invalidate()
         }
         
         // Update average label based on period
@@ -432,7 +432,7 @@ class MainActivity : AppCompatActivity() {
             }
             else -> String.format("Avg: %.1f/day", data.avgDailyCount)
         }
-        binding.textBarChartAvg.text = avgLabel
+        binding.sectionCharts.textBarChartAvg.text = avgLabel
         
         // Update Line Chart (Moving Average)
         val lineEntries = data.movingAverage.mapIndexed { index, avg ->
@@ -460,11 +460,11 @@ class MainActivity : AppCompatActivity() {
             val lineData = LineData(lineDataSet)
             
             // Apply consistent Y-axis scaling
-            binding.lineChart.axisLeft.axisMaximum = kotlin.math.max(chartMaxValue, 1f)
-            binding.lineChart.xAxis.valueFormatter = IndexAxisValueFormatter(getLimitedLabels(data.labels))
-            binding.lineChart.xAxis.setLabelCount(getLimitedLabelCount(data.labels.size), false)
-            binding.lineChart.data = lineData
-            binding.lineChart.invalidate()
+            binding.sectionCharts.lineChart.axisLeft.axisMaximum = kotlin.math.max(chartMaxValue, 1f)
+            binding.sectionCharts.lineChart.xAxis.valueFormatter = IndexAxisValueFormatter(getLimitedLabels(data.labels))
+            binding.sectionCharts.lineChart.xAxis.setLabelCount(getLimitedLabelCount(data.labels.size), false)
+            binding.sectionCharts.lineChart.data = lineData
+            binding.sectionCharts.lineChart.invalidate()
         }
         
         // Update trend indicator with better logic
@@ -507,28 +507,28 @@ class MainActivity : AppCompatActivity() {
         when {
             // Significant improvement (reduction in cigarettes)
             data.isImproving && absChange >= 10 -> {
-                binding.textChartTrend.text = String.format("↓ Down %.0f%%", absChange)
-                binding.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_champion))
+                binding.sectionCharts.textChartTrend.text = String.format("↓ Down %.0f%%", absChange)
+                binding.sectionCharts.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_champion))
             }
             // Slight improvement
             data.isImproving && absChange >= 5 -> {
-                binding.textChartTrend.text = String.format("↓ Down %.0f%%", absChange)
-                binding.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_strong))
+                binding.sectionCharts.textChartTrend.text = String.format("↓ Down %.0f%%", absChange)
+                binding.sectionCharts.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_strong))
             }
             // Stable/minimal change
             absChange < 5 -> {
-                binding.textChartTrend.text = "→ Stable"
-                binding.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_steady))
+                binding.sectionCharts.textChartTrend.text = "→ Stable"
+                binding.sectionCharts.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_steady))
             }
             // Slight worsening
             !data.isImproving && absChange < 20 -> {
-                binding.textChartTrend.text = String.format("↑ Up %.0f%%", absChange)
-                binding.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.accent_amber))
+                binding.sectionCharts.textChartTrend.text = String.format("↑ Up %.0f%%", absChange)
+                binding.sectionCharts.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.accent_amber))
             }
             // Significant worsening
             else -> {
-                binding.textChartTrend.text = String.format("↑ Up %.0f%%", absChange)
-                binding.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_reset))
+                binding.sectionCharts.textChartTrend.text = String.format("↑ Up %.0f%%", absChange)
+                binding.sectionCharts.textChartTrend.setTextColor(ContextCompat.getColor(this, R.color.status_reset))
             }
         }
     }
@@ -578,24 +578,24 @@ class MainActivity : AppCompatActivity() {
         val totalCount = milestones.size
         
         // Update progress text
-        binding.textHealthProgress.text = "$achievedCount/$totalCount milestones"
+        binding.sectionInsights.textHealthProgress.text = "$achievedCount/$totalCount milestones"
         
         // Update progress bar
         val progressPercentage = (achievedCount.toFloat() / totalCount) * 100
-        binding.progressHealth.progress = progressPercentage.toInt()
+        binding.sectionInsights.progressHealth.progress = progressPercentage.toInt()
         
         // Update current milestone
         val current = HealthBenefits.getCurrentMilestone(hours)
         if (current != null) {
-            binding.textCurrentHealthMilestone.text = "${current.icon} ${current.title} - ${current.description}"
+            binding.sectionInsights.textCurrentHealthMilestone.text = "${current.icon} ${current.title} - ${current.description}"
         }
         
         // Update next milestone
         val next = HealthBenefits.getNextMilestone(hours)
         if (next != null) {
-            binding.textNextHealthMilestone.text = "Next: ${next.icon} ${next.title} - ${next.description}"
+            binding.sectionInsights.textNextHealthMilestone.text = "Next: ${next.icon} ${next.title} - ${next.description}"
         } else {
-            binding.textNextHealthMilestone.text = "🎊 You've achieved all health milestones!"
+            binding.sectionInsights.textNextHealthMilestone.text = "🎊 You've achieved all health milestones!"
         }
     }
     
@@ -626,7 +626,7 @@ class MainActivity : AppCompatActivity() {
             else -> "💡 Each cigarette takes 11 minutes off your life. But the good news? Every day you don't smoke, your body heals a little more. Keep trying!"
         }
         
-        binding.textInsightMessage.text = insight
+        binding.sectionInsights.textInsightMessage.text = insight
     }
     
     private fun observeViewModel() {
@@ -649,7 +649,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         viewModel.heroLabel.observe(this) { label ->
-            binding.labelCurrentStreak.text = label
+            binding.sectionHero.labelCurrentStreak.text = label
         }
         
         viewModel.heroUnit.observe(this) { unit ->
@@ -657,8 +657,8 @@ class MainActivity : AppCompatActivity() {
         }
         
         viewModel.currentPercentage.observe(this) { percentage ->
-            binding.textViewPercentage.text = "${percentFormat.format(percentage)}%"
-            binding.progressIndicator.progress = min(percentage, 100.0).toInt()
+            binding.sectionHero.textViewPercentage.text = "${percentFormat.format(percentage)}%"
+            binding.sectionHero.progressIndicator.progress = min(percentage, 100.0).toInt()
             updateButtonState(percentage)
             updateProgressColor(percentage)
         }
@@ -722,7 +722,7 @@ class MainActivity : AppCompatActivity() {
         
         // Observe money saved
         viewModel.moneySavedFormatted.observe(this) { formatted ->
-            binding.textMoneySaved.text = formatted
+            binding.sectionRecords.textMoneySaved.text = formatted
         }
     }
     
@@ -736,9 +736,9 @@ class MainActivity : AppCompatActivity() {
             else -> R.color.status_reset
         }
         
-        binding.progressIndicator.setIndicatorColor(ContextCompat.getColor(this, colorRes))
-        binding.textViewCurrentScore.setTextColor(ContextCompat.getColor(this, colorRes))
-        binding.textViewPercentage.setTextColor(ContextCompat.getColor(this, colorRes))
+        binding.sectionHero.progressIndicator.setIndicatorColor(ContextCompat.getColor(this, colorRes))
+        binding.sectionHero.textViewCurrentScore.setTextColor(ContextCompat.getColor(this, colorRes))
+        binding.sectionHero.textViewPercentage.setTextColor(ContextCompat.getColor(this, colorRes))
     }
     
     /**
@@ -756,14 +756,14 @@ class MainActivity : AppCompatActivity() {
                 
                 // Under 10 minutes, show seconds
                 if (totalSeconds < 600) {
-                    binding.textViewCurrentScore.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                    binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
                 } else {
-                    binding.textViewCurrentScore.text = String.format("%02d:%02d:00", hours, minutes)
+                    binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d:00", hours, minutes)
                 }
             }
             else -> {
                 // For other periods: show average as decimal
-                binding.textViewCurrentScore.text = String.format("%.1f", value)
+                binding.sectionHero.textViewCurrentScore.text = String.format("%.1f", value)
             }
         }
     }
@@ -774,10 +774,10 @@ class MainActivity : AppCompatActivity() {
     private fun updatePeriodCards(scores: List<ScoreData>?) {
         if (scores.isNullOrEmpty()) {
             // Show empty state with encouraging message
-            binding.textBestTodayValue.text = "0d"
-            binding.textCountTodayValue.text = "0"
-            binding.progressBestToday.progress = 0
-            binding.progressCountToday.progress = 0
+            binding.sectionQuickStats.textBestTodayValue.text = "0d"
+            binding.sectionQuickStats.textCountTodayValue.text = "0"
+            binding.sectionQuickStats.progressBestToday.progress = 0
+            binding.sectionQuickStats.progressCountToday.progress = 0
             return
         }
         
@@ -797,9 +797,9 @@ class MainActivity : AppCompatActivity() {
                             "all" -> "${score.value}d"
                             else -> "${score.value}d"
                         }
-                        binding.textBestTodayValue.text = displayValue
+                        binding.sectionQuickStats.textBestTodayValue.text = displayValue
                         val progress = min(score.percentage, 100.0).toInt()
-                        binding.progressBestToday.progress = progress
+                        binding.sectionQuickStats.progressBestToday.progress = progress
                         
                         val colorRes = when {
                             score.value >= 30L -> R.color.status_champion
@@ -808,7 +808,7 @@ class MainActivity : AppCompatActivity() {
                             score.value >= 1L -> R.color.status_building
                             else -> R.color.status_reset
                         }
-                        binding.progressBestToday.setIndicatorColor(
+                        binding.sectionQuickStats.progressBestToday.setIndicatorColor(
                             ContextCompat.getColor(this, colorRes)
                         )
                     }
@@ -819,10 +819,10 @@ class MainActivity : AppCompatActivity() {
                         score.value == 1L -> "1"
                         else -> score.value.toString()
                     }
-                    binding.textCountTodayValue.text = displayValue
+                    binding.sectionQuickStats.textCountTodayValue.text = displayValue
                     
                     val progress = min(score.percentage, 100.0).toInt()
-                    binding.progressCountToday.progress = progress
+                    binding.sectionQuickStats.progressCountToday.progress = progress
                     
                     val colorRes = when {
                         score.value == 0L -> R.color.status_champion
@@ -833,7 +833,7 @@ class MainActivity : AppCompatActivity() {
                         else -> R.color.status_reset
                     }
                     
-                    binding.progressCountToday.setIndicatorColor(
+                    binding.sectionQuickStats.progressCountToday.setIndicatorColor(
                         ContextCompat.getColor(this, colorRes)
                     )
                 }
@@ -849,11 +849,11 @@ class MainActivity : AppCompatActivity() {
             when (score.type) {
                 ScoreData.StatType.STREAK -> {
                     if (score.label.contains("Best")) {
-                        binding.textAllTimeBest.text = "${score.value} days"
+                        binding.sectionRecords.textAllTimeBest.text = "${score.value} days"
                     }
                 }
                 ScoreData.StatType.COUNT -> {
-                    binding.textTotalSessions.text = score.value.toString()
+                    binding.sectionRecords.textTotalSessions.text = score.value.toString()
                 }
                 else -> {}
             }
@@ -880,7 +880,7 @@ class MainActivity : AppCompatActivity() {
             hours >= 1 -> "One hour at a time 🌱"
             else -> "Your journey begins now 🌿"
         }
-        binding.textViewMotivation.text = motivation
+        binding.sectionHero.textViewMotivation.text = motivation
         
         // Update status badge
         val statusBadge = when {
@@ -892,7 +892,7 @@ class MainActivity : AppCompatActivity() {
             hours >= 6 -> "⭐ Half Day"
             else -> "🌱 Fresh Start"
         }
-        binding.textStatusBadge.text = statusBadge
+        binding.sectionHero.textStatusBadge.text = statusBadge
         
         // Update contextual message below timer
         val context = when {
@@ -906,7 +906,7 @@ class MainActivity : AppCompatActivity() {
             hours >= 3 -> "Three hours in! Stay focused, you've got this"
             else -> "Every minute matters. You're making progress!"
         }
-        binding.textStreakContext.text = context
+        binding.sectionHero.textStreakContext.text = context
     }
     
     private fun updateButtonState(percentage: Double) {
