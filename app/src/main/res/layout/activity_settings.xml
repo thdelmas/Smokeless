@@ -132,7 +132,34 @@
                         app:trackColorActive="@color/accent_amber"
                         app:trackColorInactive="@color/progress_track"
                         app:tickColor="@color/text_secondary"
-                        app:tickVisible="true" />
+                        app:tickVisible="true"
+                        app:labelBehavior="gone" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Easy"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="11sp"
+                            android:gravity="start" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Hard"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="11sp"
+                            android:gravity="end" />
+
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/textDifficultyDesc"
@@ -323,6 +350,22 @@
                             app:iconGravity="textStart" />
 
                     </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider"
+                        android:layout_marginVertical="16dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnResetData"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Reset All Data"
+                        android:textColor="@color/status_reset"
+                        app:strokeColor="@color/status_reset"
+                        app:rippleColor="@color/status_reset" />
 
                 </LinearLayout>
 

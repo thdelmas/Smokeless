@@ -228,6 +228,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentGoalPeriod = period
         AppDatabase.databaseExecutor.execute {
             updateGoalForPeriod()
+            val sessions = repository.getSessionsForScope(period)
+            calculateMoneySaved(sessions, period)
         }
     }
     
@@ -252,28 +254,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val chartSessions = repository.getSessionsForScope(currentChartPeriod)
         calculateChartData(chartSessions, currentChartPeriod)
         
-        // Calculate money saved
-        calculateMoneySaved(allSessions)
+        // Calculate money saved for current period
+        val moneySessions = repository.getSessionsForScope(currentGoalPeriod)
+        calculateMoneySaved(moneySessions, currentGoalPeriod)
     }
     
     /**
      * Calculate total money saved based on avoided cigarettes
      */
-    private fun calculateMoneySaved(allSessions: List<com.smokless.smokeless.data.entity.SmokingSession>) {
+    private fun calculateMoneySaved(sessions: List<com.smokless.smokeless.data.entity.SmokingSession>, scope: String) {
         val packPrice = prefs.getFloat(KEY_PACK_PRICE, DEFAULT_PACK_PRICE)
         val cigsPerPack = prefs.getInt(KEY_CIGS_PER_PACK, DEFAULT_CIGS_PER_PACK)
         val currency = prefs.getString(KEY_CURRENCY, DEFAULT_CURRENCY) ?: DEFAULT_CURRENCY
-        
+
         val costPerCig = packPrice / cigsPerPack
-        
-        // Calculate expected cigarettes (baseline before quitting)
-        val stats = ScoreCalculator.calculatePeriodStats(allSessions, "all")
-        
-        // Estimate cigarettes avoided: assume user was smoking at average rate
-        // For each clean day, they saved their daily average cigarettes
-        val baselineDaily = if (stats.averagePerDay > 0) stats.averagePerDay else 10.0 // default estimate
+
+        val stats = ScoreCalculator.calculatePeriodStats(sessions, scope)
+
+        val baselineDaily = if (stats.averagePerDay > 0) stats.averagePerDay else 10.0
         val cigarettesAvoided = stats.cleanDays * baselineDaily
-        
+
         val totalSaved = (cigarettesAvoided * costPerCig).toFloat()
         _moneySaved.postValue(totalSaved)
         _moneySavedFormatted.postValue(String.format("%s%.2f", currency, totalSaved))

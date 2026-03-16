@@ -291,8 +291,8 @@ class MainActivity : AppCompatActivity() {
         barChart.legend.isEnabled = false
         barChart.extraBottomOffset = 8f
         barChart.setFitBars(true)
-        barChart.setNoDataText("No data available yet")
-        barChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_tertiary))
+        barChart.setNoDataText("Start tracking to see your patterns here")
+        barChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_secondary))
         
         val barXAxis = barChart.xAxis
         barXAxis.position = XAxis.XAxisPosition.BOTTOM
@@ -325,8 +325,8 @@ class MainActivity : AppCompatActivity() {
         lineChart.setDrawGridBackground(false)
         lineChart.legend.isEnabled = false
         lineChart.extraBottomOffset = 8f
-        lineChart.setNoDataText("No data available yet")
-        lineChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_tertiary))
+        lineChart.setNoDataText("Your progress trends will appear here")
+        lineChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_secondary))
         
         val lineXAxis = lineChart.xAxis
         lineXAxis.position = XAxis.XAxisPosition.BOTTOM

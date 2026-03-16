@@ -28,6 +28,7 @@ class SettingsActivity : AppCompatActivity() {
         setupDifficultySlider()
         setupPriceInputs()
         setupExportButtons()
+        setupResetButton()
         setupSocialLinks()
         observeViewModel()
     }
@@ -127,6 +128,26 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
     
+    private fun setupResetButton() {
+        binding.btnResetData.setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Reset All Data")
+                .setMessage("This will permanently delete all smoking sessions and craving records. This cannot be undone.\n\nAre you sure?")
+                .setPositiveButton("Reset") { _, _ ->
+                    AppDatabase.databaseExecutor.execute {
+                        val db = AppDatabase.getInstance(application)
+                        db.smokingSessionDao().deleteAll()
+                        db.cravingDao().deleteAll()
+                        runOnUiThread {
+                            Snackbar.make(binding.root, "All data has been reset", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+
     private fun setupSocialLinks() {
         binding.btnGitHub.setOnClickListener {
             openUrl("https://github.com/thdelmas/Smoke-Less")
