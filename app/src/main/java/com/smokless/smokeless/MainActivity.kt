@@ -67,6 +67,8 @@ class MainActivity : AppCompatActivity() {
         setupChipGroup()
         setupCharts()
         setupFab()
+        setupCollapsibleSections()
+        setupSwipeRefresh()
         observeViewModel()
     }
     
@@ -90,44 +92,7 @@ class MainActivity : AppCompatActivity() {
      * Show achievements in a dialog
      */
     private fun showAchievementsDialog() {
-        val currentScore = viewModel.currentScore.value ?: 0L
-        val hours = currentScore / 3600
-        val days = (hours / 24).toInt()
-        
-        // Get statistics for achievements
-        val allTimeScores = viewModel.allTimeScores.value ?: emptyList()
-        val bestStreak = allTimeScores.find { it.type == ScoreData.StatType.STREAK && it.label.contains("Best") }?.value?.toInt() ?: 0
-        
-        // For now, simplified - would need to track resisted cravings
-        val resistedCravings = 0 // TODO: Track this from database
-        val cleanDays = allTimeScores.find { it.type == ScoreData.StatType.DAYS }?.value?.toInt() ?: 0
-        
-        val achievements = com.smokless.smokeless.util.AchievementManager.getAllAchievements(
-            days, bestStreak, resistedCravings, cleanDays
-        )
-        
-        val unlockedCount = achievements.count { it.isUnlocked }
-        val totalCount = achievements.size
-        
-        val message = buildString {
-            append("🏆 Achievements: $unlockedCount/$totalCount\n\n")
-            
-            achievements.take(10).forEach { achievement ->
-                val status = if (achievement.isUnlocked) "✅" else "🔒"
-                append("$status ${achievement.icon} ${achievement.title}\n")
-                append("   ${achievement.description}\n\n")
-            }
-            
-            if (achievements.size > 10) {
-                append("... and ${achievements.size - 10} more!\n")
-            }
-        }
-        
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Your Achievements")
-            .setMessage(message)
-            .setPositiveButton("Awesome!") { dialog, _ -> dialog.dismiss() }
-            .show()
+        startActivity(Intent(this, AchievementsActivity::class.java))
     }
     
     private fun setupRecyclerView() {
@@ -563,7 +528,50 @@ class MainActivity : AppCompatActivity() {
             showResistConfirmation()
         }
     }
-    
+
+    private fun setupCollapsibleSections() {
+        setupCollapsible(
+            binding.sectionCharts.headerCharts,
+            binding.sectionCharts.contentCharts,
+            binding.sectionCharts.chevronCharts
+        )
+        setupCollapsible(
+            binding.sectionRecords.headerRecords,
+            binding.sectionRecords.contentRecords,
+            binding.sectionRecords.chevronRecords
+        )
+        setupCollapsible(
+            binding.sectionInsights.headerInsights,
+            binding.sectionInsights.contentInsights,
+            binding.sectionInsights.chevronInsights
+        )
+    }
+
+    private fun setupCollapsible(header: android.view.View, content: android.view.View, chevron: android.widget.TextView) {
+        header.setOnClickListener {
+            if (content.visibility == android.view.View.GONE) {
+                content.visibility = android.view.View.VISIBLE
+                chevron.text = "▲"
+                content.alpha = 0f
+                content.animate().alpha(1f).setDuration(200).start()
+            } else {
+                content.animate().alpha(0f).setDuration(150).withEndAction {
+                    content.visibility = android.view.View.GONE
+                }.start()
+                chevron.text = "▼"
+            }
+        }
+    }
+
+    private fun setupSwipeRefresh() {
+        binding.swipeRefresh.setColorSchemeResources(R.color.accent_primary)
+        binding.swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.surface_card)
+        binding.swipeRefresh.setOnRefreshListener {
+            viewModel.refreshData()
+            binding.swipeRefresh.postDelayed({ binding.swipeRefresh.isRefreshing = false }, 800)
+        }
+    }
+
     /**
      * Show confirmation when craving is resisted
      */

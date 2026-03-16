@@ -64,6 +64,9 @@ dependencies {
     // Activity & Fragment KTX
     implementation 'androidx.activity:activity-ktx:1.8.2'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
+
+    // SwipeRefreshLayout
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     
     // Testing
     testImplementation 'junit:junit:4.13.2'

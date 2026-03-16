@@ -6,30 +6,56 @@
     android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/headerCharts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="14dp"
+        android:paddingVertical="4dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Visual Trends"
+                android:textColor="@color/text_primary"
+                android:textSize="19sp"
+                android:fontFamily="sans-serif-bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Track your patterns and improvements over time"
+                android:textColor="@color/text_tertiary"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/chevronCharts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▼"
+            android:textColor="@color/text_tertiary"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/contentCharts"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="14dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Visual Trends"
-            android:textColor="@color/text_primary"
-            android:textSize="19sp"
-            android:fontFamily="sans-serif-bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Track your patterns and improvements over time"
-            android:textColor="@color/text_tertiary"
-            android:textSize="12sp"
-            android:fontFamily="sans-serif" />
-
-    </LinearLayout>
+        android:visibility="gone">
 
     <!-- Line Chart - Smoke-Free Duration Trend -->
     <com.google.android.material.card.MaterialCardView
@@ -158,5 +184,7 @@
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -116,7 +116,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun recordCravingResisted() {
         AppDatabase.databaseExecutor.execute {
             repository.recordCraving()
-            // No need to refresh all data, just record the event
+        }
+    }
+
+    fun getResistedCravingsCount(callback: (Int) -> Unit) {
+        AppDatabase.databaseExecutor.execute {
+            val count = repository.getAllCravings().size
+            android.os.Handler(android.os.Looper.getMainLooper()).post { callback(count) }
         }
     }
     
