@@ -130,25 +130,32 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             
-            // Update all period-specific components
-            viewModel.setGoalPeriod(currentPeriod)  // This updates hero, goal, and progress
-            viewModel.setChartPeriod(currentPeriod)
-            updateStatsForPeriod()
-            updateChartLabels()
-            
-            // Manually trigger update of cards for new period
-            val scores = when (currentPeriod) {
-                "day" -> viewModel.dayScores.value
-                "week" -> viewModel.weekScores.value
-                "month" -> viewModel.monthScores.value
-                "year" -> viewModel.yearScores.value
-                "all" -> viewModel.allTimeScores.value
-                else -> null
-            }
-            scores?.let { updatePeriodCards(it) }
-            
-            // Update goal label with current value
-            viewModel.currentGoal.value?.let { updateGoalLabel(it) }
+            // Fade out stats, update, then fade back in
+            val statsRecycler = binding.sectionStatistics.recyclerStats
+            val quickStats = binding.sectionQuickStats.root
+            statsRecycler.animate().alpha(0f).setDuration(150).withEndAction {
+                // Update all period-specific components
+                viewModel.setGoalPeriod(currentPeriod)
+                viewModel.setChartPeriod(currentPeriod)
+                updateStatsForPeriod()
+                updateChartLabels()
+
+                val scores = when (currentPeriod) {
+                    "day" -> viewModel.dayScores.value
+                    "week" -> viewModel.weekScores.value
+                    "month" -> viewModel.monthScores.value
+                    "year" -> viewModel.yearScores.value
+                    "all" -> viewModel.allTimeScores.value
+                    else -> null
+                }
+                scores?.let { updatePeriodCards(it) }
+                viewModel.currentGoal.value?.let { updateGoalLabel(it) }
+
+                statsRecycler.animate().alpha(1f).setDuration(200).start()
+            }.start()
+            quickStats.animate().alpha(0f).setDuration(150).withEndAction {
+                quickStats.animate().alpha(1f).setDuration(200).setStartDelay(100).start()
+            }.start()
         }
         
         // Set initial selection
@@ -528,6 +535,21 @@ class MainActivity : AppCompatActivity() {
     private fun setupFab() {
         binding.fabSmoke.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+            // Animate timer reset
+            binding.sectionHero.textViewCurrentScore.animate()
+                .scaleX(0.8f)
+                .scaleY(0.8f)
+                .alpha(0.5f)
+                .setDuration(150)
+                .withEndAction {
+                    binding.sectionHero.textViewCurrentScore.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .alpha(1f)
+                        .setDuration(200)
+                        .start()
+                }
+                .start()
             viewModel.recordSmokeWithId { sessionId ->
                 updateButtonState(0.0)
                 com.google.android.material.snackbar.Snackbar
@@ -705,7 +727,15 @@ class MainActivity : AppCompatActivity() {
         
         viewModel.currentPercentage.observe(this) { percentage ->
             binding.sectionHero.textViewPercentage.text = "${percentFormat.format(percentage)}%"
-            binding.sectionHero.progressIndicator.progress = min(percentage, 100.0).toInt()
+            val target = min(percentage, 100.0).toInt()
+            val current = binding.sectionHero.progressIndicator.progress
+            android.animation.ObjectAnimator.ofInt(
+                binding.sectionHero.progressIndicator, "progress", current, target
+            ).apply {
+                duration = 300
+                interpolator = android.view.animation.DecelerateInterpolator()
+                start()
+            }
             updateButtonState(percentage)
             updateProgressColor(percentage)
         }

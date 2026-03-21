@@ -20,6 +20,7 @@
             android:background="@android:color/transparent"
             app:navigationIcon="@drawable/ic_settings"
             app:navigationIconTint="@color/text_secondary"
+            app:navigationContentDescription="Settings"
             app:menu="@menu/main_menu" />
 
     </com.google.android.material.appbar.AppBarLayout>

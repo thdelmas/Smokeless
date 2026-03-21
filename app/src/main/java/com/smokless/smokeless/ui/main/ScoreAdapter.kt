@@ -54,6 +54,7 @@ class ScoreAdapter : RecyclerView.Adapter<ScoreAdapter.ScoreViewHolder>() {
             // Set progress ring and percentage
             val progressValue = min(score.percentage.coerceIn(0.0, 100.0), 100.0).toInt()
             progressRing.progress = progressValue
+            progressRing.contentDescription = "${score.label} progress: $progressValue percent"
             
             // Display value based on type
             when (score.type) {

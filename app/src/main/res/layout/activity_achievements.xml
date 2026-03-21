@@ -19,6 +19,7 @@
             android:background="@android:color/transparent"
             app:navigationIcon="@drawable/ic_back"
             app:navigationIconTint="@color/text_primary"
+            app:navigationContentDescription="Go back"
             app:title="Achievements"
             app:titleTextColor="@color/text_primary" />
 

@@ -73,7 +73,7 @@
         <item name="chipStrokeWidth">0dp</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="checkedIconVisible">false</item>
-        <item name="chipMinHeight">36dp</item>
+        <item name="chipMinHeight">48dp</item>
         <item name="chipCornerRadius">18dp</item>
         <item name="android:textSize">13sp</item>
     </style>
