@@ -56,6 +56,16 @@
             android:name=".util.ReminderReceiver"
             android:exported="false" />
         <receiver
+            android:name=".widget.SmokelessWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+        <receiver
             android:name=".util.BootReceiver"
             android:exported="true">
             <intent-filter>

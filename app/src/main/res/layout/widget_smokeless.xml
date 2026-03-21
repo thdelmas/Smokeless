@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="12dp"
+    android:background="@drawable/widget_background">
+
+    <TextView
+        android:id="@+id/widget_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SMOKE-FREE FOR"
+        android:textColor="#9896A8"
+        android:textSize="10sp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.1" />
+
+    <TextView
+        android:id="@+id/widget_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0h 0m"
+        android:textColor="#F5F5FA"
+        android:textSize="22sp"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="4dp" />
+
+    <TextView
+        android:id="@+id/widget_streak"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0 day streak"
+        android:textColor="#00E5A0"
+        android:textSize="11sp"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>

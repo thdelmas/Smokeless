@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Smoke Less</string>
+    <string name="widget_description">Shows your current smoke-free timer and streak</string>
 </resources>

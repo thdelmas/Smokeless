@@ -552,10 +552,12 @@ class MainActivity : AppCompatActivity() {
                 .start()
             viewModel.recordSmokeWithId { sessionId ->
                 updateButtonState(0.0)
+                updateWidgets()
                 com.google.android.material.snackbar.Snackbar
                     .make(binding.root, "Smoke recorded", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
                     .setAction("UNDO") {
                         viewModel.undoSmoke(sessionId)
+                        updateWidgets()
                     }
                     .setBackgroundTint(ContextCompat.getColor(this, R.color.surface_elevated))
                     .setTextColor(ContextCompat.getColor(this, R.color.text_primary))
@@ -1013,5 +1015,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+    }
+
+    private fun updateWidgets() {
+        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(this)
+        val widgetComponent = android.content.ComponentName(this, com.smokless.smokeless.widget.SmokelessWidget::class.java)
+        val widgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
+        for (id in widgetIds) {
+            com.smokless.smokeless.widget.SmokelessWidget.updateWidget(this, appWidgetManager, id)
+        }
     }
 }
