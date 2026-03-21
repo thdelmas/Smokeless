@@ -599,7 +599,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:gravity="center"
-                android:text="Smokeless v2.1 Enhanced"
+                android:text="Smokeless v3.0"
                 android:textColor="@color/text_tertiary"
                 android:textSize="12sp" />
 
