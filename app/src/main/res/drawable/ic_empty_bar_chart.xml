@@ -1,0 +1,65 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="80dp"
+    android:viewportWidth="120"
+    android:viewportHeight="80">
+
+    <!-- Axis lines -->
+    <path
+        android:pathData="M20,15 L20,65"
+        android:strokeColor="#2A2838"
+        android:strokeWidth="1" />
+    <path
+        android:pathData="M20,65 L110,65"
+        android:strokeColor="#2A2838"
+        android:strokeWidth="1" />
+
+    <!-- Grid lines -->
+    <path
+        android:pathData="M20,40 L110,40"
+        android:strokeColor="#1E1C28"
+        android:strokeWidth="0.5" />
+    <path
+        android:pathData="M20,52 L110,52"
+        android:strokeColor="#1E1C28"
+        android:strokeWidth="0.5" />
+    <path
+        android:pathData="M20,27 L110,27"
+        android:strokeColor="#1E1C28"
+        android:strokeWidth="0.5" />
+
+    <!-- Placeholder bars (ghosted) -->
+    <path
+        android:pathData="M28,50 L28,65 L36,65 L36,50 Z"
+        android:fillColor="#2A2838" />
+    <path
+        android:pathData="M42,35 L42,65 L50,65 L50,35 Z"
+        android:fillColor="#2A2838" />
+    <path
+        android:pathData="M56,45 L56,65 L64,65 L64,45 Z"
+        android:fillColor="#2A2838" />
+    <path
+        android:pathData="M70,30 L70,65 L78,65 L78,30 Z"
+        android:fillColor="#2A2838" />
+    <path
+        android:pathData="M84,40 L84,65 L92,65 L92,40 Z"
+        android:fillColor="#2A2838" />
+    <path
+        android:pathData="M98,55 L98,65 L106,65 L106,55 Z"
+        android:fillColor="#2A2838" />
+
+    <!-- Axis tick marks -->
+    <path
+        android:pathData="M18,65 L22,65"
+        android:strokeColor="#2A2838"
+        android:strokeWidth="1" />
+    <path
+        android:pathData="M18,40 L22,40"
+        android:strokeColor="#2A2838"
+        android:strokeWidth="1" />
+    <path
+        android:pathData="M18,15 L22,15"
+        android:strokeColor="#2A2838"
+        android:strokeWidth="1" />
+
+</vector>

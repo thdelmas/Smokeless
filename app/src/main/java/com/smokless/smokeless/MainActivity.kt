@@ -352,11 +352,21 @@ class MainActivity : AppCompatActivity() {
     private fun updateCharts(data: ChartData?) {
         if (data == null) {
             binding.sectionCharts.lineChart.clear()
+            binding.sectionCharts.lineChart.visibility = android.view.View.INVISIBLE
+            binding.sectionCharts.emptyStateTrend.visibility = android.view.View.VISIBLE
             binding.sectionCharts.barChart.clear()
+            binding.sectionCharts.barChart.visibility = android.view.View.INVISIBLE
+            binding.sectionCharts.emptyStateBar.visibility = android.view.View.VISIBLE
             binding.sectionCharts.textChartTrend.text = "No data yet"
             binding.sectionCharts.textBarChartAvg.text = "Avg: 0/day"
             return
         }
+
+        // Hide empty states, show charts
+        binding.sectionCharts.lineChart.visibility = android.view.View.VISIBLE
+        binding.sectionCharts.emptyStateTrend.visibility = android.view.View.GONE
+        binding.sectionCharts.barChart.visibility = android.view.View.VISIBLE
+        binding.sectionCharts.emptyStateBar.visibility = android.view.View.GONE
         
         // Determine max value for consistent scaling
         val maxCount = data.dailyCounts.maxOrNull() ?: 0
@@ -372,6 +382,8 @@ class MainActivity : AppCompatActivity() {
         }
         
         if (barEntries.isNotEmpty()) {
+            binding.sectionCharts.barChart.visibility = android.view.View.VISIBLE
+            binding.sectionCharts.emptyStateBar.visibility = android.view.View.GONE
             val barDataSet = BarDataSet(barEntries, "Cigarettes").apply {
                 color = ContextCompat.getColor(this@MainActivity, R.color.accent_amber)
                 setDrawValues(true)
@@ -394,8 +406,11 @@ class MainActivity : AppCompatActivity() {
             binding.sectionCharts.barChart.xAxis.setLabelCount(getLimitedLabelCount(data.labels.size), false)
             binding.sectionCharts.barChart.data = barData
             binding.sectionCharts.barChart.invalidate()
+        } else {
+            binding.sectionCharts.barChart.visibility = android.view.View.INVISIBLE
+            binding.sectionCharts.emptyStateBar.visibility = android.view.View.VISIBLE
         }
-        
+
         // Update average label based on period
         val avgLabel = when (currentPeriod) {
             "day" -> {
@@ -412,6 +427,8 @@ class MainActivity : AppCompatActivity() {
         }
         
         if (lineEntries.isNotEmpty()) {
+            binding.sectionCharts.lineChart.visibility = android.view.View.VISIBLE
+            binding.sectionCharts.emptyStateTrend.visibility = android.view.View.GONE
             val lineDataSet = LineDataSet(lineEntries, "Trend").apply {
                 color = ContextCompat.getColor(this@MainActivity, R.color.accent_primary)
                 setCircleColor(ContextCompat.getColor(this@MainActivity, R.color.accent_primary))
@@ -437,8 +454,11 @@ class MainActivity : AppCompatActivity() {
             binding.sectionCharts.lineChart.xAxis.setLabelCount(getLimitedLabelCount(data.labels.size), false)
             binding.sectionCharts.lineChart.data = lineData
             binding.sectionCharts.lineChart.invalidate()
+        } else {
+            binding.sectionCharts.lineChart.visibility = android.view.View.INVISIBLE
+            binding.sectionCharts.emptyStateTrend.visibility = android.view.View.VISIBLE
         }
-        
+
         // Update trend indicator with better logic
         updateTrendIndicator(data)
     }
