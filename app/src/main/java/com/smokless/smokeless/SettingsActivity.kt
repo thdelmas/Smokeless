@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
@@ -17,6 +18,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val viewModel: SettingsViewModel by viewModels()
+
+    private val importFileLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri ?: return@registerForActivityResult
+        importData(uri)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,9 +98,25 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnExportCSV.setOnClickListener {
             exportData("csv")
         }
-        
+
         binding.btnExportJSON.setOnClickListener {
             exportData("json")
+        }
+
+        binding.btnImportData.setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Import Data")
+                .setMessage("Select a previously exported CSV or JSON file. Imported records will be added to your existing data.")
+                .setPositiveButton("Choose File") { _, _ ->
+                    importFileLauncher.launch(arrayOf(
+                        "application/json",
+                        "text/csv",
+                        "text/comma-separated-values",
+                        "*/*"
+                    ))
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
     
@@ -129,6 +153,39 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
     
+    private fun importData(uri: Uri) {
+        AppDatabase.databaseExecutor.execute {
+            try {
+                val db = AppDatabase.getInstance(application)
+                val inputStream = contentResolver.openInputStream(uri)
+                    ?: throw Exception("Could not open file")
+
+                val fileName = uri.lastPathSegment ?: ""
+                val (sessions, cravings) = if (fileName.endsWith(".csv")) {
+                    DataExporter.importFromCSV(inputStream, db.smokingSessionDao(), db.cravingDao())
+                } else {
+                    DataExporter.importFromJSON(inputStream, db.smokingSessionDao(), db.cravingDao())
+                }
+
+                runOnUiThread {
+                    Snackbar.make(
+                        binding.root,
+                        "Imported $sessions sessions and $cravings cravings",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Snackbar.make(
+                        binding.root,
+                        "Import failed: ${e.message}",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
     private fun setupResetButton() {
         binding.btnResetData.setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)

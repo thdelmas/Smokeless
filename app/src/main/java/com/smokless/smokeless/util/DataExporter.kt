@@ -91,6 +91,83 @@ object DataExporter {
     }
     
     /**
+     * Import data from JSON file
+     * Returns pair of (sessions imported, cravings imported)
+     */
+    fun importFromJSON(
+        inputStream: java.io.InputStream,
+        sessionDao: com.smokless.smokeless.data.dao.SmokingSessionDao,
+        cravingDao: com.smokless.smokeless.data.dao.CravingDao
+    ): Pair<Int, Int> {
+        val content = inputStream.bufferedReader().use { it.readText() }
+        val json = JSONObject(content)
+
+        var sessionsImported = 0
+        var cravingsImported = 0
+
+        if (json.has("smoking_sessions")) {
+            val sessionsArray = json.getJSONArray("smoking_sessions")
+            for (i in 0 until sessionsArray.length()) {
+                val obj = sessionsArray.getJSONObject(i)
+                val timestamp = obj.getLong("timestamp")
+                sessionDao.insert(SmokingSession(timestamp))
+                sessionsImported++
+            }
+        }
+
+        if (json.has("cravings_resisted")) {
+            val cravingsArray = json.getJSONArray("cravings_resisted")
+            for (i in 0 until cravingsArray.length()) {
+                val obj = cravingsArray.getJSONObject(i)
+                val timestamp = obj.getLong("timestamp")
+                cravingDao.insert(Craving(timestamp))
+                cravingsImported++
+            }
+        }
+
+        return Pair(sessionsImported, cravingsImported)
+    }
+
+    /**
+     * Import data from CSV file
+     * Returns pair of (sessions imported, cravings imported)
+     */
+    fun importFromCSV(
+        inputStream: java.io.InputStream,
+        sessionDao: com.smokless.smokeless.data.dao.SmokingSessionDao,
+        cravingDao: com.smokless.smokeless.data.dao.CravingDao
+    ): Pair<Int, Int> {
+        var sessionsImported = 0
+        var cravingsImported = 0
+
+        inputStream.bufferedReader().use { reader ->
+            // Skip header line
+            reader.readLine()
+
+            reader.forEachLine { line ->
+                val parts = line.split(",", limit = 3)
+                if (parts.size >= 2) {
+                    val type = parts[0].trim()
+                    val timestamp = parts[1].trim().toLongOrNull() ?: return@forEachLine
+
+                    when (type) {
+                        "Smoked" -> {
+                            sessionDao.insert(SmokingSession(timestamp))
+                            sessionsImported++
+                        }
+                        "Resisted" -> {
+                            cravingDao.insert(Craving(timestamp))
+                            cravingsImported++
+                        }
+                    }
+                }
+            }
+        }
+
+        return Pair(sessionsImported, cravingsImported)
+    }
+
+    /**
      * Share exported file
      */
     fun shareFile(context: Context, file: File) {
