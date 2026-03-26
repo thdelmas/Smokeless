@@ -129,11 +129,10 @@ class MainActivity : AppCompatActivity() {
             }
             
             // Fade out stats, update, then fade back in
+            // Chips only control stats/charts — hero countdown is independent
             val statsRecycler = binding.sectionStatistics.recyclerStats
             val quickStats = binding.sectionQuickStats.root
             statsRecycler.animate().alpha(0f).setDuration(150).withEndAction {
-                // Update all period-specific components
-                viewModel.setGoalPeriod(currentPeriod)
                 viewModel.setChartPeriod(currentPeriod)
                 updateStatsForPeriod()
                 updateChartLabels()
@@ -147,7 +146,6 @@ class MainActivity : AppCompatActivity() {
                     else -> null
                 }
                 scores?.let { updatePeriodCards(it) }
-                viewModel.currentGoal.value?.let { updateGoalLabel(it) }
 
                 statsRecycler.animate().alpha(1f).setDuration(200).start()
             }.start()
@@ -229,12 +227,7 @@ class MainActivity : AppCompatActivity() {
      */
     @Suppress("UNUSED_PARAMETER")
     private fun updateGoalLabel(goal: Double) {
-        // Update progress label — framed around interval
-        val progressLabel = when (currentPeriod) {
-            "day" -> "Interval Progress"
-            else -> "Interval Goal"
-        }
-        binding.sectionHero.textGoalProgressLabel.text = progressLabel
+        binding.sectionHero.textGoalProgressLabel.text = "Interval Progress"
 
         // Show target interval duration
         val targetMs = viewModel.targetInterval.value ?: 0L
@@ -717,6 +710,9 @@ class MainActivity : AppCompatActivity() {
     
     private fun observeViewModel() {
         viewModel.currentScore.observe(this) { score ->
+            // Update the smoke-free elapsed timer (ticking up with seconds)
+            updateSmokeFreeTimer(score)
+
             // Update motivational elements based on score
             updateMotivationalContent(score)
 
@@ -725,23 +721,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.timeRemaining.observe(this) { remaining ->
-            // Update hero countdown display whenever remaining time changes
-            if (currentPeriod == "day") {
-                updateCountdownDisplay(remaining)
-            }
+            // Always update the hero countdown — it's independent of period selection
+            updateCountdownDisplay(remaining)
         }
         
-        // Observe hero metrics (contextual to selected period)
-        viewModel.heroValue.observe(this) { value ->
-            updateHeroDisplay(value)
-        }
-        
-        viewModel.heroLabel.observe(this) { label ->
-            binding.sectionHero.labelCurrentStreak.text = label
-        }
-        
-        viewModel.heroUnit.observe(this) { unit ->
-            // Store unit for display formatting
+        viewModel.targetInterval.observe(this) { _ ->
+            // Refresh the goal label when target interval updates
+            updateGoalLabel(0.0)
         }
         
         viewModel.currentPercentage.observe(this) { percentage ->
@@ -838,58 +824,72 @@ class MainActivity : AppCompatActivity() {
     }
     
     /**
-     * Update hero display value based on period context
+     * Update the smoke-free elapsed timer (counting up, with seconds).
+     *
+     * Includes a breathing-guided animation based on neuroscience:
+     * - 10-second cycle: 4s inhale (expand, brighten), 6s exhale (contract, soften)
+     * - Longer exhale activates the vagus nerve → parasympathetic calming response
+     * - Subtle rhythmic visuals entrain the user's breathing unconsciously (visual pacing)
+     * - Alpha-wave-promoting rhythm (0.1 Hz) supports calm focus during cravings
      */
-    private fun updateHeroDisplay(value: Double) {
-        when (currentPeriod) {
-            "day" -> {
-                // Show countdown timer: time remaining before next allowed smoke
-                val remainingMs = viewModel.timeRemaining.value ?: 0L
-                updateCountdownDisplay(remainingMs)
-            }
-            else -> {
-                // For other periods: show average interval in hours
-                if (value >= 1.0) {
-                    val hours = value.toInt()
-                    val minutes = ((value - hours) * 60).toInt()
-                    binding.sectionHero.textViewCurrentScore.text = String.format("%dh %02dm", hours, minutes)
-                } else {
-                    val minutes = (value * 60).toInt()
-                    binding.sectionHero.textViewCurrentScore.text = String.format("%dm", minutes)
-                }
-            }
+    private fun updateSmokeFreeTimer(timeSinceLastSmokeSeconds: Long) {
+        val days = timeSinceLastSmokeSeconds / 86400
+        val hours = (timeSinceLastSmokeSeconds % 86400) / 3600
+        val minutes = (timeSinceLastSmokeSeconds % 3600) / 60
+        val seconds = timeSinceLastSmokeSeconds % 60
+
+        val text = when {
+            days > 0 -> String.format("%dd %02d:%02d:%02d", days, hours, minutes, seconds)
+            else -> String.format("%02d:%02d:%02d", hours, minutes, seconds)
         }
+        binding.sectionHero.textSmokeFreeTimer.text = text
+
+        // 10-second breathing cycle: 4s inhale (0-3), 6s exhale (4-9)
+        val phase = (timeSinceLastSmokeSeconds % 10).toInt()
+
+        // Position within inhale (0→1 over 4s) or exhale (1→0 over 6s)
+        val breathPosition = when {
+            phase < 4 -> phase / 3.0f              // inhale: 0.0 → 1.0
+            else -> 1.0f - (phase - 4) / 5.0f      // exhale: 1.0 → 0.0
+        }
+
+        // Subtle scale: 1.0 at rest → 1.02 at peak (barely perceptible, not distracting)
+        val targetScale = 1.0f + (breathPosition * 0.02f)
+        // Opacity: 0.80 at rest → 1.0 at peak
+        val targetAlpha = 0.80f + (breathPosition * 0.20f)
+
+        // Animate smoothly toward target over ~1 second (bridges between ticks)
+        binding.sectionHero.textSmokeFreeTimer.animate()
+            .scaleX(targetScale)
+            .scaleY(targetScale)
+            .alpha(targetAlpha)
+            .setDuration(950)
+            .setInterpolator(android.view.animation.LinearInterpolator())
+            .start()
     }
 
     /**
-     * Format and display the countdown timer
+     * Update the countdown timer (time left to wait, no seconds)
      */
     private fun updateCountdownDisplay(remainingMs: Long) {
         if (remainingMs > 0) {
-            // Still counting down — show time to wait
-            val totalSeconds = remainingMs / 1000
-            val hours = totalSeconds / 3600
-            val minutes = (totalSeconds % 3600) / 60
-            val seconds = totalSeconds % 60
+            val totalMinutes = remainingMs / 60000
+            val hours = totalMinutes / 60
+            val minutes = totalMinutes % 60
 
-            if (totalSeconds < 600) {
-                binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-            } else {
-                binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d", hours, minutes)
+            binding.sectionHero.textViewCurrentScore.text = when {
+                hours > 0 -> String.format("%dh %02dm", hours, minutes)
+                else -> String.format("%dm", minutes)
             }
             binding.sectionHero.labelCurrentStreak.text = "WAIT BEFORE NEXT"
         } else {
-            // Countdown finished — show bonus time the user waited beyond target
-            val bonusMs = -remainingMs
-            val totalSeconds = bonusMs / 1000
-            val hours = totalSeconds / 3600
-            val minutes = (totalSeconds % 3600) / 60
-            val seconds = totalSeconds % 60
+            val bonusMinutes = -remainingMs / 60000
+            val hours = bonusMinutes / 60
+            val minutes = bonusMinutes % 60
 
-            if (totalSeconds < 600) {
-                binding.sectionHero.textViewCurrentScore.text = String.format("+%02d:%02d:%02d", hours, minutes, seconds)
-            } else {
-                binding.sectionHero.textViewCurrentScore.text = String.format("+%02d:%02d", hours, minutes)
+            binding.sectionHero.textViewCurrentScore.text = when {
+                hours > 0 -> String.format("+%dh %02dm", hours, minutes)
+                else -> String.format("+%dm", minutes)
             }
             binding.sectionHero.labelCurrentStreak.text = "BONUS SMOKE-FREE TIME"
         }

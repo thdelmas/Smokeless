@@ -69,29 +69,54 @@
                 android:fontFamily="sans-serif-medium"
                 android:layout_marginBottom="16dp" />
 
+            <!-- Smoke-Free Elapsed Timer (ticking up with seconds) -->
+            <TextView
+                android:id="@+id/labelSmokeFree"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SMOKE-FREE FOR"
+                android:textColor="@color/text_tertiary"
+                android:textSize="11sp"
+                android:letterSpacing="0.2"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:id="@+id/textSmokeFreeTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="00:00:00"
+                android:textColor="@color/accent_primary"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false"
+                android:contentDescription="Time since last cigarette"
+                android:accessibilityLiveRegion="polite" />
+
+            <!-- Countdown Timer (time left to wait, no seconds) -->
             <TextView
                 android:id="@+id/labelCurrentStreak"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:text="WAIT BEFORE NEXT"
                 android:textColor="@color/text_tertiary"
                 android:textSize="11sp"
                 android:letterSpacing="0.2"
                 android:fontFamily="sans-serif-medium" />
 
-            <!-- Big Countdown Timer Display -->
             <TextView
                 android:id="@+id/textViewCurrentScore"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="00:00:00"
+                android:layout_marginTop="4dp"
+                android:text="--:--"
                 android:textColor="@color/accent_primary"
                 android:textSize="56sp"
                 android:fontFamily="sans-serif-black"
                 android:includeFontPadding="false"
                 android:letterSpacing="-0.02"
-                android:contentDescription="Countdown to next allowed cigarette"
+                android:contentDescription="Time left to wait before next cigarette"
                 android:accessibilityLiveRegion="polite" />
 
             <!-- Contextual Message -->
@@ -100,7 +125,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Keep going, you're doing great!"
+                android:text="Every extra minute reduces your exposure."
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
                 android:fontFamily="sans-serif"
