@@ -177,7 +177,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * Check if user reached a health milestone and send notification
      */
     private fun checkMilestones(score: Long) {
-        val hours = score / 3600
+        val hours = score / 3_600_000
         
         // Only check every hour to avoid spam
         if (hours > lastNotifiedHours) {

@@ -651,7 +651,7 @@ class MainActivity : AppCompatActivity() {
      * Update health benefits display based on smoke-free time
      */
     private fun updateHealthBenefits(score: Long) {
-        val hours = score / 3600
+        val hours = score / 3_600_000
         val milestones = HealthBenefits.getMilestones(hours)
         val achievedCount = milestones.count { it.isAchieved }
         val totalCount = milestones.size
@@ -682,7 +682,7 @@ class MainActivity : AppCompatActivity() {
      * Update insight message based on user progress
      */
     private fun updateInsightMessage(score: Long, todayCount: Int) {
-        val hours = score / 3600
+        val hours = score / 3_600_000
         val days = hours / 24
         
         val insight = when {
@@ -832,11 +832,59 @@ class MainActivity : AppCompatActivity() {
      * - Subtle rhythmic visuals entrain the user's breathing unconsciously (visual pacing)
      * - Alpha-wave-promoting rhythm (0.1 Hz) supports calm focus during cravings
      */
-    private fun updateSmokeFreeTimer(timeSinceLastSmokeSeconds: Long) {
-        val days = timeSinceLastSmokeSeconds / 86400
-        val hours = (timeSinceLastSmokeSeconds % 86400) / 3600
-        val minutes = (timeSinceLastSmokeSeconds % 3600) / 60
-        val seconds = timeSinceLastSmokeSeconds % 60
+    private var breathingAnimator: android.animation.ValueAnimator? = null
+
+    /**
+     * Start a continuous breathing animation on the glowing orb.
+     * 10-second cycle: 4s inhale, 6s exhale — asymmetric to activate vagus nerve.
+     * Animates a large soft circle for clearly visible, smooth motion.
+     */
+    private fun startBreathingAnimation() {
+        if (breathingAnimator != null) return
+
+        val orb = binding.sectionHero.breathingOrb
+        // 0→0.4 is inhale (4s of 10s), 0.4→1.0 is exhale (6s of 10s)
+        breathingAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 10_000L
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.RESTART
+            interpolator = android.view.animation.LinearInterpolator()
+
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                val breath = if (t < 0.4f) {
+                    val p = t / 0.4f
+                    p * p  // ease in
+                } else {
+                    val p = (t - 0.4f) / 0.6f
+                    1f - p * p  // ease out (slow release)
+                }
+
+                // Orb: scale 0.5→1.0, alpha 0.2→0.7
+                orb.scaleX = 0.5f + breath * 0.5f
+                orb.scaleY = 0.5f + breath * 0.5f
+                orb.alpha = 0.2f + breath * 0.5f
+            }
+            start()
+        }
+    }
+
+    private fun stopBreathingAnimation() {
+        breathingAnimator?.cancel()
+        breathingAnimator = null
+        binding.sectionHero.breathingOrb.apply {
+            scaleX = 0.5f
+            scaleY = 0.5f
+            alpha = 0.2f
+        }
+    }
+
+    private fun updateSmokeFreeTimer(timeSinceLastSmokeMs: Long) {
+        val totalSeconds = timeSinceLastSmokeMs / 1000
+        val days = totalSeconds / 86400
+        val hours = (totalSeconds % 86400) / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
 
         val text = when {
             days > 0 -> String.format("%dd %02d:%02d:%02d", days, hours, minutes, seconds)
@@ -844,28 +892,8 @@ class MainActivity : AppCompatActivity() {
         }
         binding.sectionHero.textSmokeFreeTimer.text = text
 
-        // 10-second breathing cycle: 4s inhale (0-3), 6s exhale (4-9)
-        val phase = (timeSinceLastSmokeSeconds % 10).toInt()
-
-        // Position within inhale (0→1 over 4s) or exhale (1→0 over 6s)
-        val breathPosition = when {
-            phase < 4 -> phase / 3.0f              // inhale: 0.0 → 1.0
-            else -> 1.0f - (phase - 4) / 5.0f      // exhale: 1.0 → 0.0
-        }
-
-        // Subtle scale: 1.0 at rest → 1.02 at peak (barely perceptible, not distracting)
-        val targetScale = 1.0f + (breathPosition * 0.02f)
-        // Opacity: 0.80 at rest → 1.0 at peak
-        val targetAlpha = 0.80f + (breathPosition * 0.20f)
-
-        // Animate smoothly toward target over ~1 second (bridges between ticks)
-        binding.sectionHero.textSmokeFreeTimer.animate()
-            .scaleX(targetScale)
-            .scaleY(targetScale)
-            .alpha(targetAlpha)
-            .setDuration(950)
-            .setInterpolator(android.view.animation.LinearInterpolator())
-            .start()
+        // Ensure breathing animation is running
+        startBreathingAnimation()
     }
 
     /**
@@ -992,7 +1020,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun updateMotivationalContent(score: Long) {
         val remainingMs = viewModel.timeRemaining.value ?: 0L
-        val hours = score / 3600
+        val hours = score / 3_600_000
         val days = hours / 24
         val reachedTarget = remainingMs <= 0
 
@@ -1052,6 +1080,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         refreshHandler.removeCallbacks(refreshRunnable)
+        stopBreathingAnimation()
     }
 
     override fun onDestroy() {
