@@ -48,28 +48,53 @@ class SmokelessWidget : AppWidgetProvider() {
                     val lastTimestamp = db.smokingSessionDao().getLastTimestamp() ?: 0L
                     val timeSince = ScoreCalculator.calculateTimeSinceLastSmoke(lastTimestamp)
 
-                    val hours = timeSince / 3_600_000
-                    val minutes = (timeSince % 3_600_000) / 60_000
+                    // Calculate target interval for countdown
+                    val sessions = db.smokingSessionDao().getAllSessions()
+                    val prefs = context.getSharedPreferences("SmokelessPrefs", Context.MODE_PRIVATE)
+                    val difficulty = prefs.getInt("difficultyLevel", 0)
+                    val targetInterval = ScoreCalculator.calculateTargetInterval(sessions, difficulty)
 
-                    val timerText = when {
-                        hours >= 24 -> {
-                            val days = hours / 24
-                            val remainingHours = hours % 24
-                            "${days}d ${remainingHours}h"
+                    val remaining = targetInterval - timeSince
+
+                    val timerText: String
+                    val labelText: String
+
+                    if (targetInterval <= 0L) {
+                        // No data yet — show elapsed time
+                        val hours = timeSince / 3_600_000
+                        val minutes = (timeSince % 3_600_000) / 60_000
+                        timerText = "${hours}h ${minutes}m"
+                        labelText = "SMOKE-FREE FOR"
+                    } else if (remaining > 0) {
+                        // Counting down
+                        val hours = remaining / 3_600_000
+                        val minutes = (remaining % 3_600_000) / 60_000
+                        timerText = when {
+                            hours >= 24 -> {
+                                val days = hours / 24
+                                val remainingHours = hours % 24
+                                "${days}d ${remainingHours}h"
+                            }
+                            else -> "${hours}h ${minutes}m"
                         }
-                        else -> "${hours}h ${minutes}m"
+                        labelText = "WAIT BEFORE NEXT"
+                    } else {
+                        // Bonus time
+                        val bonus = -remaining
+                        val hours = bonus / 3_600_000
+                        val minutes = (bonus % 3_600_000) / 60_000
+                        timerText = "+${hours}h ${minutes}m"
+                        labelText = "BONUS TIME"
                     }
 
-                    // Calculate streak
-                    val sessions = db.smokingSessionDao().getAllSessions()
-                    val stats = ScoreCalculator.calculatePeriodStats(sessions, "all")
-                    val streakText = when (stats.currentStreak) {
-                        0 -> "Keep going!"
-                        1 -> "1 day streak"
-                        else -> "${stats.currentStreak} day streak"
+                    val streakText = when {
+                        targetInterval <= 0L -> "Log smokes to start"
+                        remaining > 0 -> "Hold on, you've got this!"
+                        else -> "Target reached!"
                     }
 
                     views.setTextViewText(R.id.widget_timer, timerText)
+                    views.setTextViewText(R.id.widget_label, labelText)
                     views.setTextViewText(R.id.widget_streak, streakText)
 
                     appWidgetManager.updateAppWidget(appWidgetId, views)

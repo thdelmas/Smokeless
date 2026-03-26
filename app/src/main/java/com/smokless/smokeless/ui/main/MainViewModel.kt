@@ -48,10 +48,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Goal progress percentage
     private val _currentPercentage = MutableLiveData(0.0)
     val currentPercentage: LiveData<Double> = _currentPercentage
-    
+
     // Goal (cigarettes per day target)
     private val _currentGoal = MutableLiveData(0.0)
     val currentGoal: LiveData<Double> = _currentGoal
+
+    // Interval-based countdown
+    private val _targetInterval = MutableLiveData(0L) // target wait time in ms
+    val targetInterval: LiveData<Long> = _targetInterval
+
+    private val _timeRemaining = MutableLiveData(0L) // countdown remaining in ms (negative = bonus)
+    val timeRemaining: LiveData<Long> = _timeRemaining
     
     // Statistics for different time periods
     private val _allTimeScores = MutableLiveData<List<ScoreData>>(emptyList())
@@ -147,36 +154,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * Update only the timer (called frequently)
      */
     fun updateTimer() {
-        val score = ScoreCalculator.calculateTimeSinceLastSmoke(lastTimestamp)
-        _currentScore.postValue(score)
-        
+        val timeSinceLastSmoke = ScoreCalculator.calculateTimeSinceLastSmoke(lastTimestamp)
+        _currentScore.postValue(timeSinceLastSmoke)
+
         // Check for milestone achievements
-        checkMilestones(score)
-        
-        // Update hero metrics and progress for day view
-        if (currentGoalPeriod == "day") {
-            val hoursSinceLastSmoke = if (lastTimestamp > 0L) {
-                (System.currentTimeMillis() - lastTimestamp) / (1000.0 * 60.0 * 60.0)
-            } else {
-                0.0
-            }
-            _heroValue.postValue(hoursSinceLastSmoke)
-            
-            // Update progress as time passes (so it gradually increases throughout the day)
-            // Run database queries on background thread
-            AppDatabase.databaseExecutor.execute {
-                val difficulty = prefs.getInt(KEY_DIFFICULTY, 0)
-                val allSessions = repository.getAllSessionsSync()
-                val goal = ScoreCalculator.calculateGoal(allSessions, "month", difficulty)
-                val todaySessions = repository.getSessionsForScope("day")
-                val todayStats = ScoreCalculator.calculatePeriodStats(todaySessions, "day")
-                val goalProgress = ScoreCalculator.calculateDailyProgress(
-                    todayStats.totalCigarettes,
-                    goal,
-                    lastTimestamp
-                )
-                _currentPercentage.postValue(goalProgress)
-            }
+        checkMilestones(timeSinceLastSmoke)
+
+        // Update countdown: remaining = target - elapsed (negative = bonus time)
+        val target = _targetInterval.value ?: 0L
+        if (target > 0L) {
+            _timeRemaining.postValue(target - timeSinceLastSmoke)
+        }
+
+        // Update interval progress (fills towards 100% as countdown reaches 0)
+        if (target > 0L) {
+            val progress = ScoreCalculator.calculateIntervalProgress(timeSinceLastSmoke, target)
+            _currentPercentage.postValue(progress)
         }
     }
     
@@ -285,34 +278,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun updateGoalForPeriod() {
         val difficulty = prefs.getInt(KEY_DIFFICULTY, 0)
         val allSessions = repository.getAllSessionsSync()
-        
-        // Calculate goal based on longer historical period for stability
-        // Use 30-day rolling average as baseline, regardless of viewing period
+
+        // Calculate interval-based target (how long to wait before next smoke)
+        val target = ScoreCalculator.calculateTargetInterval(allSessions, difficulty)
+        _targetInterval.postValue(target)
+
+        // Calculate countdown progress
+        val timeSinceLastSmoke = ScoreCalculator.calculateTimeSinceLastSmoke(lastTimestamp)
+        if (target > 0L) {
+            _timeRemaining.postValue(target - timeSinceLastSmoke)
+            val progress = ScoreCalculator.calculateIntervalProgress(timeSinceLastSmoke, target)
+            _currentPercentage.postValue(progress)
+        }
+
+        // Also keep legacy goal for period stats display
         val baselinePeriod = when (currentGoalPeriod) {
-            "day" -> "month"  // For daily view, use monthly baseline
-            "week" -> "month" // For weekly view, use monthly baseline
-            else -> currentGoalPeriod // For month/year/all, use selected period
+            "day" -> "month"
+            "week" -> "month"
+            else -> currentGoalPeriod
         }
         val goal = ScoreCalculator.calculateGoal(allSessions, baselinePeriod, difficulty)
         _currentGoal.postValue(goal)
-        
-        // Calculate progress towards goal using current period's actual performance
+
+        // Update hero metrics based on current period
         val periodSessions = repository.getSessionsForScope(currentGoalPeriod)
         val periodStats = ScoreCalculator.calculatePeriodStats(periodSessions, currentGoalPeriod)
-        
-        // For daily view, use time-aware progress calculation
-        val goalProgress = if (currentGoalPeriod == "day") {
-            ScoreCalculator.calculateDailyProgress(
-                periodStats.totalCigarettes, 
-                goal,
-                lastTimestamp
-            )
-        } else {
-            ScoreCalculator.calculateGoalProgress(periodStats.averagePerDay, goal)
-        }
-        _currentPercentage.postValue(goalProgress)
-        
-        // Update hero metrics based on current period
         updateHeroMetrics(periodStats)
     }
     
@@ -322,21 +312,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun updateHeroMetrics(stats: ScoreCalculator.PeriodStats) {
         when (currentGoalPeriod) {
             "day" -> {
-                // For today: show current streak in hours
-                val hoursSinceLastSmoke = if (lastTimestamp > 0L) {
-                    (System.currentTimeMillis() - lastTimestamp) / (1000 * 60 * 60)
-                } else {
-                    0L
-                }
-                _heroValue.postValue(hoursSinceLastSmoke.toDouble())
-                _heroLabel.postValue("SMOKE-FREE FOR")
-                _heroUnit.postValue(if (hoursSinceLastSmoke == 1L) "hour" else "hours")
+                _heroLabel.postValue("WAIT BEFORE NEXT")
+                _heroUnit.postValue("")
             }
             "week", "month", "year", "all" -> {
-                // For other periods: show average per day
-                _heroValue.postValue(stats.averagePerDay)
-                _heroLabel.postValue("AVERAGE PER DAY")
-                _heroUnit.postValue("cigs/day")
+                // For other periods: show average interval
+                val allSessions = repository.getAllSessionsSync()
+                val avgInterval = ScoreCalculator.calculateAverageInterval(allSessions)
+                val avgHours = avgInterval / (1000.0 * 60.0 * 60.0)
+                _heroValue.postValue(avgHours)
+                _heroLabel.postValue("AVG INTERVAL")
+                _heroUnit.postValue(if (avgHours >= 1.0) "hours" else "minutes")
             }
         }
     }

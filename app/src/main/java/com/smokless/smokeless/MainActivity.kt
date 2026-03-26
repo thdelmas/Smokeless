@@ -42,10 +42,8 @@ class MainActivity : AppCompatActivity() {
     
     private val refreshRunnable = object : Runnable {
         override fun run() {
-            // Only update timer if we're on "day" view
-            if (currentPeriod == "day") {
-                viewModel.updateTimer()
-            }
+            // Always update the countdown timer regardless of period
+            viewModel.updateTimer()
             refreshHandler.postDelayed(this, 1000)
         }
     }
@@ -229,32 +227,31 @@ class MainActivity : AppCompatActivity() {
     /**
      * Update goal label to be contextual to the selected period
      */
+    @Suppress("UNUSED_PARAMETER")
     private fun updateGoalLabel(goal: Double) {
-        // Update progress label
+        // Update progress label — framed around interval
         val progressLabel = when (currentPeriod) {
-            "day" -> "Today's Progress"
-            "week" -> "This Week's Progress"
-            "month" -> "This Month's Progress"
-            "year" -> "This Year's Progress"
-            "all" -> "Overall Progress"
-            else -> "Goal Progress"
+            "day" -> "Interval Progress"
+            else -> "Interval Goal"
         }
         binding.sectionHero.textGoalProgressLabel.text = progressLabel
-        
-        // Update target label
-        val labelText = when (currentPeriod) {
-            "day" -> {
-                // For today, show total count target with context
-                val targetCount = kotlin.math.ceil(goal).toInt()
-                "Target: ≤$targetCount for full day"
+
+        // Show target interval duration
+        val targetMs = viewModel.targetInterval.value ?: 0L
+        if (targetMs > 0L) {
+            val targetHours = targetMs / (1000.0 * 60.0 * 60.0)
+            val labelText = if (targetHours >= 1.0) {
+                val h = targetHours.toInt()
+                val m = ((targetHours - h) * 60).toInt()
+                "Target: wait ${h}h ${m}m between smokes"
+            } else {
+                val m = (targetHours * 60).toInt()
+                "Target: wait ${m}m between smokes"
             }
-            "week" -> String.format("Target: ≤%.1f/day avg", goal)
-            "month" -> String.format("Target: ≤%.1f/day avg", goal)
-            "year" -> String.format("Target: ≤%.1f/day avg", goal)
-            "all" -> String.format("Target: ≤%.1f/day avg", goal)
-            else -> String.format("Target: %.1f cigs/day", goal)
+            binding.sectionHero.textViewGoalLabel.text = labelText
+        } else {
+            binding.sectionHero.textViewGoalLabel.text = "Log smokes to set your interval goal"
         }
-        binding.sectionHero.textViewGoalLabel.text = labelText
     }
     
     private fun updateStatsForPeriod() {
@@ -535,37 +532,55 @@ class MainActivity : AppCompatActivity() {
     private fun setupFab() {
         binding.fabSmoke.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
-            // Animate timer reset
-            binding.sectionHero.textViewCurrentScore.animate()
-                .scaleX(0.8f)
-                .scaleY(0.8f)
-                .alpha(0.5f)
-                .setDuration(150)
-                .withEndAction {
-                    binding.sectionHero.textViewCurrentScore.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .alpha(1f)
-                        .setDuration(200)
-                        .start()
+            // Show confirmation to prevent accidental taps
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Log a cigarette?")
+                .setMessage("This will restart your countdown timer.")
+                .setPositiveButton("Yes, I smoked") { _, _ ->
+                    recordSmokeAction()
                 }
-                .start()
-            viewModel.recordSmokeWithId { sessionId ->
-                updateButtonState(0.0)
-                updateWidgets()
-                com.google.android.material.snackbar.Snackbar
-                    .make(binding.root, "Smoke recorded", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") {
-                        viewModel.undoSmoke(sessionId)
-                        updateWidgets()
-                    }
-                    .setBackgroundTint(ContextCompat.getColor(this, R.color.surface_elevated))
-                    .setTextColor(ContextCompat.getColor(this, R.color.text_primary))
-                    .setActionTextColor(ContextCompat.getColor(this, R.color.accent_amber))
-                    .show()
-            }
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("I Resisted!") { _, _ ->
+                    binding.fabResist.performClick()
+                }
+                .show()
         }
 
+    }
+
+    private fun recordSmokeAction() {
+        // Animate timer reset
+        binding.sectionHero.textViewCurrentScore.animate()
+            .scaleX(0.8f)
+            .scaleY(0.8f)
+            .alpha(0.5f)
+            .setDuration(150)
+            .withEndAction {
+                binding.sectionHero.textViewCurrentScore.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(200)
+                    .start()
+            }
+            .start()
+        viewModel.recordSmokeWithId { sessionId ->
+            updateButtonState(0.0)
+            updateWidgets()
+            com.google.android.material.snackbar.Snackbar
+                .make(binding.root, "Smoke recorded", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                .setAction("UNDO") {
+                    viewModel.undoSmoke(sessionId)
+                    updateWidgets()
+                }
+                .setBackgroundTint(ContextCompat.getColor(this, R.color.surface_elevated))
+                .setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+                .setActionTextColor(ContextCompat.getColor(this, R.color.accent_amber))
+                .show()
+        }
+    }
+
+    private fun setupResistFab() {
         binding.fabResist.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             viewModel.recordCravingResisted()
@@ -704,14 +719,16 @@ class MainActivity : AppCompatActivity() {
         viewModel.currentScore.observe(this) { score ->
             // Update motivational elements based on score
             updateMotivationalContent(score)
-            
-            // Update hero display when in day view to show live timer with seconds
-            if (currentPeriod == "day") {
-                updateHeroDisplay(0.0) // value is ignored for day view, uses currentScore directly
-            }
-            
+
             // Update health benefits
             updateHealthBenefits(score)
+        }
+
+        viewModel.timeRemaining.observe(this) { remaining ->
+            // Update hero countdown display whenever remaining time changes
+            if (currentPeriod == "day") {
+                updateCountdownDisplay(remaining)
+            }
         }
         
         // Observe hero metrics (contextual to selected period)
@@ -826,24 +843,55 @@ class MainActivity : AppCompatActivity() {
     private fun updateHeroDisplay(value: Double) {
         when (currentPeriod) {
             "day" -> {
-                // For today: show current time since last smoke
-                // value comes from currentScore which is in seconds
-                val totalSeconds = viewModel.currentScore.value ?: 0L
-                val hours = totalSeconds / 3600
-                val minutes = (totalSeconds % 3600) / 60
-                val seconds = totalSeconds % 60
-                
-                // Under 10 minutes, show seconds
-                if (totalSeconds < 600) {
-                    binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-                } else {
-                    binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d:00", hours, minutes)
-                }
+                // Show countdown timer: time remaining before next allowed smoke
+                val remainingMs = viewModel.timeRemaining.value ?: 0L
+                updateCountdownDisplay(remainingMs)
             }
             else -> {
-                // For other periods: show average as decimal
-                binding.sectionHero.textViewCurrentScore.text = String.format("%.1f", value)
+                // For other periods: show average interval in hours
+                if (value >= 1.0) {
+                    val hours = value.toInt()
+                    val minutes = ((value - hours) * 60).toInt()
+                    binding.sectionHero.textViewCurrentScore.text = String.format("%dh %02dm", hours, minutes)
+                } else {
+                    val minutes = (value * 60).toInt()
+                    binding.sectionHero.textViewCurrentScore.text = String.format("%dm", minutes)
+                }
             }
+        }
+    }
+
+    /**
+     * Format and display the countdown timer
+     */
+    private fun updateCountdownDisplay(remainingMs: Long) {
+        if (remainingMs > 0) {
+            // Still counting down — show time to wait
+            val totalSeconds = remainingMs / 1000
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+
+            if (totalSeconds < 600) {
+                binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+            } else {
+                binding.sectionHero.textViewCurrentScore.text = String.format("%02d:%02d", hours, minutes)
+            }
+            binding.sectionHero.labelCurrentStreak.text = "WAIT BEFORE NEXT"
+        } else {
+            // Countdown finished — show bonus time the user waited beyond target
+            val bonusMs = -remainingMs
+            val totalSeconds = bonusMs / 1000
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+
+            if (totalSeconds < 600) {
+                binding.sectionHero.textViewCurrentScore.text = String.format("+%02d:%02d:%02d", hours, minutes, seconds)
+            } else {
+                binding.sectionHero.textViewCurrentScore.text = String.format("+%02d:%02d", hours, minutes)
+            }
+            binding.sectionHero.labelCurrentStreak.text = "BONUS SMOKE-FREE TIME"
         }
     }
     
@@ -943,47 +991,40 @@ class MainActivity : AppCompatActivity() {
      * Update motivational content based on current progress
      */
     private fun updateMotivationalContent(score: Long) {
+        val remainingMs = viewModel.timeRemaining.value ?: 0L
         val hours = score / 3600
         val days = hours / 24
-        
-        // Update top motivational message
+        val reachedTarget = remainingMs <= 0
+
+        // Update top motivational message — countdown-aware
         val motivation = when {
             days >= 30 -> "You're a champion! 🏆"
-            days >= 14 -> "Two weeks strong! 💪"
-            days >= 7 -> "One week milestone! 🎉"
-            days >= 3 -> "Building momentum! 🔥"
-            days >= 1 -> "Great start! Keep going 💚"
-            hours >= 12 -> "Halfway through the day! 🌟"
-            hours >= 6 -> "Every hour counts 💪"
-            hours >= 3 -> "You're doing great! ⭐"
-            hours >= 1 -> "One hour at a time 🌱"
-            else -> "Your journey begins now 🌿"
+            days >= 7 -> "Incredible discipline! 🎉"
+            days >= 1 -> "Over a day! Keep going 💚"
+            reachedTarget -> "Target reached! Every extra minute counts 💪"
+            hours >= 1 -> "Hold on, you're getting there ⭐"
+            else -> "Stretch the interval 🌿"
         }
         binding.sectionHero.textViewMotivation.text = motivation
-        
+
         // Update status badge
         val statusBadge = when {
             days >= 30 -> "🏆 Champion"
-            days >= 14 -> "💎 Strong Warrior"
             days >= 7 -> "🔥 On Fire"
-            days >= 3 -> "💪 Building Up"
             days >= 1 -> "🌟 Day Starter"
-            hours >= 6 -> "⭐ Half Day"
-            else -> "🌱 Fresh Start"
+            reachedTarget -> "💪 Target Reached"
+            else -> "🌱 Waiting"
         }
         binding.sectionHero.textStatusBadge.text = statusBadge
-        
+
         // Update contextual message below timer
         val context = when {
-            days >= 30 -> "Incredible achievement! You're an inspiration 🎉"
-            days >= 14 -> "Two weeks! Your body is thanking you 💚"
-            days >= 7 -> "A full week! The hardest part is behind you"
-            days >= 3 -> "Three days! You're past the toughest phase 💪"
-            days >= 1 -> "24 hours strong! Keep this momentum going"
-            hours >= 12 -> "Half a day done! You're crushing it today"
-            hours >= 6 -> "Six hours! That's real progress 🌟"
-            hours >= 3 -> "Three hours in! Stay focused, you've got this"
-            else -> "Every minute matters. You're making progress!"
+            days >= 7 -> "Your intervals are massive. Your body is healing."
+            days >= 1 -> "Over 24 hours! You're stretching your limits"
+            reachedTarget -> "You've hit your target. Keep going for bonus time!"
+            hours >= 3 -> "More than halfway there. Stay strong!"
+            hours >= 1 -> "One hour down. The craving will pass."
+            else -> "Every extra minute reduces your exposure."
         }
         binding.sectionHero.textStreakContext.text = context
     }

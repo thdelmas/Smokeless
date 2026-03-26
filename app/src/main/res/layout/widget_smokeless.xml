@@ -11,7 +11,7 @@
         android:id="@+id/widget_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="SMOKE-FREE FOR"
+        android:text="WAIT BEFORE NEXT"
         android:textColor="#9896A8"
         android:textSize="10sp"
         android:fontFamily="sans-serif-medium"

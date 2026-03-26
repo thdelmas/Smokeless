@@ -403,6 +403,53 @@ object ScoreCalculator {
             System.currentTimeMillis() - lastTimestamp
         }
     }
+
+    /**
+     * Calculate average interval between smoking sessions (in milliseconds).
+     * Uses the last 30 days of data for a stable baseline.
+     * Returns 0 if fewer than 2 sessions exist.
+     */
+    fun calculateAverageInterval(sessions: List<SmokingSession>): Long {
+        if (sessions.size < 2) return 0L
+
+        val sorted = sessions.sortedBy { it.timestamp }
+        var totalGap = 0L
+        var gapCount = 0
+
+        for (i in 1 until sorted.size) {
+            val gap = sorted[i].timestamp - sorted[i - 1].timestamp
+            // Ignore gaps longer than 24 hours (likely sleep or days off)
+            if (gap <= TimeUnit.HOURS.toMillis(24)) {
+                totalGap += gap
+                gapCount++
+            }
+        }
+
+        return if (gapCount > 0) totalGap / gapCount else 0L
+    }
+
+    /**
+     * Calculate target interval the user should wait before next cigarette.
+     * Target = average interval * (1 + difficulty * 0.1)
+     * Difficulty 0 = maintain current pace, 1 = wait 10% longer, etc.
+     */
+    fun calculateTargetInterval(sessions: List<SmokingSession>, difficultyLevel: Int): Long {
+        val avgInterval = calculateAverageInterval(sessions)
+        if (avgInterval == 0L) return 0L
+
+        val stretchFactor = 1.0 + (difficultyLevel * 0.1)
+        return (avgInterval * stretchFactor).toLong()
+    }
+
+    /**
+     * Calculate countdown progress towards target interval.
+     * Returns 0-100 where 100 = waited long enough (reached target).
+     * Can exceed 100 if user waits beyond target (bonus time).
+     */
+    fun calculateIntervalProgress(timeSinceLastSmoke: Long, targetInterval: Long): Double {
+        if (targetInterval <= 0L) return 0.0
+        return (timeSinceLastSmoke.toDouble() / targetInterval) * 100.0
+    }
 }
 
 
