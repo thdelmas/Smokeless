@@ -32,8 +32,8 @@ class SmokingRepository(application: Application) {
         insert(SmokingSession(System.currentTimeMillis()))
     }
 
-    fun recordSmokeSync(): Long {
-        return smokingDao.insert(SmokingSession(System.currentTimeMillis()))
+    fun recordSmokeSync(exposureOffsetMs: Long = 0L): Long {
+        return smokingDao.insert(SmokingSession(System.currentTimeMillis() + exposureOffsetMs))
     }
 
     fun deleteSession(id: Long) {

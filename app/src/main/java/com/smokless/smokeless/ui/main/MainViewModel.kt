@@ -102,9 +102,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun recordSmokeWithId(callback: (Long) -> Unit) {
+    fun recordSmokeWithId(exposureOffsetMs: Long = 0L, callback: (Long) -> Unit) {
         AppDatabase.databaseExecutor.execute {
-            val id = repository.recordSmokeSync()
+            val id = repository.recordSmokeSync(exposureOffsetMs)
             refreshData()
             android.os.Handler(android.os.Looper.getMainLooper()).post { callback(id) }
         }

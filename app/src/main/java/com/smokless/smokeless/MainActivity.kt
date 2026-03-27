@@ -30,6 +30,11 @@ import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val EXPOSURE_CIGARETTE_MS = 10L * 60 * 1000  // ~10 minutes
+        private const val EXPOSURE_WEED_MS = 30L * 60 * 1000       // ~30 minutes
+    }
+
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
     
@@ -525,23 +530,23 @@ class MainActivity : AppCompatActivity() {
     private fun setupFab() {
         binding.fabSmoke.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
-            // Show confirmation to prevent accidental taps
+            // Show smoke type selection dialog
             com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle("Log a cigarette?")
-                .setMessage("This will restart your countdown timer.")
-                .setPositiveButton("Yes, I smoked") { _, _ ->
-                    recordSmokeAction()
+                .setTitle("What did you smoke?")
+                .setMessage("This will restart your countdown timer after the exposure time.")
+                .setPositiveButton("Cigarette (~10 min)") { _, _ ->
+                    recordSmokeAction(EXPOSURE_CIGARETTE_MS)
                 }
                 .setNegativeButton("Cancel", null)
-                .setNeutralButton("I Resisted!") { _, _ ->
-                    binding.fabResist.performClick()
+                .setNeutralButton("Weed (~30 min)") { _, _ ->
+                    recordSmokeAction(EXPOSURE_WEED_MS)
                 }
                 .show()
         }
 
     }
 
-    private fun recordSmokeAction() {
+    private fun recordSmokeAction(exposureOffsetMs: Long) {
         // Animate timer reset
         binding.sectionHero.textViewCurrentScore.animate()
             .scaleX(0.8f)
@@ -557,7 +562,7 @@ class MainActivity : AppCompatActivity() {
                     .start()
             }
             .start()
-        viewModel.recordSmokeWithId { sessionId ->
+        viewModel.recordSmokeWithId(exposureOffsetMs) { sessionId ->
             updateButtonState(0.0)
             updateWidgets()
             com.google.android.material.snackbar.Snackbar
@@ -860,10 +865,10 @@ class MainActivity : AppCompatActivity() {
                     1f - p * p  // ease out (slow release)
                 }
 
-                // Orb: scale 0.5→1.0, alpha 0.2→0.7
-                orb.scaleX = 0.5f + breath * 0.5f
-                orb.scaleY = 0.5f + breath * 0.5f
-                orb.alpha = 0.2f + breath * 0.5f
+                // Orb: scale 0.4→1.0, alpha 0.0→1.0
+                orb.scaleX = 0.4f + breath * 0.6f
+                orb.scaleY = 0.4f + breath * 0.6f
+                orb.alpha = breath
             }
             start()
         }
@@ -873,9 +878,9 @@ class MainActivity : AppCompatActivity() {
         breathingAnimator?.cancel()
         breathingAnimator = null
         binding.sectionHero.breathingOrb.apply {
-            scaleX = 0.5f
-            scaleY = 0.5f
-            alpha = 0.2f
+            scaleX = 0.4f
+            scaleY = 0.4f
+            alpha = 0f
         }
     }
 
