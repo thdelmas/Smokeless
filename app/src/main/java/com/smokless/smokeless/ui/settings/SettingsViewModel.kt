@@ -5,8 +5,11 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.smokless.smokeless.bios.BiosClient
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val biosClient = BiosClient(application)
     
     companion object {
         private const val PREF_NAME = "SmokelessPrefs"
@@ -51,7 +54,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     private val _currency = MutableLiveData<String>()
     val currency: LiveData<String> = _currency
-    
+
+    private val _biosEnabled = MutableLiveData<Boolean>()
+    val biosEnabled: LiveData<Boolean> = _biosEnabled
+
+    private val _biosStatus = MutableLiveData<BiosClient.Status>()
+    val biosStatus: LiveData<BiosClient.Status> = _biosStatus
+
     init {
         loadSettings()
     }
@@ -68,7 +77,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _packPrice.value = price
         _cigsPerPack.value = cigsCount
         _currency.value = currencySymbol
+        _biosEnabled.value = biosClient.isEnabled
+        _biosStatus.value = biosClient.status()
         updateDescriptions(isStrict, level)
+    }
+
+    fun setBiosEnabled(enabled: Boolean) {
+        biosClient.setEnabled(enabled)
+        _biosEnabled.value = enabled
+        _biosStatus.value = biosClient.status()
+    }
+
+    fun refreshBiosStatus() {
+        _biosStatus.value = biosClient.status()
     }
     
     fun setStrictMode(enabled: Boolean) {

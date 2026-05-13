@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
+import com.smokless.smokeless.bios.BiosClient
 import com.smokless.smokeless.data.AppDatabase
 import com.smokless.smokeless.databinding.ActivitySettingsBinding
 import com.smokless.smokeless.ui.settings.SettingsViewModel
@@ -35,11 +36,23 @@ class SettingsActivity : AppCompatActivity() {
         setupStrictMode()
         setupDifficultySlider()
         setupPriceInputs()
+        setupBiosIntegration()
         setupExportButtons()
         setupResetButton()
         setupNotificationPrefs()
         setupSocialLinks()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshBiosStatus()
+    }
+
+    private fun setupBiosIntegration() {
+        binding.switchBiosIntegration.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setBiosEnabled(isChecked)
+        }
     }
     
     private fun setupToolbar() {
@@ -309,6 +322,24 @@ class SettingsActivity : AppCompatActivity() {
         
         viewModel.currency.observe(this) { _ ->
             updateCostPerCig()
+        }
+
+        viewModel.biosEnabled.observe(this) { enabled ->
+            if (binding.switchBiosIntegration.isChecked != enabled) {
+                binding.switchBiosIntegration.isChecked = enabled
+            }
+            val available = viewModel.biosStatus.value != BiosClient.Status.NOT_INSTALLED
+            binding.switchBiosIntegration.isEnabled = available
+        }
+
+        viewModel.biosStatus.observe(this) { status ->
+            binding.textBiosStatus.text = when (status) {
+                BiosClient.Status.CONNECTED -> "Connected to Bios"
+                BiosClient.Status.NOT_ENABLED -> "Not enabled"
+                else -> "Bios not installed"
+            }
+            binding.switchBiosIntegration.isEnabled = status == BiosClient.Status.CONNECTED ||
+                status == BiosClient.Status.NOT_ENABLED
         }
     }
 
