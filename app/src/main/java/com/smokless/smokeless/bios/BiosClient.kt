@@ -48,24 +48,53 @@ class BiosClient(private val context: Context) {
 
     fun pushCravingEvent(timestamp: Long) = push(METRIC_TOBACCO_CRAVING, timestamp)
 
-    private fun push(metricType: String, timestamp: Long) {
-        if (!isEnabled) return
-        if (!isAvailable) return
+    /**
+     * Replays existing history into Bios. Called from the "Sync history" button —
+     * idempotency is Bios's concern (per Smokeless docs/ROADMAP §1.3); if the user
+     * runs it twice they may end up with duplicate events.
+     *
+     * Short-circuits if disabled or Bios is absent so the caller can avoid
+     * walking the DB unnecessarily.
+     */
+    fun backfill(smokingTimestamps: List<Long>, cravingTimestamps: List<Long>): BackfillResult {
+        val total = smokingTimestamps.size + cravingTimestamps.size
+        if (!isEnabled || !isAvailable) {
+            return BackfillResult(pushed = 0, failed = 0, total = total)
+        }
+        var pushed = 0
+        var failed = 0
+        for (ts in smokingTimestamps) {
+            if (push(METRIC_TOBACCO_USE, ts)) pushed++ else failed++
+        }
+        for (ts in cravingTimestamps) {
+            if (push(METRIC_TOBACCO_CRAVING, ts)) pushed++ else failed++
+        }
+        return BackfillResult(pushed = pushed, failed = failed, total = total)
+    }
+
+    private fun push(metricType: String, timestamp: Long): Boolean {
+        if (!isEnabled) return false
+        if (!isAvailable) return false
         val uri = COMPANION_URI.buildUpon().appendPath(metricType).build()
         val values = ContentValues().apply {
             put("value", 1.0)
             put("timestamp", timestamp)
         }
-        try {
+        return try {
             context.contentResolver.insert(uri, values)
+            true
         } catch (e: SecurityException) {
             Log.d(TAG, "Bios rejected $metricType: ${e.message}")
+            false
         } catch (e: Exception) {
             Log.d(TAG, "Bios push failed for $metricType: ${e.message}")
+            false
         }
     }
 
     enum class Status { NOT_INSTALLED, NOT_ENABLED, CONNECTED }
+
+    data class BackfillResult(val pushed: Int, val failed: Int, val total: Int)
 
     companion object {
         private const val TAG = "BiosClient"

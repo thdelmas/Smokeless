@@ -56,6 +56,12 @@ class SmokingRepository(application: Application) {
         }
     }
 
+    fun backfillBios(): BiosClient.BackfillResult {
+        val sessionTimestamps = smokingDao.getAllSessions().map { it.timestamp }
+        val cravingTimestamps = cravingDao.getAllCravings().map { it.timestamp }
+        return biosClient.backfill(sessionTimestamps, cravingTimestamps)
+    }
+
     fun getLastTimestamp(): Long? = smokingDao.getLastTimestamp()
 
     fun getSessionsSince(startTime: Long): List<SmokingSession> = smokingDao.getSessionsSince(startTime)

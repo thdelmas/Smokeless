@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
 import com.smokless.smokeless.bios.BiosClient
 import com.smokless.smokeless.data.AppDatabase
+import com.smokless.smokeless.data.repository.SmokingRepository
 import com.smokless.smokeless.databinding.ActivitySettingsBinding
 import com.smokless.smokeless.ui.settings.SettingsViewModel
 import com.smokless.smokeless.util.DataExporter
@@ -52,6 +53,47 @@ class SettingsActivity : AppCompatActivity() {
     private fun setupBiosIntegration() {
         binding.switchBiosIntegration.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setBiosEnabled(isChecked)
+        }
+        binding.btnSyncBiosHistory.setOnClickListener {
+            confirmBackfill()
+        }
+    }
+
+    private fun confirmBackfill() {
+        if (viewModel.biosStatus.value != BiosClient.Status.CONNECTED) {
+            Snackbar.make(
+                binding.root,
+                "Enable Bios integration first.",
+                Snackbar.LENGTH_SHORT
+            ).show()
+            return
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Sync history to Bios")
+            .setMessage(
+                "Push every existing smoking and craving record to Bios so it can " +
+                "correlate them with your past health metrics.\n\n" +
+                "Running this more than once may create duplicate events in Bios."
+            )
+            .setPositiveButton("Sync") { _, _ -> runBackfill() }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun runBackfill() {
+        binding.btnSyncBiosHistory.isEnabled = false
+        AppDatabase.databaseExecutor.execute {
+            val repository = SmokingRepository(application)
+            val result = repository.backfillBios()
+            runOnUiThread {
+                binding.btnSyncBiosHistory.isEnabled = true
+                val message = when {
+                    result.total == 0 -> "No history to sync."
+                    result.failed == 0 -> "Pushed ${result.pushed} events to Bios."
+                    else -> "Pushed ${result.pushed}/${result.total} events (${result.failed} failed)."
+                }
+                Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+            }
         }
     }
     
@@ -340,6 +382,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             binding.switchBiosIntegration.isEnabled = status == BiosClient.Status.CONNECTED ||
                 status == BiosClient.Status.NOT_ENABLED
+            binding.btnSyncBiosHistory.isEnabled = status == BiosClient.Status.CONNECTED
         }
     }
 
