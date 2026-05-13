@@ -535,18 +535,27 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("What did you smoke?")
                 .setMessage("This will restart your countdown timer after the exposure time.")
                 .setPositiveButton("Cigarette (~10 min)") { _, _ ->
-                    recordSmokeAction(EXPOSURE_CIGARETTE_MS)
+                    recordSmokeAction(
+                        EXPOSURE_CIGARETTE_MS,
+                        com.smokless.smokeless.data.entity.Substance.TOBACCO,
+                    )
                 }
                 .setNegativeButton("Cancel", null)
                 .setNeutralButton("Weed (~30 min)") { _, _ ->
-                    recordSmokeAction(EXPOSURE_WEED_MS)
+                    recordSmokeAction(
+                        EXPOSURE_WEED_MS,
+                        com.smokless.smokeless.data.entity.Substance.CANNABIS,
+                    )
                 }
                 .show()
         }
 
     }
 
-    private fun recordSmokeAction(exposureOffsetMs: Long) {
+    private fun recordSmokeAction(
+        exposureOffsetMs: Long,
+        substance: com.smokless.smokeless.data.entity.Substance,
+    ) {
         // Animate timer reset
         binding.sectionHero.textViewCurrentScore.animate()
             .scaleX(0.8f)
@@ -562,7 +571,7 @@ class MainActivity : AppCompatActivity() {
                     .start()
             }
             .start()
-        viewModel.recordSmokeWithId(exposureOffsetMs) { sessionId ->
+        viewModel.recordSmokeWithId(exposureOffsetMs, substance) { sessionId ->
             updateButtonState(0.0)
             updateWidgets()
             com.google.android.material.snackbar.Snackbar

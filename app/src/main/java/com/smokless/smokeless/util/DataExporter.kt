@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
+import com.smokless.smokeless.data.entity.Substance
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -68,6 +69,7 @@ object DataExporter {
             sessionObj.put("id", session.id)
             sessionObj.put("timestamp", session.timestamp)
             sessionObj.put("date", dateFormat.format(Date(session.timestamp)))
+            sessionObj.put("substance", session.substance.name)
             sessionsArray.put(sessionObj)
         }
         json.put("smoking_sessions", sessionsArray)
@@ -110,7 +112,8 @@ object DataExporter {
             for (i in 0 until sessionsArray.length()) {
                 val obj = sessionsArray.getJSONObject(i)
                 val timestamp = obj.getLong("timestamp")
-                sessionDao.insert(SmokingSession(timestamp))
+                val substance = Substance.fromName(obj.optString("substance"))
+                sessionDao.insert(SmokingSession(timestamp, substance))
                 sessionsImported++
             }
         }

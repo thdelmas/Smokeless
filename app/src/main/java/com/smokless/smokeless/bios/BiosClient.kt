@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
+import com.smokless.smokeless.data.entity.Substance
 
 /**
  * Companion writer that forwards substance-use events from Smokeless to Bios
@@ -44,9 +45,11 @@ class BiosClient(private val context: Context) {
         else -> Status.CONNECTED
     }
 
-    fun pushSmokingEvent(timestamp: Long) = push(METRIC_TOBACCO_USE, timestamp)
+    fun pushSmokingEvent(timestamp: Long, substance: Substance) =
+        push(useMetricFor(substance), timestamp)
 
-    fun pushCravingEvent(timestamp: Long) = push(METRIC_TOBACCO_CRAVING, timestamp)
+    fun pushCravingEvent(timestamp: Long, substance: Substance = Substance.TOBACCO) =
+        push(cravingMetricFor(substance), timestamp)
 
     /**
      * Replays existing history into Bios. Called from the "Sync history" button —
@@ -56,15 +59,18 @@ class BiosClient(private val context: Context) {
      * Short-circuits if disabled or Bios is absent so the caller can avoid
      * walking the DB unnecessarily.
      */
-    fun backfill(smokingTimestamps: List<Long>, cravingTimestamps: List<Long>): BackfillResult {
-        val total = smokingTimestamps.size + cravingTimestamps.size
+    fun backfill(
+        smokingEvents: List<Pair<Long, Substance>>,
+        cravingTimestamps: List<Long>,
+    ): BackfillResult {
+        val total = smokingEvents.size + cravingTimestamps.size
         if (!isEnabled || !isAvailable) {
             return BackfillResult(pushed = 0, failed = 0, total = total)
         }
         var pushed = 0
         var failed = 0
-        for (ts in smokingTimestamps) {
-            if (push(METRIC_TOBACCO_USE, ts)) pushed++ else failed++
+        for ((ts, substance) in smokingEvents) {
+            if (push(useMetricFor(substance), ts)) pushed++ else failed++
         }
         for (ts in cravingTimestamps) {
             if (push(METRIC_TOBACCO_CRAVING, ts)) pushed++ else failed++
@@ -103,8 +109,20 @@ class BiosClient(private val context: Context) {
 
         const val METRIC_TOBACCO_USE = "tobacco_use"
         const val METRIC_TOBACCO_CRAVING = "tobacco_craving"
+        const val METRIC_CANNABIS_USE = "cannabis_use"
+        const val METRIC_CANNABIS_CRAVING = "cannabis_craving"
 
         private val BASE_URI: Uri = Uri.parse("content://com.bios.app.health")
         private val COMPANION_URI: Uri = BASE_URI.buildUpon().appendPath("companion").build()
+
+        private fun useMetricFor(substance: Substance): String = when (substance) {
+            Substance.TOBACCO -> METRIC_TOBACCO_USE
+            Substance.CANNABIS -> METRIC_CANNABIS_USE
+        }
+
+        private fun cravingMetricFor(substance: Substance): String = when (substance) {
+            Substance.TOBACCO -> METRIC_TOBACCO_CRAVING
+            Substance.CANNABIS -> METRIC_CANNABIS_CRAVING
+        }
     }
 }

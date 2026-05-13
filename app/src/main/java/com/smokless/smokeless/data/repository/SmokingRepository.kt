@@ -8,6 +8,7 @@ import com.smokless.smokeless.data.dao.CravingDao
 import com.smokless.smokeless.data.dao.SmokingSessionDao
 import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
+import com.smokless.smokeless.data.entity.Substance
 import java.util.concurrent.TimeUnit
 
 class SmokingRepository(application: Application) {
@@ -29,18 +30,21 @@ class SmokingRepository(application: Application) {
     fun insert(session: SmokingSession) {
         AppDatabase.databaseExecutor.execute {
             smokingDao.insert(session)
-            biosClient.pushSmokingEvent(session.timestamp)
+            biosClient.pushSmokingEvent(session.timestamp, session.substance)
         }
     }
 
-    fun recordSmoke() {
-        insert(SmokingSession(System.currentTimeMillis()))
+    fun recordSmoke(substance: Substance = Substance.DEFAULT) {
+        insert(SmokingSession(System.currentTimeMillis(), substance))
     }
 
-    fun recordSmokeSync(exposureOffsetMs: Long = 0L): Long {
+    fun recordSmokeSync(
+        exposureOffsetMs: Long = 0L,
+        substance: Substance = Substance.DEFAULT,
+    ): Long {
         val timestamp = System.currentTimeMillis() + exposureOffsetMs
-        val id = smokingDao.insert(SmokingSession(timestamp))
-        biosClient.pushSmokingEvent(timestamp)
+        val id = smokingDao.insert(SmokingSession(timestamp, substance))
+        biosClient.pushSmokingEvent(timestamp, substance)
         return id
     }
 
@@ -57,9 +61,9 @@ class SmokingRepository(application: Application) {
     }
 
     fun backfillBios(): BiosClient.BackfillResult {
-        val sessionTimestamps = smokingDao.getAllSessions().map { it.timestamp }
+        val smokingEvents = smokingDao.getAllSessions().map { it.timestamp to it.substance }
         val cravingTimestamps = cravingDao.getAllCravings().map { it.timestamp }
-        return biosClient.backfill(sessionTimestamps, cravingTimestamps)
+        return biosClient.backfill(smokingEvents, cravingTimestamps)
     }
 
     fun getLastTimestamp(): Long? = smokingDao.getLastTimestamp()
