@@ -9,7 +9,7 @@
 ## Current State
 
 **Capture surface:**
-- Tap-to-log smoking events (single substance, currently tobacco)
+- Tap-to-log smoking events (tobacco + cannabis; FAB picker)
 - Tap-to-log cravings (discrete events, timestamp-only)
 - Home-screen widget for one-tap logging
 - Smoke-free interval countdown with breathing-orb animation
@@ -19,9 +19,14 @@
 **Data layer:**
 - Room database, two entities ([SmokingSession.kt](../app/src/main/java/com/smokless/smokeless/data/entity/SmokingSession.kt),
   [Craving.kt](../app/src/main/java/com/smokless/smokeless/data/entity/Craving.kt))
-- Each is timestamp + autogen id. No substance discriminator on the row
-  today — the app is single-substance scoped to tobacco.
+- Sessions carry a `Substance` field (`TOBACCO`, `CANNABIS`) persisted via
+  Room TypeConverter; existing rows defaulted to `TOBACCO` via a 2→3 migration.
 - CSV / JSON import path for migrating from other trackers
+
+**Ecosystem:**
+- Bios companion integration (opt-in): forwards each smoke/craving log to
+  Bios via the `content://com.bios.app.health/companion/{metric}` URI,
+  per-substance metric keys, plus one-shot history backfill in Settings.
 
 **UI:**
 - Single Compose-flavored activity stack (`MainActivity`, `SettingsActivity`)
@@ -29,7 +34,7 @@
 
 ---
 
-## Phase 1: Bios companion integration [PLANNED]
+## Phase 1: Bios companion integration [DONE]
 
 > Wire Smokeless into the Bios metric bus as a producer of substance-use
 > events. This is the bridge that makes Smokeless useful beyond its own
@@ -82,7 +87,7 @@ Smokeless history). Resumable if interrupted.
 
 ---
 
-## Phase 2: Multi-substance schema [PLANNED]
+## Phase 2: Multi-substance schema [IN PROGRESS]
 
 > Today the `smoking_sessions` row has no substance field; the app is
 > tobacco-scoped by convention. The roadmap to multi-substance support is
@@ -95,19 +100,19 @@ Smokeless history). Resumable if interrupted.
 > [#10 pornography](https://github.com/thdelmas/Smokeless/issues/10),
 > [#13 custom](https://github.com/thdelmas/Smokeless/issues/13)).
 
-### 2.1 Substance enum on the entity
+### 2.1 Substance enum on the entity [DONE]
 
 Add a `Substance` enum with `TOBACCO`, `CANNABIS`, `ALCOHOL`, ...,
 `CUSTOM`. Migrate existing rows to `TOBACCO`. The substance field
 becomes the partition key for all per-period statistics and UI.
 
-### 2.2 Per-substance reasoning
+### 2.2 Per-substance reasoning [PLANNED]
 
 The cessation framing (clean streak, money saved, life-back math) is
 tobacco-specific in its current copy. Per-substance copy and per-substance
 goals.
 
-### 2.3 Bios key expansion (paired with Bios §7.7)
+### 2.3 Bios key expansion (paired with Bios §7.7) [DONE — Smokeless side]
 
 Once Smokeless emits cannabis events, the Bios companion-write URI
 whitelists `cannabis_use` and `cannabis_craving`. Per the Bios YAGNI
@@ -115,12 +120,17 @@ rule, the keys exist as `MetricType` entries from day one but the URI
 whitelist only opens when there's a real producer. Smokeless coordinates
 with Bios on the URI-whitelist PR.
 
+**Smokeless-side status:** `BiosClient` maps `Substance.CANNABIS` to
+`cannabis_use` / `cannabis_craving` (see
+[BiosClient.kt](../app/src/main/java/com/smokless/smokeless/bios/BiosClient.kt)).
+The Bios-side URI whitelist PR is the remaining external dependency.
+
 **Behavioral domains** (#9 gambling, #10 pornography) do not get Bios keys
 in their current scope — they are not physiological signals and Bios is
 silent about behavioral categories it can't measure from wearable data.
 Smokeless still tracks them locally; they just don't cross the metric bus.
 
-### 2.4 Caffeine + alcohol on the metric bus (hoist from W2F)
+### 2.4 Caffeine + alcohol on the metric bus (hoist from W2F) [PLANNED]
 
 Audit finding: tobacco and cannabis are on the bus, but caffeine and
 alcohol — the other two psychoactives — are not. W2F's `FuelLog`
