@@ -820,6 +820,26 @@ class MainActivity : AppCompatActivity() {
         viewModel.moneySavedFormatted.observe(this) { formatted ->
             binding.sectionRecords.textMoneySaved.text = formatted
         }
+
+        // Observe reduction trend (data, no praise — per design note)
+        viewModel.reductionStats.observe(this) { stats ->
+            updateReductionTrend(stats)
+        }
+    }
+
+    private fun updateReductionTrend(stats: com.smokless.smokeless.util.ScoreCalculator.ReductionStats) {
+        val avgFormat = DecimalFormat("0.#")
+        binding.sectionReductionTrend.textReductionAverage.text = avgFormat.format(stats.rollingAverage7d)
+
+        val velocityText = when {
+            !stats.hasEnoughData -> "Logging — trend appears after 14 days of data"
+            stats.velocityPercent >= 5.0 ->
+                "${DecimalFormat("0").format(stats.velocityPercent)}% less than 30 days ago"
+            stats.velocityPercent <= -5.0 ->
+                "${DecimalFormat("0").format(-stats.velocityPercent)}% more than 30 days ago"
+            else -> "Steady vs. 30 days ago"
+        }
+        binding.sectionReductionTrend.textReductionVelocity.text = velocityText
     }
     
     private fun updateProgressColor(percentage: Double) {
