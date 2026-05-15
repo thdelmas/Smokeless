@@ -46,6 +46,8 @@
 
             <include android:id="@+id/sectionHero" layout="@layout/section_hero" />
 
+            <include android:id="@+id/sectionReductionTrend" layout="@layout/section_reduction_trend" />
+
             <include android:id="@+id/sectionQuickStats" layout="@layout/section_quick_stats" />
 
             <include android:id="@+id/sectionStatistics" layout="@layout/section_statistics" />

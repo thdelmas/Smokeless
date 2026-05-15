@@ -83,9 +83,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Money saved data
     private val _moneySaved = MutableLiveData<Float>()
     val moneySaved: LiveData<Float> = _moneySaved
-    
+
     private val _moneySavedFormatted = MutableLiveData<String>()
     val moneySavedFormatted: LiveData<String> = _moneySavedFormatted
+
+    // Reduction trend (reduce-don't-quit hero signal)
+    private val _reductionStats = MutableLiveData<ScoreCalculator.ReductionStats>()
+    val reductionStats: LiveData<ScoreCalculator.ReductionStats> = _reductionStats
     
     private var lastTimestamp = 0L
     private var currentChartPeriod = "month"
@@ -237,7 +241,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun calculateAllScores() {
         // Get all sessions for goal calculation
         val allSessions = repository.getAllSessionsSync()
-        
+
+        // Reduction trend — independent of selected period, uses all sessions
+        _reductionStats.postValue(ScoreCalculator.calculateReductionStats(allSessions))
+
         // Calculate goal and progress based on current goal period
         updateGoalForPeriod()
         

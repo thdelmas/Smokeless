@@ -394,6 +394,51 @@ object ScoreCalculator {
     }
     
     /**
+     * Rolling-window reduction stats. Headline metric for the "reduce, don't quit"
+     * frame: dominant signal is gradient (7d avg, change vs prior period), not binary
+     * abstinence. See docs/design-notes/2026-05-13-streak-vs-reduce.md.
+     */
+    data class ReductionStats(
+        val rollingAverage7d: Double,
+        val rollingAverage30d: Double,
+        val velocityPercent: Double, // positive = reducing, negative = increasing
+        val hasEnoughData: Boolean,
+    )
+
+    fun calculateReductionStats(sessions: List<SmokingSession>): ReductionStats {
+        if (sessions.isEmpty()) {
+            return ReductionStats(0.0, 0.0, 0.0, hasEnoughData = false)
+        }
+
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val start7d = now - 7 * day
+        val start30d = now - 30 * day
+        val startPrior = now - 60 * day // prior 30-day window: [60d, 30d) ago
+
+        val countLast7d = sessions.count { it.timestamp >= start7d }
+        val countLast30d = sessions.count { it.timestamp >= start30d }
+        val countPrior30d = sessions.count { it.timestamp in startPrior until start30d }
+
+        val avg7d = countLast7d / 7.0
+        val avg30d = countLast30d / 30.0
+        val avgPrior = countPrior30d / 30.0
+
+        val firstSession = sessions.minOf { it.timestamp }
+        val trackedDays = ((now - firstSession) / day).toInt() + 1
+        val hasEnoughData = trackedDays >= 14
+
+        val velocity = when {
+            !hasEnoughData -> 0.0
+            avgPrior < 0.01 && avg7d < 0.01 -> 0.0
+            avgPrior < 0.01 -> -100.0 // started smoking from clean baseline
+            else -> ((avgPrior - avg7d) / avgPrior) * 100.0
+        }
+
+        return ReductionStats(avg7d, avg30d, velocity, hasEnoughData)
+    }
+
+    /**
      * Calculate time since last cigarette
      */
     fun calculateTimeSinceLastSmoke(lastTimestamp: Long): Long {
