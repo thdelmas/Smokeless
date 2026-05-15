@@ -120,6 +120,49 @@ in their current scope — they are not physiological signals and Bios is
 silent about behavioral categories it can't measure from wearable data.
 Smokeless still tracks them locally; they just don't cross the metric bus.
 
+### 2.4 Caffeine + alcohol on the metric bus (hoist from W2F)
+
+Audit finding: tobacco and cannabis are on the bus, but caffeine and
+alcohol — the other two psychoactives — are not. W2F's `FuelLog`
+already captures caffeine events locally (for the `fuel_gap` mood
+signal); per the
+[Bios "case study: nutrition in W2F" rule](../../Bios/docs/ECOSYSTEM_BOUNDARIES.md),
+the second consumer must hoist the keys to the canonical bus rather
+than keep parallel private tables.
+
+Two consumers now exist:
+
+1. Bios's cross-correlation engine (caffeine confounds HRV / sleep
+   latency / RHR; alcohol confounds RHR / HRV / sleep architecture / skin
+   temperature).
+2. Smokeless's substance-use ledger surface (parity with tobacco /
+   cannabis: history, widget, cessation trajectory).
+
+**New keys** (paired with Bios `INTAKE` domain whitelist extension):
+
+- `CAFFEINE_USE` — discrete caffeine consumption event. Timestamp +
+  opaque event-id. No dose, no source.
+- `CAFFEINE_CRAVING` — discrete craving event, same shape.
+- `ALCOHOL_USE` — discrete alcohol consumption event.
+- `ALCOHOL_CRAVING` — discrete craving event.
+
+**Ownership.** Smokeless is the sole writer; the
+`com.smokless.smokeless` package gets all four keys whitelisted on the
+companion-write URI. W2F drops its caffeine write and reads from Bios
+via the consumer API to derive `fuel_gap`. Tracks
+[Smokeless #6 (alcohol)](https://github.com/thdelmas/Smokeless/issues/6).
+
+**Substance enum extension.** `Substance` gains `CAFFEINE` and `ALCOHOL`
+alongside the existing `TOBACCO` and `CANNABIS`. Per-substance
+statistics, history, and widget already exist after Phase 2.1; this is
+data-plane scope only.
+
+**Caveat — cessation framing.** Caffeine and alcohol have different
+cessation semantics than tobacco/cannabis (many users titrate rather
+than abstain). Cessation copy is gated per-substance; defaulting to
+neutral "log only" mode for the new pair until per-substance reasoning
+copy ships.
+
 ---
 
 ## Phase 3: Cessation intelligence [PLANNED]
