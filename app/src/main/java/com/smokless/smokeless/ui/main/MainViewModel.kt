@@ -93,6 +93,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _reductionStats = MutableLiveData<ScoreCalculator.ReductionStats>()
     val reductionStats: LiveData<ScoreCalculator.ReductionStats> = _reductionStats
 
+    // Lifetime banked smoke-free time. Never resets on a slip — its job is to
+    // remove the perverse incentive to skip logging to preserve a streak.
+    private val _bankedSmokeFreeMs = MutableLiveData(0L)
+    val bankedSmokeFreeMs: LiveData<Long> = _bankedSmokeFreeMs
+
+    // Snapshot taken on each DB refresh so the per-second timer can tick the
+    // banked counter without touching the database.
+    private var firstSessionTimestamp = 0L
+    private var totalExposureMs = 0L
+
     // Dominant substance for headline copy. Drives unit nouns and the
     // "smoke-free / clean" labeling per ROADMAP §2.2.
     private val _primarySubstance = MutableLiveData(Substance.DEFAULT)
@@ -187,6 +197,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val progress = ScoreCalculator.calculateIntervalProgress(timeSinceLastSmoke, target)
             _currentPercentage.postValue(progress)
         }
+
+        // Tick banked smoke-free counter using the snapshot from last refresh
+        if (firstSessionTimestamp > 0L) {
+            val banked = max(0L, System.currentTimeMillis() - firstSessionTimestamp - totalExposureMs)
+            _bankedSmokeFreeMs.postValue(banked)
+        }
     }
     
     /**
@@ -253,6 +269,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Reduction trend — independent of selected period, uses all sessions
         _reductionStats.postValue(ScoreCalculator.calculateReductionStats(allSessions))
+
+        // Snapshot inputs for the banked-hours ticker; updateTimer() will
+        // recompute from these without re-querying the DB each second.
+        firstSessionTimestamp = if (allSessions.isEmpty()) 0L else allSessions.minOf { it.timestamp }
+        totalExposureMs = allSessions.sumOf { it.substance.exposureMs }
+        _bankedSmokeFreeMs.postValue(ScoreCalculator.calculateBankedSmokeFreeMs(allSessions))
 
         // Primary substance drives headline copy (units, clean label).
         val primary = SubstanceCopy.primarySubstance(allSessions)
