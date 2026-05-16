@@ -23,7 +23,9 @@ import com.smokless.smokeless.ui.main.ChartData
 import com.smokless.smokeless.ui.main.MainViewModel
 import com.smokless.smokeless.ui.main.ScoreAdapter
 import com.smokless.smokeless.ui.main.ScoreData
+import com.smokless.smokeless.data.entity.Substance
 import com.smokless.smokeless.util.HealthBenefits
+import com.smokless.smokeless.util.SubstanceCopy
 import com.smokless.smokeless.util.TimeFormatter
 import java.text.DecimalFormat
 import kotlin.math.min
@@ -44,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private val percentFormat = DecimalFormat("0.0")
     
     private var currentPeriod = "month"
+    private var copy: SubstanceCopy = SubstanceCopy.TOBACCO
     
     private val refreshRunnable = object : Runnable {
         override fun run() {
@@ -281,11 +284,11 @@ class MainActivity : AppCompatActivity() {
         for (score in scores) {
             if (score.type == ScoreData.StatType.COUNT) {
                 val count = score.value
-                binding.sectionStatistics.textPeriodCount.text = "$count ${if (count == 1L) "cigarette" else "cigarettes"}"
+                binding.sectionStatistics.textPeriodCount.text = "$count ${copy.unitFor(count)}"
                 return
             }
         }
-        binding.sectionStatistics.textPeriodCount.text = "0 cigarettes"
+        binding.sectionStatistics.textPeriodCount.text = "0 ${copy.units}"
     }
     
     private fun setupCharts() {
@@ -730,7 +733,17 @@ class MainActivity : AppCompatActivity() {
         binding.sectionInsights.textInsightMessage.text = insight
     }
     
+    private fun applySubstanceCopy() {
+        binding.sectionHero.labelSmokeFree.text = copy.cleanLabel
+        binding.sectionReductionTrend.textReductionUnit.text = copy.perDay
+    }
+
     private fun observeViewModel() {
+        viewModel.primarySubstance.observe(this) { substance ->
+            copy = SubstanceCopy.forSubstance(substance)
+            applySubstanceCopy()
+        }
+
         viewModel.currentScore.observe(this) { score ->
             // Update the smoke-free elapsed timer (ticking up with seconds)
             updateSmokeFreeTimer(score)
