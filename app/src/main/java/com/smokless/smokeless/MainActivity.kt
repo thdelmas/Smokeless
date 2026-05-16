@@ -831,6 +831,17 @@ class MainActivity : AppCompatActivity() {
         val avgFormat = DecimalFormat("0.#")
         binding.sectionReductionTrend.textReductionAverage.text = avgFormat.format(stats.rollingAverage7d)
 
+        // Disclose coverage so the headline number can't hide a recent burst
+        // averaged across no-data days. Hidden when the user covered all 7 days.
+        val coverage = stats.loggedDaysLast7
+        if (stats.hasEnoughData && coverage in 1..6) {
+            binding.sectionReductionTrend.textReductionCoverage.text =
+                "across $coverage of 7 days logged"
+            binding.sectionReductionTrend.textReductionCoverage.visibility = android.view.View.VISIBLE
+        } else {
+            binding.sectionReductionTrend.textReductionCoverage.visibility = android.view.View.GONE
+        }
+
         val velocityText = when {
             !stats.hasEnoughData -> "Logging — trend appears with more days of data"
             !stats.velocityComparable ->

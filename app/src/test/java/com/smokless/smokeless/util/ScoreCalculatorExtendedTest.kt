@@ -258,6 +258,30 @@ class ScoreCalculatorExtendedTest {
         assertTrue(stats.hasEnoughData)
     }
 
+    @Test
+    fun `calculateReductionStats reports coverage for partial week`() {
+        // Real-device pattern: 4 logged days in the last 7 after a long gap.
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val priorWindow = (30L..46L).flatMap { d ->
+            List(4) { createSession(now - d * day - it * 60_000L) }
+        }
+        val recentWindow = (0L..3L).flatMap { d ->
+            List(5) { createSession(now - d * day - it * 60_000L) }
+        }
+        val stats = ScoreCalculator.calculateReductionStats(priorWindow + recentWindow)
+        assertEquals("Should report 4 of 7 days logged", 4, stats.loggedDaysLast7)
+    }
+
+    @Test
+    fun `calculateReductionStats reports full coverage for daily logging`() {
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val sessions = (0L..6L).map { createSession(now - it * day - 60_000L) }
+        val stats = ScoreCalculator.calculateReductionStats(sessions)
+        assertEquals(7, stats.loggedDaysLast7)
+    }
+
     // --- Helper functions ---
 
     private fun createSession(timestamp: Long): SmokingSession {

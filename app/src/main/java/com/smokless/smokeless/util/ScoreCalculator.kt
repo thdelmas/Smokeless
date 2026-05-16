@@ -408,11 +408,22 @@ object ScoreCalculator {
         // false, the UI suppresses the "% more/less than 30 days ago" copy
         // and shows a neutral baseline instead. See gh #19.
         val velocityComparable: Boolean,
+        // Number of distinct days in the last 7 that have at least one
+        // logged session. The UI uses this to disclose coverage so the
+        // headline number can't smuggle a relapse past the user. See gh #21.
+        val loggedDaysLast7: Int,
     )
 
     fun calculateReductionStats(sessions: List<SmokingSession>): ReductionStats {
         if (sessions.isEmpty()) {
-            return ReductionStats(0.0, 0.0, 0.0, hasEnoughData = false, velocityComparable = false)
+            return ReductionStats(
+                rollingAverage7d = 0.0,
+                rollingAverage30d = 0.0,
+                velocityPercent = 0.0,
+                hasEnoughData = false,
+                velocityComparable = false,
+                loggedDaysLast7 = 0,
+            )
         }
 
         val now = System.currentTimeMillis()
@@ -463,7 +474,14 @@ object ScoreCalculator {
             else -> ((avgPrior - avg7d) / avgPrior) * 100.0
         }
 
-        return ReductionStats(avg7d, avg30d, velocity, hasEnoughData, velocityComparable)
+        return ReductionStats(
+            rollingAverage7d = avg7d,
+            rollingAverage30d = avg30d,
+            velocityPercent = velocity,
+            hasEnoughData = hasEnoughData,
+            velocityComparable = velocityComparable,
+            loggedDaysLast7 = loggedLast7,
+        )
     }
 
     /**
