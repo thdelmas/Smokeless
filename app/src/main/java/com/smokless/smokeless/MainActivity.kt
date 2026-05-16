@@ -86,6 +86,10 @@ class MainActivity : AppCompatActivity() {
                     showAchievementsDialog()
                     true
                 }
+                R.id.action_health_timeline -> {
+                    startActivity(Intent(this, HealthTimelineActivity::class.java))
+                    true
+                }
                 else -> false
             }
         }
@@ -102,6 +106,10 @@ class MainActivity : AppCompatActivity() {
         statsAdapter = ScoreAdapter()
         binding.sectionStatistics.recyclerStats.layoutManager = LinearLayoutManager(this)
         binding.sectionStatistics.recyclerStats.adapter = statsAdapter
+
+        binding.sectionInsights.healthProgressTap.setOnClickListener {
+            startActivity(Intent(this, HealthTimelineActivity::class.java))
+        }
     }
     
     private fun setupChipGroup() {
@@ -831,8 +839,21 @@ class MainActivity : AppCompatActivity() {
         val avgFormat = DecimalFormat("0.#")
         binding.sectionReductionTrend.textReductionAverage.text = avgFormat.format(stats.rollingAverage7d)
 
+        // Disclose coverage so the headline number can't hide a recent burst
+        // averaged across no-data days. Hidden when the user covered all 7 days.
+        val coverage = stats.loggedDaysLast7
+        if (stats.hasEnoughData && coverage in 1..6) {
+            binding.sectionReductionTrend.textReductionCoverage.text =
+                "across $coverage of 7 days logged"
+            binding.sectionReductionTrend.textReductionCoverage.visibility = android.view.View.VISIBLE
+        } else {
+            binding.sectionReductionTrend.textReductionCoverage.visibility = android.view.View.GONE
+        }
+
         val velocityText = when {
-            !stats.hasEnoughData -> "Logging — trend appears after 14 days of data"
+            !stats.hasEnoughData -> "Logging — trend appears with more days of data"
+            !stats.velocityComparable ->
+                "Recent activity logged — comparison resumes after continuous tracking"
             stats.velocityPercent >= 5.0 ->
                 "${DecimalFormat("0").format(stats.velocityPercent)}% less than 30 days ago"
             stats.velocityPercent <= -5.0 ->

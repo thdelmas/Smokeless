@@ -80,6 +80,18 @@
             </LinearLayout>
 
             <TextView
+                android:id="@+id/textReductionCoverage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textColor="@color/text_tertiary"
+                android:textSize="11sp"
+                android:gravity="center"
+                android:fontFamily="sans-serif"
+                android:visibility="gone" />
+
+            <TextView
                 android:id="@+id/textReductionVelocity"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

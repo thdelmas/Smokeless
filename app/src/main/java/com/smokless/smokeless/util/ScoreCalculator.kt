@@ -400,14 +400,28 @@ object ScoreCalculator {
      */
     data class ReductionStats(
         val rollingAverage7d: Double,
-        val rollingAverage30d: Double,
         val velocityPercent: Double, // positive = reducing, negative = increasing
         val hasEnoughData: Boolean,
+        // False when the prior-30 vs last-7 comparison would be misleading
+        // (untracked gap between windows, or sparse logging in either). When
+        // false, the UI suppresses the "% more/less than 30 days ago" copy
+        // and shows a neutral baseline instead. See gh #19.
+        val velocityComparable: Boolean,
+        // Number of distinct days in the last 7 that have at least one
+        // logged session. The UI uses this to disclose coverage so the
+        // headline number can't smuggle a relapse past the user. See gh #21.
+        val loggedDaysLast7: Int,
     )
 
     fun calculateReductionStats(sessions: List<SmokingSession>): ReductionStats {
         if (sessions.isEmpty()) {
-            return ReductionStats(0.0, 0.0, 0.0, hasEnoughData = false)
+            return ReductionStats(
+                rollingAverage7d = 0.0,
+                velocityPercent = 0.0,
+                hasEnoughData = false,
+                velocityComparable = false,
+                loggedDaysLast7 = 0,
+            )
         }
 
         val now = System.currentTimeMillis()
@@ -416,26 +430,54 @@ object ScoreCalculator {
         val start30d = now - 30 * day
         val startPrior = now - 60 * day // prior 30-day window: [60d, 30d) ago
 
-        val countLast7d = sessions.count { it.timestamp >= start7d }
-        val countLast30d = sessions.count { it.timestamp >= start30d }
-        val countPrior30d = sessions.count { it.timestamp in startPrior until start30d }
+        val sessionsLast7 = sessions.filter { it.timestamp >= start7d }
+        val sessionsLast30 = sessions.filter { it.timestamp >= start30d }
+        val sessionsPrior30 = sessions.filter { it.timestamp in startPrior until start30d }
 
-        val avg7d = countLast7d / 7.0
-        val avg30d = countLast30d / 30.0
-        val avgPrior = countPrior30d / 30.0
+        val avg7d = sessionsLast7.size / 7.0
+        val avgPrior = sessionsPrior30.size / 30.0
 
         val firstSession = sessions.minOf { it.timestamp }
         val trackedDays = ((now - firstSession) / day).toInt() + 1
-        val hasEnoughData = trackedDays >= 14
+        // Calendar age alone isn't enough — a user with one session 14+ days
+        // ago would still pass. Require some density of actual logging too.
+        // See gh #20.
+        val loggedDaysLast30 = sessionsLast30.map { it.timestamp / day }.distinct().size
+        val hasEnoughData = trackedDays >= 14 && loggedDaysLast30 >= 5
+
+        // velocityComparable: each window needs enough logged days, and there
+        // must be no multi-week silence anywhere across the 60-day span (which
+        // would mean the comparison spans a returning-user gap).
+        val loggedDays = { ss: List<SmokingSession> -> ss.map { it.timestamp / day }.distinct().size }
+        val loggedLast7 = loggedDays(sessionsLast7)
+        val loggedPrior30 = loggedDays(sessionsPrior30)
+        val sortedLast60 = sessions
+            .filter { it.timestamp >= startPrior }
+            .sortedBy { it.timestamp }
+        var maxGapDays = 0L
+        for (i in 1 until sortedLast60.size) {
+            val gap = (sortedLast60[i].timestamp - sortedLast60[i - 1].timestamp) / day
+            if (gap > maxGapDays) maxGapDays = gap
+        }
+        val velocityComparable = hasEnoughData &&
+            loggedLast7 >= 4 &&
+            loggedPrior30 >= 14 &&
+            maxGapDays <= 14
 
         val velocity = when {
-            !hasEnoughData -> 0.0
+            !velocityComparable -> 0.0
             avgPrior < 0.01 && avg7d < 0.01 -> 0.0
             avgPrior < 0.01 -> -100.0 // started smoking from clean baseline
             else -> ((avgPrior - avg7d) / avgPrior) * 100.0
         }
 
-        return ReductionStats(avg7d, avg30d, velocity, hasEnoughData)
+        return ReductionStats(
+            rollingAverage7d = avg7d,
+            velocityPercent = velocity,
+            hasEnoughData = hasEnoughData,
+            velocityComparable = velocityComparable,
+            loggedDaysLast7 = loggedLast7,
+        )
     }
 
     /**
