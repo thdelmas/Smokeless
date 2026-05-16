@@ -14,6 +14,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.smokless.smokeless.data.AppDatabase
 import com.smokless.smokeless.util.HealthBenefits
 import com.smokless.smokeless.util.HealthMilestone
+import com.smokless.smokeless.util.SubstanceCopy
 
 class HealthTimelineActivity : AppCompatActivity() {
 
@@ -33,6 +34,7 @@ class HealthTimelineActivity : AppCompatActivity() {
     private fun loadTimeline() {
         AppDatabase.databaseExecutor.execute {
             val db = AppDatabase.getInstance(application)
+            val sessions = db.smokingSessionDao().getAllSessions()
             val lastTimestamp = db.smokingSessionDao().getLastTimestamp() ?: 0L
             val hoursSmokeFree = if (lastTimestamp > 0)
                 (System.currentTimeMillis() - lastTimestamp) / 3_600_000L
@@ -41,10 +43,11 @@ class HealthTimelineActivity : AppCompatActivity() {
             val milestones = HealthBenefits.getMilestones(hoursSmokeFree)
             val next = HealthBenefits.getNextMilestone(hoursSmokeFree)
             val achieved = milestones.count { it.isAchieved }
+            val copy = SubstanceCopy.forSubstance(SubstanceCopy.primarySubstance(sessions))
 
             runOnUiThread {
                 findViewById<TextView>(R.id.textSmokeFreeTime).text =
-                    formatSmokeFreeLabel(hoursSmokeFree)
+                    formatSmokeFreeLabel(hoursSmokeFree, copy)
 
                 findViewById<TextView>(R.id.textMilestoneProgress).text =
                     "$achieved / ${milestones.size} milestones reached"
@@ -68,13 +71,14 @@ class HealthTimelineActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatSmokeFreeLabel(hours: Long): String {
+    private fun formatSmokeFreeLabel(hours: Long, copy: SubstanceCopy): String {
         if (hours <= 0) return "Tracking from your last log"
         val days = hours / 24
+        val suffix = copy.cleanSuffix
         return when {
-            days >= 365 -> "${days / 365}y ${days % 365}d smoke-free"
-            days >= 1 -> "${days}d ${hours % 24}h smoke-free"
-            else -> "${hours}h smoke-free"
+            days >= 365 -> "${days / 365}y ${days % 365}d $suffix"
+            days >= 1 -> "${days}d ${hours % 24}h $suffix"
+            else -> "${hours}h $suffix"
         }
     }
 

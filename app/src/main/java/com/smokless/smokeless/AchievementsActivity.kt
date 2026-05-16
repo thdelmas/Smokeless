@@ -11,6 +11,7 @@ import com.smokless.smokeless.data.AppDatabase
 import com.smokless.smokeless.databinding.ActivityAchievementsBinding
 import com.smokless.smokeless.util.Achievement
 import com.smokless.smokeless.util.AchievementManager
+import com.smokless.smokeless.util.SubstanceCopy
 
 class AchievementsActivity : AppCompatActivity() {
 
@@ -44,8 +45,9 @@ class AchievementsActivity : AppCompatActivity() {
             val hoursSinceLast = if (lastTimestamp > 0) (System.currentTimeMillis() - lastTimestamp) / 3600000 else 0L
             val daysSinceLast = (hoursSinceLast / 24).toInt()
 
+            val copy = SubstanceCopy.forSubstance(SubstanceCopy.primarySubstance(sessions))
             val achievements = AchievementManager.getAllAchievements(
-                daysSinceLast, bestStreak, cravings.size, cleanDays
+                daysSinceLast, bestStreak, cravings.size, cleanDays, copy
             )
 
             val unlockedCount = achievements.count { it.isUnlocked }
