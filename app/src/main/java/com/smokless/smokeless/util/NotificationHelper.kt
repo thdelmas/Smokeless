@@ -143,17 +143,22 @@ object NotificationHelper {
         }
     }
 
-    fun showEncouragementNotification(context: Context, hours: Int) {
+    fun showEncouragementNotification(
+        context: Context,
+        hours: Int,
+        copy: SubstanceCopy = SubstanceCopy.TOBACCO,
+    ) {
         createNotificationChannel(context)
-        
+
+        val suffix = copy.cleanSuffix
         val messages = mapOf(
-            24 to Pair("🌟 One Full Day!", "You've been smoke-free for 24 hours! Your body is already healing."),
-            72 to Pair("💪 72 Hours Strong!", "Three days smoke-free! The hardest part is behind you."),
-            168 to Pair("🎉 One Week!", "A full week without smoking! You're doing amazing!"),
-            720 to Pair("🏆 One Month!", "30 days smoke-free! This is a huge achievement!"),
-            2160 to Pair("🌈 Three Months!", "Quarter of a year smoke-free! Your health has significantly improved."),
-            4320 to Pair("💎 Six Months!", "Half a year! You've proven you can live smoke-free."),
-            8760 to Pair("🎊 One Year!", "An entire year without smoking! You're an inspiration!")
+            24 to Pair("🌟 One Full Day!", "You've been $suffix for 24 hours! Your body is already healing."),
+            72 to Pair("💪 72 Hours Strong!", "Three days $suffix! The hardest part is behind you."),
+            168 to Pair("🎉 One Week!", "A full week $suffix! You're doing amazing!"),
+            720 to Pair("🏆 One Month!", "30 days $suffix! This is a huge achievement!"),
+            2160 to Pair("🌈 Three Months!", "Quarter of a year $suffix! Your health has significantly improved."),
+            4320 to Pair("💎 Six Months!", "Half a year! You've proven you can live $suffix."),
+            8760 to Pair("🎊 One Year!", "An entire year $suffix! You're an inspiration!")
         )
         
         val message = messages[hours] ?: return

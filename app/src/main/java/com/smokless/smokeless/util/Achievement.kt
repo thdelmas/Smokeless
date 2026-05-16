@@ -10,20 +10,25 @@ data class Achievement(
 )
 
 object AchievementManager {
-    
-    fun getStreakAchievements(currentStreak: Int, bestStreak: Int): List<Achievement> {
+
+    fun getStreakAchievements(
+        currentStreak: Int,
+        bestStreak: Int,
+        copy: SubstanceCopy = SubstanceCopy.TOBACCO,
+    ): List<Achievement> {
+        val suffix = copy.cleanSuffix
         val streakAchievements = listOf(
-            Achievement("first_hour", "First Hour", "1 hour smoke-free", "⏰", 1),
-            Achievement("first_day", "Clean Day", "24 hours smoke-free", "🌟", 1),
-            Achievement("three_days", "Breaking Free", "3 days smoke-free", "💪", 3),
-            Achievement("one_week", "Week Warrior", "7 days smoke-free", "🔥", 7),
-            Achievement("two_weeks", "Fortnight Fighter", "14 days smoke-free", "💎", 14),
-            Achievement("one_month", "Monthly Master", "30 days smoke-free", "🏆", 30),
-            Achievement("90_days", "Quarter Champion", "90 days smoke-free", "👑", 90),
-            Achievement("six_months", "Half Year Hero", "180 days smoke-free", "🌈", 180),
-            Achievement("one_year", "Annual Achievement", "365 days smoke-free", "🎊", 365)
+            Achievement("first_hour", "First Hour", "1 hour $suffix", "⏰", 1),
+            Achievement("first_day", "Clean Day", "24 hours $suffix", "🌟", 1),
+            Achievement("three_days", "Breaking Free", "3 days $suffix", "💪", 3),
+            Achievement("one_week", "Week Warrior", "7 days $suffix", "🔥", 7),
+            Achievement("two_weeks", "Fortnight Fighter", "14 days $suffix", "💎", 14),
+            Achievement("one_month", "Monthly Master", "30 days $suffix", "🏆", 30),
+            Achievement("90_days", "Quarter Champion", "90 days $suffix", "👑", 90),
+            Achievement("six_months", "Half Year Hero", "180 days $suffix", "🌈", 180),
+            Achievement("one_year", "Annual Achievement", "365 days $suffix", "🎊", 365)
         )
-        
+
         return streakAchievements.map { achievement ->
             achievement.copy(isUnlocked = bestStreak >= achievement.requirement)
         }
@@ -56,14 +61,26 @@ object AchievementManager {
         }
     }
     
-    fun getAllAchievements(currentStreak: Int, bestStreak: Int, resistedCount: Int, cleanDays: Int): List<Achievement> {
-        return getStreakAchievements(currentStreak, bestStreak) +
+    fun getAllAchievements(
+        currentStreak: Int,
+        bestStreak: Int,
+        resistedCount: Int,
+        cleanDays: Int,
+        copy: SubstanceCopy = SubstanceCopy.TOBACCO,
+    ): List<Achievement> {
+        return getStreakAchievements(currentStreak, bestStreak, copy) +
                getCravingsAchievements(resistedCount) +
                getCleanDaysAchievements(cleanDays)
     }
-    
-    fun getNextAchievement(currentStreak: Int, bestStreak: Int, resistedCount: Int, cleanDays: Int): Achievement? {
-        val all = getAllAchievements(currentStreak, bestStreak, resistedCount, cleanDays)
+
+    fun getNextAchievement(
+        currentStreak: Int,
+        bestStreak: Int,
+        resistedCount: Int,
+        cleanDays: Int,
+        copy: SubstanceCopy = SubstanceCopy.TOBACCO,
+    ): Achievement? {
+        val all = getAllAchievements(currentStreak, bestStreak, resistedCount, cleanDays, copy)
         return all.firstOrNull { !it.isUnlocked }
     }
 }

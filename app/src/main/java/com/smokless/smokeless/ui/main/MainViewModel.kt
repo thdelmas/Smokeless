@@ -208,9 +208,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Check for major time milestones
             when (hours.toInt()) {
                 24, 72, 168, 720, 2160, 4320, 8760 -> {
+                    val copy = SubstanceCopy.forSubstance(_primarySubstance.value ?: Substance.DEFAULT)
                     NotificationHelper.showEncouragementNotification(
                         getApplication<Application>().applicationContext,
-                        hours.toInt()
+                        hours.toInt(),
+                        copy,
                     )
                 }
             }

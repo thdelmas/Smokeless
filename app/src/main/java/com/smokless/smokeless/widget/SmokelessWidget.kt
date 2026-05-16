@@ -10,6 +10,7 @@ import com.smokless.smokeless.MainActivity
 import com.smokless.smokeless.R
 import com.smokless.smokeless.data.AppDatabase
 import com.smokless.smokeless.util.ScoreCalculator
+import com.smokless.smokeless.util.SubstanceCopy
 
 class SmokelessWidget : AppWidgetProvider() {
 
@@ -55,6 +56,7 @@ class SmokelessWidget : AppWidgetProvider() {
                     val targetInterval = ScoreCalculator.calculateTargetInterval(sessions, difficulty)
 
                     val remaining = targetInterval - timeSince
+                    val copy = SubstanceCopy.forSubstance(SubstanceCopy.primarySubstance(sessions))
 
                     val timerText: String
                     val labelText: String
@@ -64,7 +66,7 @@ class SmokelessWidget : AppWidgetProvider() {
                         val hours = timeSince / 3_600_000
                         val minutes = (timeSince % 3_600_000) / 60_000
                         timerText = "${hours}h ${minutes}m"
-                        labelText = "SMOKE-FREE FOR"
+                        labelText = copy.cleanLabel
                     } else if (remaining > 0) {
                         // Counting down
                         val hours = remaining / 3_600_000
@@ -88,7 +90,7 @@ class SmokelessWidget : AppWidgetProvider() {
                     }
 
                     val streakText = when {
-                        targetInterval <= 0L -> "Log smokes to start"
+                        targetInterval <= 0L -> copy.logCta
                         remaining > 0 -> "Hold on, you've got this!"
                         else -> "Target reached!"
                     }

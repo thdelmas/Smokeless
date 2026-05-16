@@ -15,10 +15,12 @@ import java.util.concurrent.TimeUnit
  * pending substance-specific data — see ROADMAP §2.2.
  */
 data class SubstanceCopy(
-    val unit: String,        // "cigarette" / "session"
-    val units: String,       // "cigarettes" / "sessions"
-    val perDay: String,      // headline abbreviation: "cigs/day" / "uses/day"
-    val cleanLabel: String,  // hero label: "SMOKE-FREE FOR" / "CLEAN FOR"
+    val unit: String,         // "cigarette" / "session"
+    val units: String,        // "cigarettes" / "sessions"
+    val perDay: String,       // headline abbreviation: "cigs/day" / "uses/day"
+    val cleanLabel: String,   // hero label: "SMOKE-FREE FOR" / "CLEAN FOR"
+    val cleanSuffix: String,  // inline suffix: "smoke-free" / "clean"
+    val logCta: String,       // widget CTA: "Log smokes to start" / "Log sessions to start"
 ) {
     fun unitFor(count: Long): String = if (count == 1L) unit else units
     fun unitFor(count: Int): String = unitFor(count.toLong())
@@ -29,6 +31,8 @@ data class SubstanceCopy(
             units = "cigarettes",
             perDay = "cigs/day",
             cleanLabel = "SMOKE-FREE FOR",
+            cleanSuffix = "smoke-free",
+            logCta = "Log smokes to start",
         )
 
         val CANNABIS = SubstanceCopy(
@@ -36,6 +40,8 @@ data class SubstanceCopy(
             units = "sessions",
             perDay = "uses/day",
             cleanLabel = "CLEAN FOR",
+            cleanSuffix = "clean",
+            logCta = "Log sessions to start",
         )
 
         fun forSubstance(substance: Substance): SubstanceCopy = when (substance) {
