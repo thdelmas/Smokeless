@@ -2,7 +2,6 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient">
@@ -25,91 +24,193 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Main timeline content -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <androidx.core.widget.NestedScrollView
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/timelineScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:clipToPadding="false">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingBottom="260dp">
+
+                <include android:id="@+id/sectionRecoveryHero" layout="@layout/section_recovery_hero" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Timeline"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:fontFamily="sans-serif-medium" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerTimeline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never" />
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Floating: today's-pace band + FABs (above the stats sheet) -->
+    <LinearLayout
+        android:id="@+id/floatingActions"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:clipToPadding="false">
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="68dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="20dp">
+
+        <TextView
+            android:id="@+id/textTodayPace"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:background="@drawable/bg_stat_chip"
+            android:text="Keep logging — your pace shows up after 3 days"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:contentDescription="Today's pace versus your typical pace"
+            android:accessibilityLiveRegion="polite" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                android:id="@+id/fabResist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:text="I Resisted"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif-bold"
+                android:paddingVertical="14dp"
+                android:paddingHorizontal="24dp"
+                app:icon="@drawable/ic_check"
+                app:iconTint="@color/white"
+                app:iconSize="20dp"
+                app:backgroundTint="@color/status_champion"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
+                app:elevation="12dp" />
+
+            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                android:id="@+id/fabSmoke"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="I Smoked"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-bold"
+                android:paddingVertical="16dp"
+                android:paddingHorizontal="32dp"
+                app:icon="@drawable/ic_refresh"
+                app:iconTint="@color/black"
+                app:iconSize="22dp"
+                app:backgroundTint="@color/accent_amber"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
+                app:elevation="12dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Stats bottom sheet — drag up for charts, records, period stats -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/statsSheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_card"
+        android:clipToPadding="false"
+        app:behavior_hideable="false"
+        app:behavior_peekHeight="56dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingBottom="100dp">
+            android:orientation="vertical">
 
-            <include android:id="@+id/sectionHero" layout="@layout/section_hero" />
+            <!-- Drag handle + label (this is the peek) -->
+            <LinearLayout
+                android:id="@+id/statsSheetHandle"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
 
-            <include android:id="@+id/sectionReductionTrend" layout="@layout/section_reduction_trend" />
+                <View
+                    android:layout_width="40dp"
+                    android:layout_height="4dp"
+                    android:background="@color/divider" />
 
-            <include android:id="@+id/sectionQuickStats" layout="@layout/section_quick_stats" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Stats ▴"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:fontFamily="sans-serif-medium" />
 
-            <include android:id="@+id/sectionStatistics" layout="@layout/section_statistics" />
+            </LinearLayout>
 
-            <include android:id="@+id/sectionCharts" layout="@layout/section_charts" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingBottom="40dp">
 
-            <include android:id="@+id/sectionRecords" layout="@layout/section_records" />
+                <include android:id="@+id/sectionQuickStats" layout="@layout/section_quick_stats" />
 
-            <include android:id="@+id/sectionInsights" layout="@layout/section_insights" />
+                <include android:id="@+id/sectionReductionTrend" layout="@layout/section_reduction_trend" />
+
+                <include android:id="@+id/sectionStatistics" layout="@layout/section_statistics" />
+
+                <include android:id="@+id/sectionCharts" layout="@layout/section_charts" />
+
+                <include android:id="@+id/sectionRecords" layout="@layout/section_records" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
-
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <!-- Floating Action Buttons -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="32dp"
-        android:orientation="horizontal"
-        android:gravity="center">
-
-        <!-- I Resisted Button -->
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-            android:id="@+id/fabResist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
-            android:text="I Resisted"
-            android:textColor="@color/white"
-            android:textSize="15sp"
-            android:fontFamily="sans-serif-bold"
-            android:paddingVertical="14dp"
-            android:paddingHorizontal="24dp"
-            app:icon="@drawable/ic_check"
-            app:iconTint="@color/white"
-            app:iconSize="20dp"
-            app:backgroundTint="@color/status_champion"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
-            app:elevation="12dp" />
-
-        <!-- I Smoked Button -->
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-            android:id="@+id/fabSmoke"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="I Smoked"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:fontFamily="sans-serif-bold"
-            android:paddingVertical="16dp"
-            android:paddingHorizontal="32dp"
-            app:icon="@drawable/ic_refresh"
-            app:iconTint="@color/black"
-            app:iconSize="22dp"
-            app:backgroundTint="@color/accent_amber"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Pill"
-            app:elevation="12dp" />
-
-    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
