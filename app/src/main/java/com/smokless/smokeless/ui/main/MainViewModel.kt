@@ -109,10 +109,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _newCravingVictories = MutableLiveData(0)
     val newCravingVictories: LiveData<Int> = _newCravingVictories
 
+    // "How am I doing right now" — today vs typical pace, time-of-day aware.
+    private val _todayPace = MutableLiveData<ScoreCalculator.TodayPace>()
+    val todayPace: LiveData<ScoreCalculator.TodayPace> = _todayPace
+
     // Snapshot taken on each DB refresh so the per-second timer can tick the
     // banked counter without touching the database.
     private var firstSessionTimestamp = 0L
     private var totalExposureMs = 0L
+
+    // Snapshot inputs for the today-pace ticker so updateTimer can re-evaluate
+    // the pace verdict as the day progresses, without hitting the DB.
+    private var paceBaselineDailyAvg = 0.0
+    private var paceActualToday = 0
+    private var paceStartOfToday = 0L
+    private var paceHasBaseline = false
 
     // Dominant substance for headline copy. Drives unit nouns and the
     // "smoke-free / clean" labeling per ROADMAP §2.2.
@@ -242,6 +253,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val banked = max(0L, System.currentTimeMillis() - firstSessionTimestamp - totalExposureMs)
             _bankedSmokeFreeMs.postValue(banked)
         }
+
+        // Re-evaluate today-pace verdict from the cached baseline. The day's
+        // expected count grows with elapsed time, so this can flip
+        // BEHIND → ON_PACE → AHEAD without a DB hit.
+        if (paceHasBaseline && paceStartOfToday > 0L) {
+            val nowMs = System.currentTimeMillis()
+            val dayMs = java.util.concurrent.TimeUnit.DAYS.toMillis(1)
+            val dayFraction = ((nowMs - paceStartOfToday).toDouble() / dayMs).coerceIn(0.0, 1.0)
+            val typicalByNow = paceBaselineDailyAvg * dayFraction
+            val state = when {
+                paceBaselineDailyAvg < 0.5 ->
+                    if (paceActualToday == 0) ScoreCalculator.PaceState.CLEAN_TODAY
+                    else ScoreCalculator.PaceState.CLEAN_BREAK
+                paceActualToday <= typicalByNow * 0.75 -> ScoreCalculator.PaceState.AHEAD
+                paceActualToday <= typicalByNow * 1.25 -> ScoreCalculator.PaceState.ON_PACE
+                else -> ScoreCalculator.PaceState.BEHIND
+            }
+            _todayPace.postValue(
+                ScoreCalculator.TodayPace(state, paceActualToday, typicalByNow, paceBaselineDailyAvg)
+            )
+        }
     }
     
     /**
@@ -314,6 +346,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         firstSessionTimestamp = if (allSessions.isEmpty()) 0L else allSessions.minOf { it.timestamp }
         totalExposureMs = allSessions.sumOf { it.substance.exposureMs }
         _bankedSmokeFreeMs.postValue(ScoreCalculator.calculateBankedSmokeFreeMs(allSessions))
+
+        // Snapshot today-pace inputs so the per-second tick can re-evaluate
+        // the verdict as the day's expected count grows.
+        val pace = ScoreCalculator.calculateTodayPace(allSessions)
+        _todayPace.postValue(pace)
+        paceBaselineDailyAvg = pace.baselineDailyAvg
+        paceActualToday = pace.actualToday
+        paceHasBaseline = pace.state != ScoreCalculator.PaceState.CALIBRATING
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        paceStartOfToday = cal.timeInMillis
 
         // Primary substance drives headline copy (units, clean label).
         val primary = SubstanceCopy.primarySubstance(allSessions)

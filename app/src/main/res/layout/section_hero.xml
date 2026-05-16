@@ -149,12 +149,29 @@
                 android:fontFamily="sans-serif"
                 android:gravity="center" />
 
+            <!-- Today's pace: glanceable "how am I doing right now" verdict. -->
+            <TextView
+                android:id="@+id/textTodayPace"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:background="@drawable/bg_stat_chip"
+                android:text="Keep logging — your pace shows up after 3 days"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:contentDescription="Today's pace versus your typical pace"
+                android:accessibilityLiveRegion="polite" />
+
             <!-- Goal Progress Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="28dp"
+                android:layout_marginTop="12dp"
                 android:background="@drawable/bg_stat_chip"
                 android:padding="18dp">
 
