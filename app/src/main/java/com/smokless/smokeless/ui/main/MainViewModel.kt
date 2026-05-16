@@ -7,9 +7,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.smokless.smokeless.data.AppDatabase
 import com.smokless.smokeless.data.repository.SmokingRepository
+import com.smokless.smokeless.data.entity.Substance
 import com.smokless.smokeless.util.HealthBenefits
 import com.smokless.smokeless.util.NotificationHelper
 import com.smokless.smokeless.util.ScoreCalculator
+import com.smokless.smokeless.util.SubstanceCopy
 import com.smokless.smokeless.util.TimeFormatter
 import java.text.SimpleDateFormat
 import java.util.*
@@ -90,6 +92,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Reduction trend (reduce-don't-quit hero signal)
     private val _reductionStats = MutableLiveData<ScoreCalculator.ReductionStats>()
     val reductionStats: LiveData<ScoreCalculator.ReductionStats> = _reductionStats
+
+    // Dominant substance for headline copy. Drives unit nouns and the
+    // "smoke-free / clean" labeling per ROADMAP §2.2.
+    private val _primarySubstance = MutableLiveData(Substance.DEFAULT)
+    val primarySubstance: LiveData<Substance> = _primarySubstance
     
     private var lastTimestamp = 0L
     private var currentChartPeriod = "month"
@@ -245,15 +252,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // Reduction trend — independent of selected period, uses all sessions
         _reductionStats.postValue(ScoreCalculator.calculateReductionStats(allSessions))
 
+        // Primary substance drives headline copy (units, clean label).
+        val primary = SubstanceCopy.primarySubstance(allSessions)
+        _primarySubstance.postValue(primary)
+        val copy = SubstanceCopy.forSubstance(primary)
+
         // Calculate goal and progress based on current goal period
         updateGoalForPeriod()
-        
+
         // Calculate scores for each period
-        _allTimeScores.postValue(calculateScopeScores(allSessions, "all"))
-        _yearScores.postValue(calculateScopeScores(repository.getSessionsForScope("year"), "year"))
-        _monthScores.postValue(calculateScopeScores(repository.getSessionsForScope("month"), "month"))
-        _weekScores.postValue(calculateScopeScores(repository.getSessionsForScope("week"), "week"))
-        _dayScores.postValue(calculateScopeScores(repository.getSessionsForScope("day"), "day"))
+        _allTimeScores.postValue(calculateScopeScores(allSessions, "all", copy))
+        _yearScores.postValue(calculateScopeScores(repository.getSessionsForScope("year"), "year", copy))
+        _monthScores.postValue(calculateScopeScores(repository.getSessionsForScope("month"), "month", copy))
+        _weekScores.postValue(calculateScopeScores(repository.getSessionsForScope("week"), "week", copy))
+        _dayScores.postValue(calculateScopeScores(repository.getSessionsForScope("day"), "day", copy))
         
         // Calculate chart data
         val chartSessions = repository.getSessionsForScope(currentChartPeriod)
@@ -342,7 +354,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Calculate comprehensive statistics for a scope
      */
-    private fun calculateScopeScores(sessions: List<com.smokless.smokeless.data.entity.SmokingSession>, scope: String): List<ScoreData> {
+    private fun calculateScopeScores(
+        sessions: List<com.smokless.smokeless.data.entity.SmokingSession>,
+        scope: String,
+        copy: SubstanceCopy = SubstanceCopy.TOBACCO,
+    ): List<ScoreData> {
         val stats = ScoreCalculator.calculatePeriodStats(sessions, scope)
         val scores = mutableListOf<ScoreData>()
         
@@ -378,7 +394,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             value = stats.averagePerDay.toLong(),
             decimalValue = stats.averagePerDay,
             percentage = avgPercentage,
-            unit = "cigs/day",
+            unit = copy.perDay,
             type = ScoreData.StatType.AVERAGE
         ))
         
@@ -407,7 +423,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             value = stats.totalCigarettes.toLong(),
             decimalValue = stats.totalCigarettes.toDouble(),
             percentage = 0.0,  // No percentage needed for raw total
-            unit = if (stats.totalCigarettes == 1) "cigarette" else "cigarettes",
+            unit = copy.unitFor(stats.totalCigarettes),
             type = ScoreData.StatType.COUNT
         ))
         
