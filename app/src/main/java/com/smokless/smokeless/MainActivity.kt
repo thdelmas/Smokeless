@@ -832,7 +832,7 @@ class MainActivity : AppCompatActivity() {
         binding.sectionReductionTrend.textReductionAverage.text = avgFormat.format(stats.rollingAverage7d)
 
         val velocityText = when {
-            !stats.hasEnoughData -> "Logging — trend appears after 14 days of data"
+            !stats.hasEnoughData -> "Logging — trend appears with more days of data"
             !stats.velocityComparable ->
                 "Recent activity logged — comparison resumes after continuous tracking"
             stats.velocityPercent >= 5.0 ->

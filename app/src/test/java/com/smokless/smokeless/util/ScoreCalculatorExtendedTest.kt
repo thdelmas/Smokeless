@@ -238,6 +238,26 @@ class ScoreCalculatorExtendedTest {
         assertTrue("Recent < prior should produce positive (improving) velocity", stats.velocityPercent > 0)
     }
 
+    @Test
+    fun `calculateReductionStats hasEnoughData false for single session 14 days old`() {
+        // Calendar age passes (14 days), but only 1 logged day in last 30.
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val sessions = listOf(createSession(now - 14 * day))
+        val stats = ScoreCalculator.calculateReductionStats(sessions)
+        assertFalse("Sparse history must not unlock trend", stats.hasEnoughData)
+    }
+
+    @Test
+    fun `calculateReductionStats hasEnoughData true with 5 logged days in last 30`() {
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        // 5 distinct logged days within the last 30, first session > 14 days ago.
+        val sessions = (0L..4L).map { createSession(now - (15L + it) * day) }
+        val stats = ScoreCalculator.calculateReductionStats(sessions)
+        assertTrue(stats.hasEnoughData)
+    }
+
     // --- Helper functions ---
 
     private fun createSession(timestamp: Long): SmokingSession {

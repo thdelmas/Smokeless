@@ -431,7 +431,11 @@ object ScoreCalculator {
 
         val firstSession = sessions.minOf { it.timestamp }
         val trackedDays = ((now - firstSession) / day).toInt() + 1
-        val hasEnoughData = trackedDays >= 14
+        // Calendar age alone isn't enough — a user with one session 14+ days
+        // ago would still pass. Require some density of actual logging too.
+        // See gh #20.
+        val loggedDaysLast30 = sessionsLast30.map { it.timestamp / day }.distinct().size
+        val hasEnoughData = trackedDays >= 14 && loggedDaysLast30 >= 5
 
         // velocityComparable: each window needs enough logged days, and there
         // must be no multi-week silence anywhere across the 60-day span (which
