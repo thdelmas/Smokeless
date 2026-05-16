@@ -6,6 +6,10 @@ specialized capture surface (substance-use and craving event logging)
 that Bios cannot reasonably own, and it pushes computed events back to
 Bios's metric bus for cross-correlation.
 
+For the **visual overview** of the whole ecosystem and which edges ship vs.
+remain planned, see
+[miam-knowledge-base/docs/ecosystem-map.md](https://github.com/mi4m/miam-knowledge-base/blob/main/docs/ecosystem-map.md).
+
 This document mirrors the structure of
 [W2F/docs/ECOSYSTEM.md](../../W2F/docs/ECOSYSTEM.md) and
 [Virgil/docs/ECOSYSTEM.md](../../Virgil/docs/ECOSYSTEM.md).
