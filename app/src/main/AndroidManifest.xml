@@ -47,6 +47,10 @@
             android:label="Achievements"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".HealthTimelineActivity"
+            android:label="Healing timeline"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".OnboardingActivity"
             android:theme="@style/Base.Theme.SmokeLess" />
         <activity

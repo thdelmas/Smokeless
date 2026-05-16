@@ -86,6 +86,10 @@ class MainActivity : AppCompatActivity() {
                     showAchievementsDialog()
                     true
                 }
+                R.id.action_health_timeline -> {
+                    startActivity(Intent(this, HealthTimelineActivity::class.java))
+                    true
+                }
                 else -> false
             }
         }
@@ -102,6 +106,10 @@ class MainActivity : AppCompatActivity() {
         statsAdapter = ScoreAdapter()
         binding.sectionStatistics.recyclerStats.layoutManager = LinearLayoutManager(this)
         binding.sectionStatistics.recyclerStats.adapter = statsAdapter
+
+        binding.sectionInsights.healthProgressTap.setOnClickListener {
+            startActivity(Intent(this, HealthTimelineActivity::class.java))
+        }
     }
     
     private fun setupChipGroup() {
