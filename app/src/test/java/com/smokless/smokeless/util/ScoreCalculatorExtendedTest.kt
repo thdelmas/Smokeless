@@ -183,6 +183,61 @@ class ScoreCalculatorExtendedTest {
         assertEquals(100.0, progress, 0.01)
     }
 
+    // --- calculateReductionStats ---
+
+    @Test
+    fun `calculateReductionStats marks empty input not comparable`() {
+        val stats = ScoreCalculator.calculateReductionStats(emptyList())
+        assertFalse(stats.hasEnoughData)
+        assertFalse(stats.velocityComparable)
+        assertEquals(0.0, stats.velocityPercent, 0.01)
+    }
+
+    @Test
+    fun `calculateReductionStats suppresses velocity when prior window is empty`() {
+        // Only the last 7 days have sessions; prior 30-day window is empty.
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val sessions = (0 until 7).flatMap { d ->
+            List(3) { createSession(now - d * day - it * 60_000L) }
+        }
+        val stats = ScoreCalculator.calculateReductionStats(sessions)
+        assertFalse("Brand-new tracking should not yield velocity copy", stats.velocityComparable)
+    }
+
+    @Test
+    fun `calculateReductionStats suppresses velocity on returning-user gap`() {
+        // Real-device pattern: 17 logged days ~30-50 days ago, then 27-day silence,
+        // then 4 days of recent activity. Comparison must not fire.
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val priorWindow = (30L..46L).flatMap { d ->
+            List(4) { createSession(now - d * day - it * 60_000L) }
+        }
+        val recentWindow = (0L..3L).flatMap { d ->
+            List(5) { createSession(now - d * day - it * 60_000L) }
+        }
+        val stats = ScoreCalculator.calculateReductionStats(priorWindow + recentWindow)
+        assertTrue(stats.hasEnoughData)
+        assertFalse("Multi-week gap between windows must suppress velocity", stats.velocityComparable)
+        assertEquals(0.0, stats.velocityPercent, 0.01)
+    }
+
+    @Test
+    fun `calculateReductionStats produces velocity for continuously tracked user`() {
+        // 60 days of daily logging, recent week lighter than older history.
+        val now = System.currentTimeMillis()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val sessions = (0L..59L).flatMap { d ->
+            val perDay = if (d <= 6L) 2 else 4
+            List(perDay) { createSession(now - d * day - it * 60_000L) }
+        }
+        val stats = ScoreCalculator.calculateReductionStats(sessions)
+        assertTrue(stats.hasEnoughData)
+        assertTrue("Continuous tracking should yield comparable velocity", stats.velocityComparable)
+        assertTrue("Recent < prior should produce positive (improving) velocity", stats.velocityPercent > 0)
+    }
+
     // --- Helper functions ---
 
     private fun createSession(timestamp: Long): SmokingSession {

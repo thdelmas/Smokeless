@@ -833,6 +833,8 @@ class MainActivity : AppCompatActivity() {
 
         val velocityText = when {
             !stats.hasEnoughData -> "Logging — trend appears after 14 days of data"
+            !stats.velocityComparable ->
+                "Recent activity logged — comparison resumes after continuous tracking"
             stats.velocityPercent >= 5.0 ->
                 "${DecimalFormat("0").format(stats.velocityPercent)}% less than 30 days ago"
             stats.velocityPercent <= -5.0 ->
