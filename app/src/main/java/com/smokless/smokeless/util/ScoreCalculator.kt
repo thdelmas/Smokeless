@@ -400,7 +400,6 @@ object ScoreCalculator {
      */
     data class ReductionStats(
         val rollingAverage7d: Double,
-        val rollingAverage30d: Double,
         val velocityPercent: Double, // positive = reducing, negative = increasing
         val hasEnoughData: Boolean,
         // False when the prior-30 vs last-7 comparison would be misleading
@@ -418,7 +417,6 @@ object ScoreCalculator {
         if (sessions.isEmpty()) {
             return ReductionStats(
                 rollingAverage7d = 0.0,
-                rollingAverage30d = 0.0,
                 velocityPercent = 0.0,
                 hasEnoughData = false,
                 velocityComparable = false,
@@ -437,7 +435,6 @@ object ScoreCalculator {
         val sessionsPrior30 = sessions.filter { it.timestamp in startPrior until start30d }
 
         val avg7d = sessionsLast7.size / 7.0
-        val avg30d = sessionsLast30.size / 30.0
         val avgPrior = sessionsPrior30.size / 30.0
 
         val firstSession = sessions.minOf { it.timestamp }
@@ -476,7 +473,6 @@ object ScoreCalculator {
 
         return ReductionStats(
             rollingAverage7d = avg7d,
-            rollingAverage30d = avg30d,
             velocityPercent = velocity,
             hasEnoughData = hasEnoughData,
             velocityComparable = velocityComparable,
