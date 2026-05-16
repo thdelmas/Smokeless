@@ -97,6 +97,90 @@ class ScoreCalculatorTest {
     }
 
     @Test
+    fun `calculateTodayPace returns CALIBRATING with no history`() {
+        val pace = ScoreCalculator.calculateTodayPace(emptyList())
+        assertEquals(ScoreCalculator.PaceState.CALIBRATING, pace.state)
+    }
+
+    @Test
+    fun `calculateTodayPace returns CALIBRATING with fewer than 3 prior days`() {
+        // Pick a "now" deep into the day so dayFraction is meaningful.
+        val now = paceNow(hourOfDay = 18)
+        val day = 24L * 3_600_000
+        // Two prior days of activity, plus today: priorDays = 2 < 3.
+        val sessions = listOf(
+            SmokingSession(now - 2 * day).apply { id = 1 },
+            SmokingSession(now - 1 * day).apply { id = 2 },
+            SmokingSession(now - 3_600_000).apply { id = 3 }, // today
+        )
+        val pace = ScoreCalculator.calculateTodayPace(sessions, now)
+        assertEquals(ScoreCalculator.PaceState.CALIBRATING, pace.state)
+        assertEquals(1, pace.actualToday)
+    }
+
+    @Test
+    fun `calculateTodayPace AHEAD when today smoked below 75 percent of typical-by-now`() {
+        val now = paceNow(hourOfDay = 18) // 18/24 = 0.75 of day elapsed
+        val day = 24L * 3_600_000
+        // 7 prior days, ~10 sessions/day → baseline 10. At 18:00 typical ≈ 7.5.
+        // Today: 4 sessions → 4 / 7.5 = 0.53, below 75% → AHEAD.
+        val priors = (1..7).flatMap { d ->
+            List(10) { SmokingSession(now - d * day - it * 60_000L).apply { id = (d * 100 + it).toLong() } }
+        }
+        val today = List(4) { SmokingSession(now - it * 60_000L - 7_200_000).apply { id = (1000 + it).toLong() } }
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.AHEAD, pace.state)
+        assertEquals(4, pace.actualToday)
+    }
+
+    @Test
+    fun `calculateTodayPace BEHIND when today smoked above 125 percent of typical-by-now`() {
+        val now = paceNow(hourOfDay = 12) // 12/24 = 0.5
+        val day = 24L * 3_600_000
+        // 7 prior days, 10/day → baseline 10. At noon typical ≈ 5.
+        // Today: 8 → 8/5 = 1.6, above 125% → BEHIND.
+        val priors = (1..7).flatMap { d ->
+            List(10) { SmokingSession(now - d * day - it * 60_000L).apply { id = (d * 100 + it).toLong() } }
+        }
+        val today = List(8) { SmokingSession(now - it * 60_000L - 3_600_000).apply { id = (2000 + it).toLong() } }
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.BEHIND, pace.state)
+    }
+
+    @Test
+    fun `calculateTodayPace CLEAN_BREAK when baseline near zero but smoked today`() {
+        val now = paceNow(hourOfDay = 15)
+        val day = 24L * 3_600_000
+        // 7 prior clean days (just one early session for tracking-length, then nothing in window)
+        val priors = listOf(SmokingSession(now - 8 * day).apply { id = 1 })
+        val today = listOf(SmokingSession(now - 60_000L).apply { id = 2 })
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.CLEAN_BREAK, pace.state)
+        assertEquals(1, pace.actualToday)
+    }
+
+    @Test
+    fun `calculateTodayPace CLEAN_TODAY when baseline near zero and today is clean`() {
+        val now = paceNow(hourOfDay = 15)
+        val day = 24L * 3_600_000
+        val priors = listOf(SmokingSession(now - 8 * day).apply { id = 1 })
+        val pace = ScoreCalculator.calculateTodayPace(priors, now)
+        assertEquals(ScoreCalculator.PaceState.CLEAN_TODAY, pace.state)
+        assertEquals(0, pace.actualToday)
+    }
+
+    /** Returns a deterministic "now" at a fixed hour of day, avoiding clock flakiness. */
+    private fun paceNow(hourOfDay: Int): Long {
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.YEAR, 2026); set(java.util.Calendar.MONTH, 4) // May
+            set(java.util.Calendar.DAY_OF_MONTH, 15)
+            set(java.util.Calendar.HOUR_OF_DAY, hourOfDay)
+            set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }
+        return cal.timeInMillis
+    }
+
+    @Test
     fun `detectCravingVictories uses real smoke time accounting for exposure offset`() {
         val now = 10_000_000_000L
         val win = ScoreCalculator.CRAVING_VICTORY_WINDOW_MS

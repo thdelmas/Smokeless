@@ -484,6 +484,66 @@ object ScoreCalculator {
     /** Window after a craving log in which a smoke "cancels" the victory. */
     const val CRAVING_VICTORY_WINDOW_MS = 30L * 60 * 1000
 
+    /** "How am I doing right now" — one-glance verdict for today vs typical pace. */
+    enum class PaceState {
+        CALIBRATING, // not enough history to compare against
+        AHEAD,       // notably below typical-by-now
+        ON_PACE,     // within ±25% of typical-by-now
+        BEHIND,      // notably above typical-by-now
+        CLEAN_TODAY, // baseline is near-zero and today is also clean
+        CLEAN_BREAK, // baseline is near-zero but smoked today
+    }
+
+    data class TodayPace(
+        val state: PaceState,
+        val actualToday: Int,
+        val typicalByNow: Double,
+        val baselineDailyAvg: Double,
+    )
+
+    /**
+     * Compute today's pace against a rolling 14-day baseline, time-of-day
+     * aware: typical-by-now scales with the fraction of the day elapsed. The
+     * baseline excludes today (so a heavy morning doesn't reset its own bar).
+     * Requires at least 3 prior days of tracking — fewer than that and we
+     * return CALIBRATING rather than a misleading verdict.
+     */
+    fun calculateTodayPace(
+        allSessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+    ): TodayPace {
+        if (allSessions.isEmpty()) return TodayPace(PaceState.CALIBRATING, 0, 0.0, 0.0)
+
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val startOfToday = cal.timeInMillis
+        val actualToday = allSessions.count { it.timestamp >= startOfToday }
+
+        val day = TimeUnit.DAYS.toMillis(1)
+        val firstSession = allSessions.minOf { it.timestamp }
+        val trackedDays = ((nowMs - firstSession) / day).toInt() + 1
+        val priorDays = (trackedDays - 1).coerceAtMost(14)
+        if (priorDays < 3) return TodayPace(PaceState.CALIBRATING, actualToday, 0.0, 0.0)
+
+        val priorStart = startOfToday - priorDays * day
+        val priorCount = allSessions.count { it.timestamp in priorStart until startOfToday }
+        val baselineDailyAvg = priorCount.toDouble() / priorDays
+
+        val dayFraction = ((nowMs - startOfToday).toDouble() / day).coerceIn(0.0, 1.0)
+        val typicalByNow = baselineDailyAvg * dayFraction
+
+        val state = when {
+            baselineDailyAvg < 0.5 -> if (actualToday == 0) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
+            actualToday <= typicalByNow * 0.75 -> PaceState.AHEAD
+            actualToday <= typicalByNow * 1.25 -> PaceState.ON_PACE
+            else -> PaceState.BEHIND
+        }
+        return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg)
+    }
+
     data class CravingVictories(
         /** Number of confirmed victories beyond the cursor (verified: window elapsed, no smoke landed). */
         val newCount: Int,

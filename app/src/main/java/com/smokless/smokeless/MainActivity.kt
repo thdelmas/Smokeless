@@ -870,6 +870,9 @@ class MainActivity : AppCompatActivity() {
             binding.sectionRecords.textBankedHours.text = TimeFormatter.formatShort(ms)
         }
 
+        // Observe today-pace: one-glance "how am I doing right now" line
+        viewModel.todayPace.observe(this) { pace -> updateTodayPace(pace) }
+
         // Surface verified craving victories: a craving counts here only
         // after its 30-min window elapsed without a smoke. Stronger and more
         // honest than the in-the-moment "I Resisted" tap.
@@ -884,6 +887,27 @@ class MainActivity : AppCompatActivity() {
         viewModel.reductionStats.observe(this) { stats ->
             updateReductionTrend(stats)
         }
+    }
+
+    private fun updateTodayPace(pace: com.smokless.smokeless.util.ScoreCalculator.TodayPace) {
+        val typicalRounded = kotlin.math.round(pace.typicalByNow).toInt()
+        val unit = copy.unitFor(pace.actualToday.toLong())
+        val (text, colorRes) = when (pace.state) {
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.CALIBRATING ->
+                "Keep logging — your pace verdict shows up after 3 days" to R.color.text_secondary
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.AHEAD ->
+                "Ahead of pace — ${pace.actualToday} $unit today, usually $typicalRounded by now" to R.color.status_champion
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.ON_PACE ->
+                "On pace — ${pace.actualToday} $unit today, usually $typicalRounded by now" to R.color.accent_amber
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.BEHIND ->
+                "Behind pace — ${pace.actualToday} $unit today, usually $typicalRounded by now" to R.color.status_reset
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_TODAY ->
+                "Matching your clean baseline — 0 today" to R.color.status_champion
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_BREAK ->
+                "${pace.actualToday} $unit today — you've been clean lately, gentle reset" to R.color.accent_amber
+        }
+        binding.sectionHero.textTodayPace.text = text
+        binding.sectionHero.textTodayPace.setTextColor(ContextCompat.getColor(this, colorRes))
     }
 
     private fun updateReductionTrend(stats: com.smokless.smokeless.util.ScoreCalculator.ReductionStats) {
