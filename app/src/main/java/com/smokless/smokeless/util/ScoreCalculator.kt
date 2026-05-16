@@ -1,5 +1,6 @@
 package com.smokless.smokeless.util
 
+import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import java.text.SimpleDateFormat
 import java.util.*
@@ -478,6 +479,49 @@ object ScoreCalculator {
             velocityComparable = velocityComparable,
             loggedDaysLast7 = loggedLast7,
         )
+    }
+
+    /** Window after a craving log in which a smoke "cancels" the victory. */
+    const val CRAVING_VICTORY_WINDOW_MS = 30L * 60 * 1000
+
+    data class CravingVictories(
+        /** Number of confirmed victories beyond the cursor (verified: window elapsed, no smoke landed). */
+        val newCount: Int,
+        /** Updated cursor — advance past every craving whose window has fully elapsed, win or not. */
+        val newCursor: Long,
+    )
+
+    /**
+     * Detect craving victories: a logged craving counts when its 30-min window
+     * has fully elapsed AND no real smoke landed inside it. Smokes are matched
+     * against the actual smoke moment (timestamp minus the exposure offset
+     * already baked into [SmokingSession.timestamp]).
+     *
+     * Caller should initialize the cursor to "now" on first run to avoid
+     * surfacing a backlog of historical victories.
+     */
+    fun detectCravingVictories(
+        cravings: List<Craving>,
+        sessions: List<SmokingSession>,
+        cursor: Long,
+        nowMs: Long = System.currentTimeMillis(),
+    ): CravingVictories {
+        val confirmable = cravings.filter {
+            it.timestamp > cursor && nowMs - it.timestamp >= CRAVING_VICTORY_WINDOW_MS
+        }
+        if (confirmable.isEmpty()) return CravingVictories(0, cursor)
+        var victories = 0
+        var newCursor = cursor
+        for (craving in confirmable) {
+            val windowEnd = craving.timestamp + CRAVING_VICTORY_WINDOW_MS
+            val smokedWithin = sessions.any { s ->
+                val realSmokeTime = s.timestamp - s.substance.exposureMs
+                realSmokeTime in craving.timestamp..windowEnd
+            }
+            if (!smokedWithin) victories++
+            if (craving.timestamp > newCursor) newCursor = craving.timestamp
+        }
+        return CravingVictories(victories, newCursor)
     }
 
     /**
