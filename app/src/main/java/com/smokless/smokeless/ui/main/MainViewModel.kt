@@ -25,6 +25,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val KEY_PACK_PRICE = "packPrice"
         private const val KEY_CIGS_PER_PACK = "cigsPerPack"
         private const val KEY_CURRENCY = "currency"
+        // Cursor for craving-victory detection: timestamp of the latest craving
+        // whose 30-min outcome window has been evaluated and acknowledged to
+        // the user. Initialized to "now" on first run so historical cravings
+        // don't all surface as victories at once.
+        private const val KEY_LAST_VICTORY_CURSOR = "lastVictoryCursorTs"
         private const val DEFAULT_PACK_PRICE = 10.0f
         private const val DEFAULT_CIGS_PER_PACK = 20
         private const val DEFAULT_CURRENCY = "$"
@@ -98,6 +103,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _bankedSmokeFreeMs = MutableLiveData(0L)
     val bankedSmokeFreeMs: LiveData<Long> = _bankedSmokeFreeMs
 
+    // One-shot signal: number of cravings that verifiably held (no smoke
+    // within 30 min) since the last time the UI acknowledged them. Activity
+    // calls [dismissNewVictories] after showing.
+    private val _newCravingVictories = MutableLiveData(0)
+    val newCravingVictories: LiveData<Int> = _newCravingVictories
+
     // Snapshot taken on each DB refresh so the per-second timer can tick the
     // banked counter without touching the database.
     private var firstSessionTimestamp = 0L
@@ -166,14 +177,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         AppDatabase.databaseExecutor.execute {
             val timestamp = repository.getLastTimestamp()
             lastTimestamp = timestamp ?: 0L
-            
+
             // Calculate time since last smoke (for hero display)
             val score = ScoreCalculator.calculateTimeSinceLastSmoke(lastTimestamp)
             _currentScore.postValue(score)
-            
+
             // Calculate all period statistics
             calculateAllScores()
+
+            // Detect verified craving victories since last acknowledgement.
+            detectCravingVictories()
         }
+    }
+
+    private fun detectCravingVictories() {
+        var cursor = prefs.getLong(KEY_LAST_VICTORY_CURSOR, 0L)
+        if (cursor == 0L) {
+            // First run: anchor at "now" so historical cravings don't all
+            // surface at once. Their windows are already long-past, so this
+            // is a one-shot reset; future cravings will be evaluated normally.
+            cursor = System.currentTimeMillis()
+            prefs.edit().putLong(KEY_LAST_VICTORY_CURSOR, cursor).apply()
+            return
+        }
+        val cravings = repository.getAllCravings()
+        val sessions = repository.getAllSessionsSync()
+        val result = ScoreCalculator.detectCravingVictories(cravings, sessions, cursor)
+        if (result.newCursor != cursor) {
+            prefs.edit().putLong(KEY_LAST_VICTORY_CURSOR, result.newCursor).apply()
+        }
+        if (result.newCount > 0) {
+            _newCravingVictories.postValue(result.newCount)
+        }
+    }
+
+    fun dismissNewVictories() {
+        _newCravingVictories.value = 0
     }
     
     /**

@@ -68,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         setupChipGroup()
         setupCharts()
         setupFab()
+        setupResistFab()
         setupCollapsibleSections()
         setupSwipeRefresh()
         observeViewModel()
@@ -653,23 +654,42 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Show confirmation when craving is resisted
+     * Show confirmation when a craving is logged. Warm but measured — the
+     * real celebration lands in [showVictorySnackbar] only after the 30-min
+     * window passes without a smoke, so this copy describes the *action* of
+     * naming the craving, not a guaranteed outcome.
      */
     private fun showResistConfirmation() {
-        // Create a simple snackbar/toast to encourage the user
         val messages = listOf(
-            "💪 Great job resisting!",
-            "🌟 You're stronger than you think!",
-            "🔥 That's the spirit!",
-            "💚 Your body thanks you!",
-            "⭐ Keep up the great work!",
-            "🎉 Victory over craving!",
-            "💎 Every resistance makes you stronger!"
+            "💚 Logged. Cravings usually pass in 3–5 minutes.",
+            "🌊 Riding it out. Breathe.",
+            "🌱 You named it. That's the first move.",
+            "✊ One thought at a time.",
+            "⏳ Let's see if it holds.",
         )
         val message = messages.random()
-        
+
         com.google.android.material.snackbar.Snackbar
             .make(binding.root, message, com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+            .setBackgroundTint(ContextCompat.getColor(this, R.color.surface_elevated))
+            .setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+            .show()
+    }
+
+    /**
+     * Earned celebration: shown only after the 30-min outcome window verified
+     * the craving did not lead to a smoke. Lands on the next app open after
+     * the window elapses, which is when the win is concrete and the user can
+     * actually feel it.
+     */
+    private fun showVictorySnackbar(count: Int) {
+        val message = if (count == 1) {
+            "🏅 1 craving held — verified smoke-free 30 min later."
+        } else {
+            "🏅 $count cravings held — verified smoke-free 30 min later."
+        }
+        com.google.android.material.snackbar.Snackbar
+            .make(binding.root, message, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
             .setBackgroundTint(ContextCompat.getColor(this, R.color.status_champion))
             .setTextColor(ContextCompat.getColor(this, R.color.white))
             .show()
@@ -848,6 +868,16 @@ class MainActivity : AppCompatActivity() {
         // Observe banked smoke-free time (lifetime, additive)
         viewModel.bankedSmokeFreeMs.observe(this) { ms ->
             binding.sectionRecords.textBankedHours.text = TimeFormatter.formatShort(ms)
+        }
+
+        // Surface verified craving victories: a craving counts here only
+        // after its 30-min window elapsed without a smoke. Stronger and more
+        // honest than the in-the-moment "I Resisted" tap.
+        viewModel.newCravingVictories.observe(this) { count ->
+            if (count > 0) {
+                showVictorySnackbar(count)
+                viewModel.dismissNewVictories()
+            }
         }
 
         // Observe reduction trend (data, no praise — per design note)
