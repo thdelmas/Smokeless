@@ -481,6 +481,21 @@ object ScoreCalculator {
     }
 
     /**
+     * Lifetime smoke-free time, additive and never reset by a slip.
+     * = (now - first logged session) - sum of per-session exposure windows.
+     * Counterweight to clean-day streaks so honest logging doesn't cost the
+     * user their headline number.
+     */
+    fun calculateBankedSmokeFreeMs(sessions: List<SmokingSession>): Long {
+        if (sessions.isEmpty()) return 0L
+        val firstTimestamp = sessions.minOf { it.timestamp }
+        val now = System.currentTimeMillis()
+        val tracked = now - firstTimestamp
+        val exposure = sessions.sumOf { it.substance.exposureMs }
+        return max(0L, tracked - exposure)
+    }
+
+    /**
      * Calculate time since last cigarette
      */
     fun calculateTimeSinceLastSmoke(lastTimestamp: Long): Long {

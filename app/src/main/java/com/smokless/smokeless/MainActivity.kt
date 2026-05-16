@@ -32,11 +32,6 @@ import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
 
-    companion object {
-        private const val EXPOSURE_CIGARETTE_MS = 10L * 60 * 1000  // ~10 minutes
-        private const val EXPOSURE_WEED_MS = 30L * 60 * 1000       // ~30 minutes
-    }
-
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
     
@@ -547,14 +542,14 @@ class MainActivity : AppCompatActivity() {
                 .setMessage("This will restart your countdown timer after the exposure time.")
                 .setPositiveButton("Cigarette (~10 min)") { _, _ ->
                     recordSmokeAction(
-                        EXPOSURE_CIGARETTE_MS,
+                        com.smokless.smokeless.data.entity.Substance.TOBACCO.exposureMs,
                         com.smokless.smokeless.data.entity.Substance.TOBACCO,
                     )
                 }
                 .setNegativeButton("Cancel", null)
                 .setNeutralButton("Weed (~30 min)") { _, _ ->
                     recordSmokeAction(
-                        EXPOSURE_WEED_MS,
+                        com.smokless.smokeless.data.entity.Substance.CANNABIS.exposureMs,
                         com.smokless.smokeless.data.entity.Substance.CANNABIS,
                     )
                 }
@@ -585,8 +580,16 @@ class MainActivity : AppCompatActivity() {
         viewModel.recordSmokeWithId(exposureOffsetMs, substance) { sessionId ->
             updateButtonState(0.0)
             updateWidgets()
+            // Lead with the banked counter (if any) so the moment of an honest
+            // log surfaces what the user kept, not what they reset.
+            val bankedMs = viewModel.bankedSmokeFreeMs.value ?: 0L
+            val message = if (bankedMs > 0L) {
+                "Logged. ${TimeFormatter.formatShort(bankedMs)} smoke-free banked — still yours."
+            } else {
+                "Smoke recorded"
+            }
             com.google.android.material.snackbar.Snackbar
-                .make(binding.root, "Smoke recorded", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                .make(binding.root, message, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
                 .setAction("UNDO") {
                     viewModel.undoSmoke(sessionId)
                     updateWidgets()
@@ -840,6 +843,11 @@ class MainActivity : AppCompatActivity() {
         // Observe money saved
         viewModel.moneySavedFormatted.observe(this) { formatted ->
             binding.sectionRecords.textMoneySaved.text = formatted
+        }
+
+        // Observe banked smoke-free time (lifetime, additive)
+        viewModel.bankedSmokeFreeMs.observe(this) { ms ->
+            binding.sectionRecords.textBankedHours.text = TimeFormatter.formatShort(ms)
         }
 
         // Observe reduction trend (data, no praise — per design note)

@@ -8,9 +8,9 @@ package com.smokless.smokeless.data.entity
  * stays YAGNI-scoped to what the UI actually exposes today — tobacco and
  * cannabis.
  */
-enum class Substance {
-    TOBACCO,
-    CANNABIS;
+enum class Substance(val exposureMs: Long) {
+    TOBACCO(10L * 60 * 1000),
+    CANNABIS(30L * 60 * 1000);
 
     companion object {
         /** Default used by the Room migration backfill and any legacy code paths. */
