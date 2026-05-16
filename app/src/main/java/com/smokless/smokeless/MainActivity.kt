@@ -582,15 +582,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Drive the recovery hero from banked smoke-free time (not time-since-last).
-     * Banked is cumulative and never erased on a slip, so the timeline marker
-     * keeps the milestones the user has earned.
+     * Banked time grows monotonically, but the body's recovery milestones
+     * (heart rate, CO, circulation, etc.) reset after each cigarette — that's
+     * biology, not a UX choice. So the milestone list is driven by the current
+     * clean streak (time since last smoke). Banked stays as the lifetime
+     * "never erased" metric in the timer text above.
      */
-    private fun updateRecoveryHero(bankedMs: Long) {
+    private fun updateRecoveryHero(bankedMs: Long, timeSinceLastSmokeMs: Long) {
         binding.sectionRecoveryHero.textBankedTimer.text = TimeFormatter.formatShort(bankedMs)
 
-        val bankedHours = bankedMs / 3_600_000L
-        val milestones = HealthBenefits.getMilestones(bankedHours)
+        val cleanHours = timeSinceLastSmokeMs / 3_600_000L
+        val milestones = HealthBenefits.getMilestones(cleanHours)
         val achievedCount = milestones.count { it.isAchieved }
         val total = milestones.size
 
@@ -598,7 +600,7 @@ class MainActivity : AppCompatActivity() {
         binding.sectionRecoveryHero.progressMilestones.max = total
         binding.sectionRecoveryHero.progressMilestones.progress = achievedCount
 
-        val current = HealthBenefits.getCurrentMilestone(bankedHours)
+        val current = HealthBenefits.getCurrentMilestone(cleanHours)
         if (current != null) {
             binding.sectionRecoveryHero.textCurrentMilestone.text =
                 "You are at: ${current.icon} ${current.title}"
@@ -607,9 +609,9 @@ class MainActivity : AppCompatActivity() {
                 "You are at: 🌱 Starting"
         }
 
-        val next = HealthBenefits.getNextMilestone(bankedHours)
+        val next = HealthBenefits.getNextMilestone(cleanHours)
         if (next != null) {
-            val remaining = (next.hours - bankedHours).coerceAtLeast(0L)
+            val remaining = (next.hours - cleanHours).coerceAtLeast(0L)
             binding.sectionRecoveryHero.textNextMilestone.text =
                 "Next: ${next.icon} ${next.title} — in ${formatDuration(remaining)}"
         } else {
@@ -647,12 +649,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.currentScore.observe(this) { score ->
-            // Time since last smoke only drives the paused-during-exposure badge now.
             updatePausedBadge(score)
+            // Milestones reflect the current clean streak, so they update each
+            // tick. Banked timer is refreshed from its own LiveData below.
+            val banked = viewModel.bankedSmokeFreeMs.value ?: 0L
+            updateRecoveryHero(banked, score)
         }
 
         viewModel.bankedSmokeFreeMs.observe(this) { ms ->
-            updateRecoveryHero(ms)
+            val score = viewModel.currentScore.value ?: 0L
+            updateRecoveryHero(ms, score)
             binding.sectionRecords.textBankedHours.text = TimeFormatter.formatShort(ms)
         }
 
