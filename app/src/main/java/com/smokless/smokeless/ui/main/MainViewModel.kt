@@ -183,10 +183,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         exposureOffsetMs: Long = 0L,
         substance: com.smokless.smokeless.data.entity.Substance =
             com.smokless.smokeless.data.entity.Substance.DEFAULT,
+        quantity: Double = 1.0,
         callback: (Long) -> Unit,
     ) {
         AppDatabase.databaseExecutor.execute {
-            val id = repository.recordSmokeSync(exposureOffsetMs, substance)
+            val id = repository.recordSmokeSync(exposureOffsetMs, substance, quantity)
             refreshData()
             android.os.Handler(android.os.Looper.getMainLooper()).post { callback(id) }
         }

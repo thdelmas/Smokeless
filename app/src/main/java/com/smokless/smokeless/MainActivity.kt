@@ -460,11 +460,56 @@ class MainActivity : AppCompatActivity() {
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
             showSmokePicker()
         }
+        binding.fabSmoke.setOnLongClickListener { view ->
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            showSizedSmokeDialog()
+            true
+        }
+    }
+
+    /**
+     * Sized log path — substance + dose-bucket chips in one dialog. Single-tap
+     * users land in [showSmokePicker] which defaults quantity=1.0; this dialog
+     * is reserved for moments when the count alone would hide the actual dose.
+     */
+    private fun showSizedSmokeDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_sized_smoke, null)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Log") { _, _ ->
+                val substanceChips = view.findViewById<
+                    com.google.android.material.chip.ChipGroup
+                >(R.id.chipGroupSubstance)
+                val sizeChips = view.findViewById<
+                    com.google.android.material.chip.ChipGroup
+                >(R.id.chipGroupSize)
+
+                val substance = when (substanceChips.checkedChipId) {
+                    R.id.chipSubstanceCannabis ->
+                        com.smokless.smokeless.data.entity.Substance.CANNABIS
+                    else ->
+                        com.smokless.smokeless.data.entity.Substance.TOBACCO
+                }
+                val quantity = when (sizeChips.checkedChipId) {
+                    R.id.chipSizeDrag -> 0.25
+                    R.id.chipSizeHalf -> 0.5
+                    R.id.chipSizeMore -> 1.5
+                    else -> 1.0
+                }
+                recordSmokeAction(
+                    exposureOffsetMs = substance.exposureMs,
+                    substance = substance,
+                    quantity = quantity,
+                )
+            }
+            .show()
     }
 
     private fun recordSmokeAction(
         exposureOffsetMs: Long,
         substance: com.smokless.smokeless.data.entity.Substance,
+        quantity: Double = 1.0,
     ) {
         binding.sectionRecoveryHero.textBankedTimer.animate()
             .scaleX(0.92f).scaleY(0.92f).alpha(0.6f)
@@ -475,13 +520,16 @@ class MainActivity : AppCompatActivity() {
                     .setDuration(200).start()
             }.start()
 
-        viewModel.recordSmokeWithId(exposureOffsetMs, substance) { sessionId ->
+        viewModel.recordSmokeWithId(exposureOffsetMs, substance, quantity) { sessionId ->
             updateWidgets()
             val bankedMs = viewModel.bankedSmokeFreeMs.value ?: 0L
+            // Lead with the size when it's not a default full smoke so the
+            // user sees their choice reflected in the confirmation.
+            val sizeNote = formatQuantityLabel(quantity)?.let { "$it · " }.orEmpty()
             val message = if (bankedMs > 0L) {
-                "Logged. ${TimeFormatter.formatShort(bankedMs)} smoke-free banked — still yours."
+                "${sizeNote}Logged. ${TimeFormatter.formatShort(bankedMs)} smoke-free banked — still yours."
             } else {
-                "Smoke recorded"
+                "${sizeNote}Smoke recorded"
             }
             com.google.android.material.snackbar.Snackbar
                 .make(binding.root, message, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
@@ -494,6 +542,13 @@ class MainActivity : AppCompatActivity() {
                 .setActionTextColor(ContextCompat.getColor(this, R.color.accent_amber))
                 .show()
         }
+    }
+
+    private fun formatQuantityLabel(quantity: Double): String? = when {
+        kotlin.math.abs(quantity - 0.25) < 0.01 -> "Drag"
+        kotlin.math.abs(quantity - 0.5) < 0.01 -> "Half"
+        kotlin.math.abs(quantity - 1.5) < 0.01 -> "More"
+        else -> null // full / non-bucket values — no badge
     }
 
     private fun setupResistFab() {
