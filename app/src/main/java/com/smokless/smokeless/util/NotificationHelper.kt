@@ -12,13 +12,19 @@ import com.smokless.smokeless.MainActivity
 import com.smokless.smokeless.R
 
 object NotificationHelper {
-    
+
     private const val CHANNEL_ID = "smokeless_milestones"
     private const val CHANNEL_NAME = "Milestones & Achievements"
     private const val CHANNEL_DESC = "Notifications for health milestones and achievements"
-    
+
+    private const val TRIGGER_CHANNEL_ID = "smokeless_trigger_windows"
+    private const val TRIGGER_CHANNEL_NAME = "Trigger window heads-up"
+    private const val TRIGGER_CHANNEL_DESC =
+        "Quiet, low-priority alerts when your typical smoke times approach"
+
     private const val NOTIFICATION_ID_BASE = 1000
-    
+    private const val NOTIFICATION_ID_TRIGGER = NOTIFICATION_ID_BASE + 12000
+
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
@@ -27,9 +33,65 @@ object NotificationHelper {
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 250, 250, 250)
             }
-            
+
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createTriggerChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Default importance — visible but quiet. The trigger-window
+            // heads-up isn't urgent; it's a forecast. The user can mute the
+            // channel without losing milestone celebrations.
+            val channel = NotificationChannel(
+                TRIGGER_CHANNEL_ID,
+                TRIGGER_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = TRIGGER_CHANNEL_DESC
+                enableVibration(false)
+            }
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    fun showTriggerWindowNotification(
+        context: Context,
+        slotHour: Int,
+        substanceLabel: String,
+        tactic: CravingTactic,
+    ) {
+        createTriggerChannel(context)
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        val hourLabel = String.format("%02d:00", slotHour)
+        val title = "⏰ $hourLabel — your $substanceLabel window"
+        val body = "${tactic.icon} ${tactic.title}: ${tactic.body}"
+
+        val notification = NotificationCompat.Builder(context, TRIGGER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_check)
+            .setContentTitle(title)
+            .setContentText("Heads up — this hour is usually a smoke moment. Tactic: ${tactic.title}.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_TRIGGER, notification)
+        } catch (e: SecurityException) {
+            // Permission not granted — silently swallow, matches existing helpers.
         }
     }
     

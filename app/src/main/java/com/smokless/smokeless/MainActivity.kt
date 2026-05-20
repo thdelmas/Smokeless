@@ -1212,6 +1212,8 @@ class MainActivity : AppCompatActivity() {
         viewModel.refreshData()
         refreshHandler.postDelayed(refreshRunnable, 1000)
         startBreathingAnimation()
+        // Idempotent — schedules only when the alarm hasn't been set yet.
+        com.smokless.smokeless.util.TriggerWindowReceiver.schedule(this)
     }
 
     override fun onPause() {

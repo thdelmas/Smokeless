@@ -296,6 +296,12 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 .show(supportFragmentManager, "timePicker")
         }
+
+        binding.switchTriggerHeadsUp.isChecked =
+            com.smokless.smokeless.util.TriggerWindowReceiver.isEnabled(this)
+        binding.switchTriggerHeadsUp.setOnCheckedChangeListener { _, isChecked ->
+            com.smokless.smokeless.util.TriggerWindowReceiver.setEnabled(this, isChecked)
+        }
     }
 
     private fun formatHour(hour: Int): String {
