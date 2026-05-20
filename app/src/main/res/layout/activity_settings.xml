@@ -587,6 +587,47 @@
                         app:icon="@drawable/ic_upload"
                         app:iconGravity="textStart" />
 
+                    <!-- Pending-approval banner. Visible only when Bios
+                         rejected the last push with "Companion not
+                         approved by owner" — guides the user to the
+                         approval tap inside Bios. -->
+                    <LinearLayout
+                        android:id="@+id/biosPendingApprovalBanner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:background="@color/surface_card"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Waiting for approval in Bios"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Bios received your push but is waiting for you to approve Smokeless in its Companion Apps list. Approve once and future events will flow through automatically."
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:lineSpacingExtra="2dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnOpenBiosCompanions"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Open Bios → Companion Apps" />
+
+                    </LinearLayout>
+
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>

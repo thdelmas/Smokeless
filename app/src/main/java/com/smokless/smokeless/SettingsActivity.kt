@@ -57,6 +57,37 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnSyncBiosHistory.setOnClickListener {
             confirmBackfill()
         }
+        binding.btnOpenBiosCompanions.setOnClickListener {
+            launchBiosCompanions()
+        }
+    }
+
+    /**
+     * Launches Bios's main activity with the deep-link extra it reads to
+     * jump straight into Settings → Companion Apps. Used by the pending-
+     * approval banner so the user is one tap from approving Smokeless.
+     */
+    private fun launchBiosCompanions() {
+        val intent = packageManager.getLaunchIntentForPackage(BiosClient.BIOS_PACKAGE)
+        if (intent == null) {
+            Snackbar.make(
+                binding.root,
+                "Bios isn't installed on this device.",
+                Snackbar.LENGTH_SHORT,
+            ).show()
+            return
+        }
+        intent.putExtra(BiosClient.BIOS_EXTRA_NAVIGATE_TO_COMPANIONS, true)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            Snackbar.make(
+                binding.root,
+                "Couldn't open Bios — try opening it manually and check Settings → Companion Apps.",
+                Snackbar.LENGTH_LONG,
+            ).show()
+        }
     }
 
     private fun confirmBackfill() {
@@ -387,15 +418,40 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         viewModel.biosStatus.observe(this) { status ->
-            binding.textBiosStatus.text = when (status) {
-                BiosClient.Status.CONNECTED -> "Connected to Bios"
-                BiosClient.Status.NOT_ENABLED -> "Not enabled"
-                else -> "Bios not installed"
-            }
-            binding.switchBiosIntegration.isEnabled = status == BiosClient.Status.CONNECTED ||
-                status == BiosClient.Status.NOT_ENABLED
-            binding.btnSyncBiosHistory.isEnabled = status == BiosClient.Status.CONNECTED
+            updateBiosStatusViews(status, viewModel.biosLastPushOutcome.value)
         }
+
+        viewModel.biosLastPushOutcome.observe(this) { outcome ->
+            updateBiosStatusViews(viewModel.biosStatus.value, outcome)
+        }
+    }
+
+    /**
+     * Joint render of [BiosClient.Status] + [BiosClient.LastPushOutcome].
+     * Status alone says whether the integration is wired; the outcome
+     * adds the post-write state — specifically the *pending approval*
+     * case, which is the most common reason an enabled integration
+     * isn't actually flowing data.
+     */
+    private fun updateBiosStatusViews(
+        status: BiosClient.Status?,
+        outcome: BiosClient.LastPushOutcome?,
+    ) {
+        val pending = status == BiosClient.Status.CONNECTED &&
+            outcome == BiosClient.LastPushOutcome.PENDING_APPROVAL
+        binding.textBiosStatus.text = when {
+            pending -> "Waiting for approval in Bios"
+            status == BiosClient.Status.CONNECTED &&
+                outcome == BiosClient.LastPushOutcome.OK -> "Connected to Bios"
+            status == BiosClient.Status.CONNECTED -> "Connected to Bios"
+            status == BiosClient.Status.NOT_ENABLED -> "Not enabled"
+            else -> "Bios not installed"
+        }
+        binding.switchBiosIntegration.isEnabled = status == BiosClient.Status.CONNECTED ||
+            status == BiosClient.Status.NOT_ENABLED
+        binding.btnSyncBiosHistory.isEnabled = status == BiosClient.Status.CONNECTED
+        binding.biosPendingApprovalBanner.visibility =
+            if (pending) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     override fun onDestroy() {
