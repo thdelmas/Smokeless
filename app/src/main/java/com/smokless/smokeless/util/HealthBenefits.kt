@@ -1,5 +1,7 @@
 package com.smokless.smokeless.util
 
+import com.smokless.smokeless.data.entity.Substance
+
 enum class BodySystem(val label: String, val emoji: String) {
     IMMEDIATE("Immediate", "🌱"),
     HEART("Heart", "❤️"),
@@ -8,7 +10,10 @@ enum class BodySystem(val label: String, val emoji: String) {
     SENSES("Taste & smell", "👃"),
     CIRCULATION("Circulation", "🚶"),
     CANCER_RISK("Cancer risk", "🛡️"),
-    LIFE("Life expectancy", "✨")
+    LIFE("Life expectancy", "✨"),
+    SLEEP("Sleep", "😴"),
+    COGNITION("Memory & focus", "🧠"),
+    MOOD("Mood", "🌤️"),
 }
 
 data class HealthMilestone(
@@ -24,7 +29,7 @@ data class HealthMilestone(
 
 object HealthBenefits {
 
-    private val milestones = listOf(
+    private val tobaccoMilestones = listOf(
         HealthMilestone(
             hours = 0,
             title = "Immediate",
@@ -180,23 +185,132 @@ object HealthBenefits {
         )
     )
 
-    fun getMilestones(hoursSmokesFree: Long): List<HealthMilestone> {
-        return milestones.map { milestone ->
+    /**
+     * Cannabis recovery timeline. THC is fat-soluble, so its physiological
+     * profile is different from nicotine: shorter acute effects, but a
+     * weeks-long clearance and sleep-architecture rebound that nicotine
+     * doesn't have. Hours represent time since last cannabis exposure.
+     * Sources: NIDA, Huestis 2007 (clinical pharmacokinetics of cannabinoids),
+     * Bonn-Miller et al. on sleep architecture during cessation.
+     */
+    private val cannabisMilestones = listOf(
+        HealthMilestone(
+            hours = 0,
+            title = "Immediate",
+            description = "Acute exposure begins clearing from your bloodstream",
+            icon = "🌱",
+            bodySystem = BodySystem.IMMEDIATE,
+            details = "THC plasma half-life in occasional users is roughly 24–30 hours. Even a single break of 24h takes your active level to about half. There's nothing all-or-nothing about cannabis recovery — every session skipped is real exposure avoided.",
+            source = "Huestis, 2007 (Chem Biodivers)"
+        ),
+        HealthMilestone(
+            hours = 4,
+            title = "4 hours",
+            description = "Acute high subsides, coordination and reaction time return",
+            icon = "🎯",
+            bodySystem = BodySystem.COGNITION,
+            details = "Peak intoxication has passed. Motor coordination, reaction time, and short-term recall measurably recover within 3–4 hours of a single smoked dose. Edibles take longer — closer to 6–8 hours.",
+            source = "NIDA"
+        ),
+        HealthMilestone(
+            hours = 24,
+            title = "1 day",
+            description = "Plasma THC roughly halves; mental clarity sharpens",
+            icon = "🧠",
+            bodySystem = BodySystem.COGNITION,
+            details = "Active THC in your bloodstream has dropped to about half. Working memory, attention, and verbal recall improve. Eye redness and dry-mouth side effects resolve.",
+            source = "Huestis, 2007"
+        ),
+        HealthMilestone(
+            hours = 72,
+            title = "3 days",
+            description = "REM rebound begins — sleep architecture starts normalizing",
+            icon = "😴",
+            bodySystem = BodySystem.SLEEP,
+            details = "Cannabis suppresses REM sleep. By day 3, REM is bouncing back — this is when vivid dreams, sometimes unsettling ones, often appear. That's your brain catching up on dream-stage sleep it had been skipping.",
+            source = "Bonn-Miller et al., 2014 (J Sleep Res)"
+        ),
+        HealthMilestone(
+            hours = 168,
+            title = "1 week",
+            description = "Withdrawal symptoms peak then ease — appetite and mood stabilize",
+            icon = "🌤️",
+            bodySystem = BodySystem.MOOD,
+            details = "Cannabis withdrawal — irritability, anxiety, appetite loss, sleep disturbance — usually peaks days 2–6 and recedes by the end of week 1. The worst is behind you. Cravings continue but the physical edge softens.",
+            source = "DSM-5; NIDA"
+        ),
+        HealthMilestone(
+            hours = 336,
+            title = "2 weeks",
+            description = "Cognitive performance and mood baselines re-establish",
+            icon = "🧠",
+            bodySystem = BodySystem.COGNITION,
+            details = "Studies of regular users show working memory, processing speed, and attention measurably improving over the first 2–3 weeks of cessation. Anxiety and irritability return toward baseline.",
+            source = "Schuster et al., 2018 (J Clin Psychiatry)"
+        ),
+        HealthMilestone(
+            hours = 720,
+            title = "1 month",
+            description = "Most occasional users test fully clear; airway irritation drops",
+            icon = "🫁",
+            bodySystem = BodySystem.LUNGS,
+            details = "For occasional users, urine THC metabolites typically clear within 30 days. Cough and airway inflammation from smoke inhalation reduce sharply once exposure stops.",
+            source = "Smith-Kielland et al., 1999"
+        ),
+        HealthMilestone(
+            hours = 2160,
+            title = "3 months",
+            description = "Lung inflammation continues to subside; deep sleep stabilizes",
+            icon = "🌬️",
+            bodySystem = BodySystem.LUNGS,
+            details = "Chronic respiratory irritation from smoked cannabis continues to subside. Slow-wave (deep) sleep — disrupted by long-term THC use — has stabilized. Cognitive recovery continues in heavy former users.",
+            source = "Tashkin, 2013 (Ann Am Thorac Soc)"
+        ),
+        HealthMilestone(
+            hours = 8760,
+            title = "1 year",
+            description = "Cognitive baseline largely restored; cravings rare",
+            icon = "🎉",
+            bodySystem = BodySystem.COGNITION,
+            details = "Most measurable cognitive and emotional differences from chronic use have resolved. Cravings still surface around triggers, but the physiological pull is essentially gone.",
+            source = "Meier et al., 2018 (Addiction)"
+        ),
+    )
+
+    private fun milestonesFor(substance: Substance): List<HealthMilestone> = when (substance) {
+        Substance.TOBACCO -> tobaccoMilestones
+        Substance.CANNABIS -> cannabisMilestones
+    }
+
+    fun getMilestones(
+        hoursSmokesFree: Long,
+        substance: Substance = Substance.DEFAULT,
+    ): List<HealthMilestone> {
+        return milestonesFor(substance).map { milestone ->
             milestone.copy(isAchieved = hoursSmokesFree >= milestone.hours)
         }
     }
 
-    fun getNextMilestone(hoursSmokesFree: Long): HealthMilestone? {
-        return milestones.firstOrNull { it.hours > hoursSmokesFree }
+    fun getNextMilestone(
+        hoursSmokesFree: Long,
+        substance: Substance = Substance.DEFAULT,
+    ): HealthMilestone? {
+        return milestonesFor(substance).firstOrNull { it.hours > hoursSmokesFree }
     }
 
-    fun getCurrentMilestone(hoursSmokesFree: Long): HealthMilestone? {
-        return milestones.lastOrNull { it.hours <= hoursSmokesFree }
+    fun getCurrentMilestone(
+        hoursSmokesFree: Long,
+        substance: Substance = Substance.DEFAULT,
+    ): HealthMilestone? {
+        return milestonesFor(substance).lastOrNull { it.hours <= hoursSmokesFree }
     }
 
-    fun getProgressToNextMilestone(hoursSmokesFree: Long): Float {
-        val current = getCurrentMilestone(hoursSmokesFree)
-        val next = getNextMilestone(hoursSmokesFree)
+    fun getProgressToNextMilestone(
+        hoursSmokesFree: Long,
+        substance: Substance = Substance.DEFAULT,
+    ): Float {
+        val current = getCurrentMilestone(hoursSmokesFree, substance)
+        val next = getNextMilestone(hoursSmokesFree, substance)
 
         if (current == null || next == null) return 100f
 

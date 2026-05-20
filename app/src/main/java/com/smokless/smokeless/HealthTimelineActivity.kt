@@ -40,10 +40,11 @@ class HealthTimelineActivity : AppCompatActivity() {
                 (System.currentTimeMillis() - lastTimestamp) / 3_600_000L
             else 0L
 
-            val milestones = HealthBenefits.getMilestones(hoursSmokeFree)
-            val next = HealthBenefits.getNextMilestone(hoursSmokeFree)
+            val substance = SubstanceCopy.primarySubstance(sessions)
+            val milestones = HealthBenefits.getMilestones(hoursSmokeFree, substance)
+            val next = HealthBenefits.getNextMilestone(hoursSmokeFree, substance)
             val achieved = milestones.count { it.isAchieved }
-            val copy = SubstanceCopy.forSubstance(SubstanceCopy.primarySubstance(sessions))
+            val copy = SubstanceCopy.forSubstance(substance)
 
             runOnUiThread {
                 findViewById<TextView>(R.id.textSmokeFreeTime).text =

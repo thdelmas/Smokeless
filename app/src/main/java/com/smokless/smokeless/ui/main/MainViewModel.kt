@@ -113,6 +113,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _todayPace = MutableLiveData<ScoreCalculator.TodayPace>()
     val todayPace: LiveData<ScoreCalculator.TodayPace> = _todayPace
 
+    // Per-substance pace (tobacco vs cannabis comparisons separately).
+    private val _perSubstancePace = MutableLiveData<List<ScoreCalculator.SubstancePace>>(emptyList())
+    val perSubstancePace: LiveData<List<ScoreCalculator.SubstancePace>> = _perSubstancePace
+
+    // First-smoke-of-day timing: today vs typical first-smoke hour.
+    private val _firstSmokeOfDay = MutableLiveData<ScoreCalculator.FirstSmokeOfDay>()
+    val firstSmokeOfDay: LiveData<ScoreCalculator.FirstSmokeOfDay> = _firstSmokeOfDay
+
+    // Half-life decay estimate per substance.
+    private val _substanceLevels = MutableLiveData<List<ScoreCalculator.SubstanceLevel>>(emptyList())
+    val substanceLevels: LiveData<List<ScoreCalculator.SubstanceLevel>> = _substanceLevels
+
     // Snapshot taken on each DB refresh so the per-second timer can tick the
     // banked counter without touching the database.
     private var firstSessionTimestamp = 0L
@@ -124,6 +136,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var paceActualToday = 0
     private var paceStartOfToday = 0L
     private var paceHasBaseline = false
+
+    // Per-substance last-smoke timestamps snapshotted on refresh. The decay
+    // ticker re-evaluates each second from these without touching the DB.
+    private var lastSubstanceTimestamps: Map<Substance, Long> = emptyMap()
 
     // Dominant substance for headline copy. Drives unit nouns and the
     // "smoke-free / clean" labeling per ROADMAP §2.2.
@@ -274,6 +290,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ScoreCalculator.TodayPace(state, paceActualToday, typicalByNow, paceBaselineDailyAvg)
             )
         }
+
+        // Decay substance levels from the snapshot. Cheap math, smooths
+        // the percent-remaining as time passes.
+        if (lastSubstanceTimestamps.isNotEmpty()) {
+            val nowMs = System.currentTimeMillis()
+            val levels = lastSubstanceTimestamps.entries
+                .sortedBy { it.key.ordinal }
+                .map { (sub, ts) ->
+                    val halfLife = ScoreCalculator.halfLifeHours(sub)
+                    val hours = max(
+                        0.0,
+                        (nowMs - ts).toDouble() / java.util.concurrent.TimeUnit.HOURS.toMillis(1),
+                    )
+                    val pct = 100.0 * Math.pow(0.5, hours / halfLife)
+                    ScoreCalculator.SubstanceLevel(sub, pct, hours, halfLife, ts)
+                }
+            _substanceLevels.postValue(levels)
+        }
     }
     
     /**
@@ -359,6 +393,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }
         paceStartOfToday = cal.timeInMillis
+
+        // Pedagogical "today vs before" panel inputs.
+        _perSubstancePace.postValue(ScoreCalculator.calculatePerSubstancePace(allSessions))
+        _firstSmokeOfDay.postValue(ScoreCalculator.calculateFirstSmokeOfDay(allSessions))
+        _substanceLevels.postValue(ScoreCalculator.estimateSubstanceLevels(allSessions))
+        lastSubstanceTimestamps = allSessions
+            .groupBy { it.substance }
+            .mapValues { (_, list) -> list.maxOf { it.timestamp } }
 
         // Primary substance drives headline copy (units, clean label).
         val primary = SubstanceCopy.primarySubstance(allSessions)

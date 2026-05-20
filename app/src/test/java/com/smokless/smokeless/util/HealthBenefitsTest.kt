@@ -1,9 +1,26 @@
 package com.smokless.smokeless.util
 
+import com.smokless.smokeless.data.entity.Substance
 import org.junit.Assert.*
 import org.junit.Test
 
 class HealthBenefitsTest {
+
+    @Test
+    fun `cannabis substance returns a distinct milestone list`() {
+        val tobacco = HealthBenefits.getMilestones(0, Substance.TOBACCO)
+        val cannabis = HealthBenefits.getMilestones(0, Substance.CANNABIS)
+        assertNotEquals(tobacco.size, cannabis.size)
+        assertTrue(cannabis.any { it.bodySystem == BodySystem.SLEEP })
+    }
+
+    @Test
+    fun `cannabis next milestone at zero hours points to 4h marker`() {
+        val next = HealthBenefits.getNextMilestone(0, Substance.CANNABIS)
+        assertNotNull(next)
+        assertEquals(4, next!!.hours)
+    }
+
 
     @Test
     fun `getMilestones returns all milestones`() {

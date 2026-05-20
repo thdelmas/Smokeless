@@ -20,6 +20,7 @@ import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.smokless.smokeless.data.entity.Substance
 import com.smokless.smokeless.databinding.ActivityMainBinding
 import com.smokless.smokeless.ui.main.ChartData
 import com.smokless.smokeless.ui.main.MainViewModel
@@ -27,10 +28,13 @@ import com.smokless.smokeless.ui.main.RecoveryTimelineAdapter
 import com.smokless.smokeless.ui.main.ScoreAdapter
 import com.smokless.smokeless.ui.main.ScoreData
 import com.smokless.smokeless.util.HealthBenefits
+import com.smokless.smokeless.util.ScoreCalculator
 import com.smokless.smokeless.util.SubstanceCopy
 import com.smokless.smokeless.util.TimeFormatter
 import java.text.DecimalFormat
+import java.util.concurrent.TimeUnit
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -581,6 +585,8 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private var primarySubstance: Substance = Substance.DEFAULT
+
     /**
      * Banked time grows monotonically, but the body's recovery milestones
      * (heart rate, CO, circulation, etc.) reset after each cigarette — that's
@@ -592,7 +598,8 @@ class MainActivity : AppCompatActivity() {
         binding.sectionRecoveryHero.textBankedTimer.text = TimeFormatter.formatShort(bankedMs)
 
         val cleanHours = timeSinceLastSmokeMs / 3_600_000L
-        val milestones = HealthBenefits.getMilestones(cleanHours)
+        val substance = primarySubstance
+        val milestones = HealthBenefits.getMilestones(cleanHours, substance)
         val achievedCount = milestones.count { it.isAchieved }
         val total = milestones.size
 
@@ -600,7 +607,7 @@ class MainActivity : AppCompatActivity() {
         binding.sectionRecoveryHero.progressMilestones.max = total
         binding.sectionRecoveryHero.progressMilestones.progress = achievedCount
 
-        val current = HealthBenefits.getCurrentMilestone(cleanHours)
+        val current = HealthBenefits.getCurrentMilestone(cleanHours, substance)
         if (current != null) {
             binding.sectionRecoveryHero.textCurrentMilestone.text =
                 "You are at: ${current.icon} ${current.title}"
@@ -609,7 +616,7 @@ class MainActivity : AppCompatActivity() {
                 "You are at: 🌱 Starting"
         }
 
-        val next = HealthBenefits.getNextMilestone(cleanHours)
+        val next = HealthBenefits.getNextMilestone(cleanHours, substance)
         if (next != null) {
             val remaining = (next.hours - cleanHours).coerceAtLeast(0L)
             binding.sectionRecoveryHero.textNextMilestone.text =
@@ -644,8 +651,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         viewModel.primarySubstance.observe(this) { substance ->
+            primarySubstance = substance
             copy = SubstanceCopy.forSubstance(substance)
             applySubstanceCopy()
+            // Substance change re-anchors the milestone list. Force a refresh
+            // even when the achieved-count number is unchanged.
+            lastAchievedCount = -1
+            val banked = viewModel.bankedSmokeFreeMs.value ?: 0L
+            val score = viewModel.currentScore.value ?: 0L
+            updateRecoveryHero(banked, score)
         }
 
         viewModel.currentScore.observe(this) { score ->
@@ -715,6 +729,170 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.reductionStats.observe(this) { stats -> updateReductionTrend(stats) }
+
+        viewModel.perSubstancePace.observe(this) { entries -> updatePerSubstancePace(entries) }
+        viewModel.firstSmokeOfDay.observe(this) { fs -> updateFirstSmokeOfDay(fs) }
+        viewModel.substanceLevels.observe(this) { levels -> updateSubstanceLevels(levels) }
+    }
+
+    private fun substanceLabel(substance: Substance): String = when (substance) {
+        Substance.TOBACCO -> "🚬 Tobacco"
+        Substance.CANNABIS -> "🌿 Cannabis"
+    }
+
+    private fun substanceUnit(substance: Substance, count: Int): String = when (substance) {
+        Substance.TOBACCO -> if (count == 1) "cig" else "cigs"
+        Substance.CANNABIS -> if (count == 1) "session" else "sessions"
+    }
+
+    private fun updatePerSubstancePace(entries: List<ScoreCalculator.SubstancePace>) {
+        val group = binding.sectionProgression.root.findViewById<android.widget.LinearLayout>(
+            R.id.groupPerSubstancePace
+        )
+        val empty = binding.sectionProgression.root.findViewById<android.widget.TextView>(
+            R.id.textPerSubstanceEmpty
+        )
+        group.removeAllViews()
+        if (entries.isEmpty()) {
+            empty.visibility = View.VISIBLE
+            return
+        }
+        empty.visibility = View.GONE
+        val inflater = layoutInflater
+        for (entry in entries) {
+            val row = inflater.inflate(R.layout.item_per_substance_pace, group, false)
+            val label = row.findViewById<android.widget.TextView>(R.id.textSubstanceLabel)
+            val value = row.findViewById<android.widget.TextView>(R.id.textSubstanceValue)
+            val verdict = row.findViewById<android.widget.TextView>(R.id.textSubstanceVerdict)
+
+            label.text = substanceLabel(entry.substance)
+            val actualUnit = substanceUnit(entry.substance, entry.pace.actualToday)
+            val typicalInt = entry.pace.typicalByNow.roundToInt()
+            value.text = "${entry.pace.actualToday} $actualUnit today · usually $typicalInt by now"
+
+            val (verdictText, colorRes) = when (entry.pace.state) {
+                ScoreCalculator.PaceState.CALIBRATING ->
+                    "Calibrating" to R.color.text_tertiary
+                ScoreCalculator.PaceState.AHEAD ->
+                    "Ahead of pace" to R.color.status_champion
+                ScoreCalculator.PaceState.ON_PACE ->
+                    "On pace" to R.color.accent_amber
+                ScoreCalculator.PaceState.BEHIND ->
+                    "Behind pace" to R.color.status_reset
+                ScoreCalculator.PaceState.CLEAN_TODAY ->
+                    "Clean today" to R.color.status_champion
+                ScoreCalculator.PaceState.CLEAN_BREAK ->
+                    "Break in a clean run" to R.color.accent_amber
+            }
+            verdict.text = verdictText
+            verdict.setTextColor(ContextCompat.getColor(this, colorRes))
+
+            group.addView(row)
+        }
+    }
+
+    private fun formatHourOfDay(hourFloat: Double): String {
+        val h = hourFloat.toInt().coerceIn(0, 23)
+        val m = ((hourFloat - h) * 60).toInt().coerceIn(0, 59)
+        return String.format("%02d:%02d", h, m)
+    }
+
+    private fun formatSignedMinutes(deltaMin: Long): String {
+        val abs = kotlin.math.abs(deltaMin)
+        val sign = if (deltaMin >= 0) "+" else "−"
+        return if (abs >= 60) {
+            val h = abs / 60
+            val m = abs % 60
+            if (m == 0L) "$sign${h}h" else "$sign${h}h ${m}m"
+        } else {
+            "$sign${abs}m"
+        }
+    }
+
+    private fun updateFirstSmokeOfDay(fs: ScoreCalculator.FirstSmokeOfDay) {
+        val text = binding.sectionProgression.root.findViewById<android.widget.TextView>(
+            R.id.textFirstSmoke
+        )
+        if (fs.typicalFirstHour == null && fs.todayFirstMsFromStartOfDay == null) {
+            text.text = "Log a few mornings to compare today against your usual."
+            text.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+            return
+        }
+        val typicalText = fs.typicalFirstHour?.let { "typically ${formatHourOfDay(it)}" }
+
+        if (fs.todayFirstMsFromStartOfDay == null) {
+            val typ = typicalText ?: "no typical time yet"
+            text.text = "Haven't smoked yet today — $typ."
+            text.setTextColor(ContextCompat.getColor(this, R.color.status_champion))
+            return
+        }
+        val todayHourFloat =
+            fs.todayFirstMsFromStartOfDay.toDouble() / TimeUnit.HOURS.toMillis(1)
+        val todayText = "First smoke at ${formatHourOfDay(todayHourFloat)}"
+        val delta = fs.deltaMinutes
+        val combined = when {
+            delta == null -> "$todayText."
+            else -> "$todayText — $typicalText (${formatSignedMinutes(delta)} ${if (delta >= 0) "later" else "earlier"})."
+        }
+        text.text = combined
+        val color = when {
+            delta == null -> R.color.text_secondary
+            delta >= 30 -> R.color.status_champion
+            delta >= -15 -> R.color.accent_amber
+            else -> R.color.status_reset
+        }
+        text.setTextColor(ContextCompat.getColor(this, color))
+    }
+
+    private fun updateSubstanceLevels(levels: List<ScoreCalculator.SubstanceLevel>) {
+        val group = binding.sectionProgression.root.findViewById<android.widget.LinearLayout>(
+            R.id.groupSubstanceLevels
+        )
+        val empty = binding.sectionProgression.root.findViewById<android.widget.TextView>(
+            R.id.textSubstanceLevelsEmpty
+        )
+        group.removeAllViews()
+        if (levels.isEmpty()) {
+            empty.visibility = View.VISIBLE
+            return
+        }
+        empty.visibility = View.GONE
+        val inflater = layoutInflater
+        for (level in levels) {
+            val row = inflater.inflate(R.layout.item_substance_level, group, false)
+            val label = row.findViewById<android.widget.TextView>(R.id.textLevelLabel)
+            val value = row.findViewById<android.widget.TextView>(R.id.textLevelValue)
+            val bar = row.findViewById<
+                com.google.android.material.progressindicator.LinearProgressIndicator
+            >(R.id.progressLevel)
+            val details = row.findViewById<android.widget.TextView>(R.id.textLevelDetails)
+
+            val (compoundName, halfLifeText) = when (level.substance) {
+                Substance.TOBACCO -> "Nicotine" to "half-life ~2h"
+                Substance.CANNABIS -> "THC" to "half-life ~25h"
+            }
+            label.text = "${substanceLabel(level.substance)} · $compoundName"
+            value.text = "${level.percentRemaining.roundToInt()}%"
+            bar.progress = level.percentRemaining.roundToInt().coerceIn(0, 100)
+
+            val hoursSince = level.hoursSinceLast
+            val sinceText = when {
+                hoursSince < 1.0 -> "${(hoursSince * 60).roundToInt()} min ago"
+                hoursSince < 48.0 -> "${hoursSince.roundToInt()}h ago"
+                else -> "${(hoursSince / 24).roundToInt()}d ago"
+            }
+            details.text = "Last log $sinceText · $halfLifeText"
+
+            val colorRes = when {
+                level.percentRemaining >= 50 -> R.color.status_reset
+                level.percentRemaining >= 20 -> R.color.accent_amber
+                else -> R.color.status_champion
+            }
+            bar.setIndicatorColor(ContextCompat.getColor(this, colorRes))
+            value.setTextColor(ContextCompat.getColor(this, colorRes))
+
+            group.addView(row)
+        }
     }
 
     private fun updateTodayPace(pace: com.smokless.smokeless.util.ScoreCalculator.TodayPace) {

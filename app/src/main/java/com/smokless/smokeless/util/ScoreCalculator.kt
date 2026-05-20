@@ -2,12 +2,14 @@ package com.smokless.smokeless.util
 
 import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
+import com.smokless.smokeless.data.entity.Substance
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 object ScoreCalculator {
     
@@ -655,6 +657,157 @@ object ScoreCalculator {
     fun calculateIntervalProgress(timeSinceLastSmoke: Long, targetInterval: Long): Double {
         if (targetInterval <= 0L) return 0.0
         return (timeSinceLastSmoke.toDouble() / targetInterval) * 100.0
+    }
+
+    /**
+     * Per-substance "today vs typical pace" entry: a [TodayPace] computed over
+     * the subset of sessions for a single substance. Used to give the user
+     * separate verdicts for tobacco and cannabis instead of one blended number.
+     */
+    data class SubstancePace(
+        val substance: Substance,
+        val pace: TodayPace,
+    )
+
+    /**
+     * Compute [TodayPace] independently for each substance the user has logged
+     * in the lookback window. Substances with zero history in that window are
+     * omitted — there's no useful comparison to draw.
+     */
+    fun calculatePerSubstancePace(
+        allSessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+    ): List<SubstancePace> {
+        if (allSessions.isEmpty()) return emptyList()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val lookbackStart = nowMs - 14 * day
+        val recentSubstances = allSessions
+            .filter { it.timestamp >= lookbackStart }
+            .map { it.substance }
+            .toSet()
+        // Include substances seen today even if recent window is sparse.
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val startOfToday = cal.timeInMillis
+        val todaySubstances = allSessions
+            .filter { it.timestamp >= startOfToday }
+            .map { it.substance }
+            .toSet()
+        val substances = (recentSubstances + todaySubstances).sortedBy { it.ordinal }
+        return substances.map { sub ->
+            val subset = allSessions.filter { it.substance == sub }
+            SubstancePace(sub, calculateTodayPace(subset, nowMs))
+        }
+    }
+
+    /**
+     * "When did you first smoke today vs. what time you usually do?" — a
+     * morning-anchor signal. Pushing the first cigarette later in the day is a
+     * well-known reduction lever: each delayed hour is real exposure avoided.
+     */
+    data class FirstSmokeOfDay(
+        /** Milliseconds since start-of-today for the first smoke; null if none yet today. */
+        val todayFirstMsFromStartOfDay: Long?,
+        /** Hour-of-day (0..24) of the typical first smoke over the lookback window; null if too little data. */
+        val typicalFirstHour: Double?,
+        /** today minus typical, in minutes; positive = later than usual (better). null if either side missing. */
+        val deltaMinutes: Long?,
+        /** Number of prior days that contributed to the typical estimate. */
+        val daysContributing: Int,
+    )
+
+    fun calculateFirstSmokeOfDay(
+        allSessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+        lookbackDays: Int = 14,
+    ): FirstSmokeOfDay {
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val startOfToday = cal.timeInMillis
+        val day = TimeUnit.DAYS.toMillis(1)
+        val firstTodayTs = allSessions
+            .filter { it.timestamp >= startOfToday }
+            .minOfOrNull { it.timestamp }
+        val todayOffsetMs = firstTodayTs?.let { it - startOfToday }
+
+        // Bucket prior sessions by day and take the earliest each day.
+        val priorStart = startOfToday - lookbackDays * day
+        val priorByDay = allSessions
+            .filter { it.timestamp in priorStart until startOfToday }
+            .groupBy { (it.timestamp - priorStart) / day }
+        val firstHours = priorByDay.values.mapNotNull { dayList ->
+            val earliest = dayList.minOfOrNull { it.timestamp } ?: return@mapNotNull null
+            val c = Calendar.getInstance().apply { timeInMillis = earliest }
+            c.get(Calendar.HOUR_OF_DAY) + c.get(Calendar.MINUTE) / 60.0
+        }
+        val typicalHour = if (firstHours.size >= 3) firstHours.average() else null
+
+        val delta: Long? = if (typicalHour != null && todayOffsetMs != null) {
+            val todayHour = todayOffsetMs.toDouble() / TimeUnit.HOURS.toMillis(1)
+            ((todayHour - typicalHour) * 60.0).toLong()
+        } else null
+
+        return FirstSmokeOfDay(
+            todayFirstMsFromStartOfDay = todayOffsetMs,
+            typicalFirstHour = typicalHour,
+            deltaMinutes = delta,
+            daysContributing = firstHours.size,
+        )
+    }
+
+    /**
+     * Plasma half-life (in hours) for the body's response to each substance.
+     * These are short-cycle approximations the user can feel — not legal-test
+     * windows. Sources:
+     *  - Nicotine plasma half-life: ~2h (Hukkanen et al., 2005;
+     *    PMID 16968948). Cotinine is longer (~16h) but nicotine itself drives
+     *    the acute "still wired" sensation we're modeling here.
+     *  - Δ9-THC plasma half-life in occasional users: ~24–30h after a
+     *    single dose (Huestis, 2007). Chronic heavy use extends this; we
+     *    pick 25h as a midpoint usable for self-reporting.
+     */
+    fun halfLifeHours(substance: Substance): Double = when (substance) {
+        Substance.TOBACCO -> 2.0
+        Substance.CANNABIS -> 25.0
+    }
+
+    /**
+     * Estimated remaining substance level in plasma, modeled as simple
+     * first-order decay from the last logged exposure: pct = 100 * 0.5^(t/h).
+     * This is a back-of-the-envelope teaching aid, not a clinical
+     * measurement — its purpose is to show the user *why* spacing matters.
+     */
+    data class SubstanceLevel(
+        val substance: Substance,
+        val percentRemaining: Double,
+        val hoursSinceLast: Double,
+        val halfLifeHours: Double,
+        val lastTimestamp: Long?,
+    )
+
+    fun estimateSubstanceLevels(
+        allSessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+    ): List<SubstanceLevel> {
+        if (allSessions.isEmpty()) return emptyList()
+        val seen = allSessions.map { it.substance }.toSet().sortedBy { it.ordinal }
+        return seen.map { sub ->
+            val last = allSessions.filter { it.substance == sub }.maxOfOrNull { it.timestamp }
+            val halfLife = halfLifeHours(sub)
+            if (last == null) {
+                SubstanceLevel(sub, 0.0, Double.POSITIVE_INFINITY, halfLife, null)
+            } else {
+                val hours = max(0.0, (nowMs - last).toDouble() / TimeUnit.HOURS.toMillis(1))
+                val pct = 100.0 * 0.5.pow(hours / halfLife)
+                SubstanceLevel(sub, pct, hours, halfLife, last)
+            }
+        }
     }
 }
 

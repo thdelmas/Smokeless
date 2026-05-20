@@ -47,6 +47,8 @@
 
                 <include android:id="@+id/sectionRecoveryHero" layout="@layout/section_recovery_hero" />
 
+                <include android:id="@+id/sectionProgression" layout="@layout/section_progression" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
