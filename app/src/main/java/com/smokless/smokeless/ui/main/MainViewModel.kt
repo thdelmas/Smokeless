@@ -519,16 +519,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val goal = ScoreCalculator.calculateGoal(allSessions, baselinePeriod, difficulty)
         _currentGoal.postValue(goal)
 
-        // Update hero metrics based on current period
-        val periodSessions = repository.getSessionsForScope(currentGoalPeriod)
-        val periodStats = ScoreCalculator.calculatePeriodStats(periodSessions, currentGoalPeriod)
-        updateHeroMetrics(periodStats)
+        updateHeroMetrics()
     }
-    
+
     /**
      * Update hero section metrics based on selected period
      */
-    private fun updateHeroMetrics(stats: ScoreCalculator.PeriodStats) {
+    private fun updateHeroMetrics() {
         when (currentGoalPeriod) {
             "day" -> {
                 _heroLabel.postValue("WAIT BEFORE NEXT")

@@ -325,64 +325,6 @@ object ScoreCalculator {
     }
     
     /**
-     * Calculate time-aware daily progress
-     * For "today" view, consider both cigarette count AND time elapsed
-     * This prevents showing 100% too early in the day
-     */
-    fun calculateDailyProgress(cigarettesToday: Int, goalCount: Double, lastTimestamp: Long): Double {
-        val currentTime = System.currentTimeMillis()
-        val calendar = Calendar.getInstance()
-        
-        // Get start of today
-        calendar.time = Date()
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startOfToday = calendar.timeInMillis
-        
-        // Calculate what portion of the day has passed (0.0 to 1.0)
-        val dayElapsedFraction = (currentTime - startOfToday).toDouble() / TimeUnit.DAYS.toMillis(1)
-        
-        // Expected cigarettes by now = goal * fraction of day elapsed
-        val expectedByNow = goalCount * dayElapsedFraction
-        
-        // If we haven't smoked yet
-        if (cigarettesToday == 0) {
-            // Progress based on how much time has passed without smoking
-            // At start of day (0%): 0% progress
-            // At end of day (100%): 100% progress
-            // This creates a gradual increase throughout the day
-            return min(100.0, dayElapsedFraction * 100.0)
-        }
-        
-        // If we have smoked, compare actual vs expected
-        if (cigarettesToday <= expectedByNow) {
-            // Doing better than expected for this time of day
-            val ratio = 1.0 - (cigarettesToday / max(expectedByNow, 1.0))
-            return min(100.0, 50.0 + (ratio * 50.0)) // 50-100% range
-        } else {
-            // Doing worse than expected
-            val ratio = cigarettesToday / max(expectedByNow, 1.0)
-            return max(0.0, 50.0 / ratio) // 0-50% range
-        }
-    }
-    
-    /**
-     * Get total days for a scope
-     */
-    private fun getTotalDaysInScope(scope: String): Int {
-        return when (scope.lowercase()) {
-            "day" -> 1
-            "week" -> 7
-            "month" -> 30
-            "year" -> 365
-            "all" -> 365  // Cap at 1 year for "all time" to keep it manageable
-            else -> 30
-        }
-    }
-    
-    /**
      * Get hourly cigarette counts for today
      * Returns a map of hour (0-23) to count
      * Optimized to show relevant time range

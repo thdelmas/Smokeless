@@ -39,22 +39,6 @@ class ScoreCalculatorExtendedTest {
         assertTrue(goal >= 0.0)
     }
 
-    // --- calculateDailyProgress ---
-
-    @Test
-    fun `calculateDailyProgress returns 0-100 range for zero cigarettes`() {
-        val progress = ScoreCalculator.calculateDailyProgress(0, 5.0, System.currentTimeMillis() - 3600_000)
-        assertTrue(progress >= 0.0)
-        assertTrue(progress <= 100.0)
-    }
-
-    @Test
-    fun `calculateDailyProgress with cigarettes below expected returns above 50`() {
-        // If we smoked 1 cig and expected ~3 by now, we're doing well
-        val progress = ScoreCalculator.calculateDailyProgress(1, 10.0, System.currentTimeMillis() - 3600_000)
-        assertTrue("Should be above 50% when below expected", progress >= 50.0)
-    }
-
     // --- calculatePeriodStats ---
 
     @Test

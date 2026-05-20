@@ -12,7 +12,6 @@ data class Achievement(
 object AchievementManager {
 
     fun getStreakAchievements(
-        currentStreak: Int,
         bestStreak: Int,
         copy: SubstanceCopy = SubstanceCopy.TOBACCO,
     ): List<Achievement> {
@@ -62,25 +61,23 @@ object AchievementManager {
     }
     
     fun getAllAchievements(
-        currentStreak: Int,
         bestStreak: Int,
         resistedCount: Int,
         cleanDays: Int,
         copy: SubstanceCopy = SubstanceCopy.TOBACCO,
     ): List<Achievement> {
-        return getStreakAchievements(currentStreak, bestStreak, copy) +
+        return getStreakAchievements(bestStreak, copy) +
                getCravingsAchievements(resistedCount) +
                getCleanDaysAchievements(cleanDays)
     }
 
     fun getNextAchievement(
-        currentStreak: Int,
         bestStreak: Int,
         resistedCount: Int,
         cleanDays: Int,
         copy: SubstanceCopy = SubstanceCopy.TOBACCO,
     ): Achievement? {
-        val all = getAllAchievements(currentStreak, bestStreak, resistedCount, cleanDays, copy)
+        val all = getAllAchievements(bestStreak, resistedCount, cleanDays, copy)
         return all.firstOrNull { !it.isUnlocked }
     }
 }

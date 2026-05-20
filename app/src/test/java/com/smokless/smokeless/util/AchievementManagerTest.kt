@@ -7,13 +7,13 @@ class AchievementManagerTest {
 
     @Test
     fun `getStreakAchievements returns 9 achievements`() {
-        val achievements = AchievementManager.getStreakAchievements(0, 0)
+        val achievements = AchievementManager.getStreakAchievements(0)
         assertEquals(9, achievements.size)
     }
 
     @Test
     fun `getStreakAchievements unlocks correctly based on best streak`() {
-        val achievements = AchievementManager.getStreakAchievements(0, 7)
+        val achievements = AchievementManager.getStreakAchievements(7)
         val unlocked = achievements.filter { it.isUnlocked }
         // Should unlock: first_hour (1), first_day (1), three_days (3), one_week (7) = 4 with requirement <= 7
         assertEquals(4, unlocked.size)
@@ -21,13 +21,13 @@ class AchievementManagerTest {
 
     @Test
     fun `getStreakAchievements none unlocked at 0`() {
-        val achievements = AchievementManager.getStreakAchievements(0, 0)
+        val achievements = AchievementManager.getStreakAchievements(0)
         assertTrue(achievements.none { it.isUnlocked })
     }
 
     @Test
     fun `getStreakAchievements all unlocked at 365`() {
-        val achievements = AchievementManager.getStreakAchievements(365, 365)
+        val achievements = AchievementManager.getStreakAchievements(365)
         assertTrue(achievements.all { it.isUnlocked })
     }
 
@@ -52,20 +52,20 @@ class AchievementManagerTest {
 
     @Test
     fun `getAllAchievements returns all categories combined`() {
-        val all = AchievementManager.getAllAchievements(0, 0, 0, 0)
+        val all = AchievementManager.getAllAchievements(0, 0, 0)
         assertEquals(18, all.size) // 9 + 5 + 4
     }
 
     @Test
     fun `getNextAchievement returns first locked achievement`() {
-        val next = AchievementManager.getNextAchievement(0, 0, 0, 0)
+        val next = AchievementManager.getNextAchievement(0, 0, 0)
         assertNotNull(next)
         assertFalse(next!!.isUnlocked)
     }
 
     @Test
     fun `getNextAchievement returns null when all unlocked`() {
-        val next = AchievementManager.getNextAchievement(365, 365, 500, 100)
+        val next = AchievementManager.getNextAchievement(365, 500, 100)
         assertNull(next)
     }
 

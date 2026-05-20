@@ -41,13 +41,9 @@ class AchievementsActivity : AppCompatActivity() {
             val cleanDays = if (sessions.isEmpty()) 0
             else com.smokless.smokeless.util.ScoreCalculator.calculatePeriodStats(sessions, "all").cleanDays
 
-            val lastTimestamp = db.smokingSessionDao().getLastTimestamp() ?: 0L
-            val hoursSinceLast = if (lastTimestamp > 0) (System.currentTimeMillis() - lastTimestamp) / 3600000 else 0L
-            val daysSinceLast = (hoursSinceLast / 24).toInt()
-
             val copy = SubstanceCopy.forSubstance(SubstanceCopy.primarySubstance(sessions))
             val achievements = AchievementManager.getAllAchievements(
-                daysSinceLast, bestStreak, cravings.size, cleanDays, copy
+                bestStreak, cravings.size, cleanDays, copy
             )
 
             val unlockedCount = achievements.count { it.isUnlocked }

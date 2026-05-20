@@ -28,8 +28,8 @@ abstract class AppDatabase : RoomDatabase() {
         val databaseExecutor: ExecutorService = Executors.newFixedThreadPool(4)
         
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "CREATE TABLE IF NOT EXISTS `cravings` (" +
                     "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "`timestamp` INTEGER NOT NULL)"
@@ -38,8 +38,8 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "ALTER TABLE smoking_sessions " +
                     "ADD COLUMN substance TEXT NOT NULL DEFAULT 'TOBACCO'"
                 )
@@ -50,8 +50,8 @@ abstract class AppDatabase : RoomDatabase() {
         // default to 1.0 — every legacy session was a "full smoke" under the
         // binary count model, so backfilling at full is honest, not lossy.
         private val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "ALTER TABLE smoking_sessions " +
                     "ADD COLUMN quantity REAL NOT NULL DEFAULT 1.0"
                 )
