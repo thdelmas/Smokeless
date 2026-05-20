@@ -28,19 +28,20 @@ object DataExporter {
         val file = File(context.cacheDir, fileName)
         
         file.bufferedWriter().use { writer ->
-            // Write header
-            writer.write("Type,Timestamp,Date\n")
-            
-            // Write smoking sessions
+            // Header: extra columns are positional and default to safe values
+            // on import, so older CSVs that lack substance/quantity still parse.
+            writer.write("Type,Timestamp,Date,Substance,Quantity\n")
+
             sessions.forEach { session ->
                 val date = dateFormat.format(Date(session.timestamp))
-                writer.write("Smoked,${session.timestamp},\"$date\"\n")
+                writer.write(
+                    "Smoked,${session.timestamp},\"$date\",${session.substance.name},${session.quantity}\n"
+                )
             }
-            
-            // Write cravings
+
             cravings.forEach { craving ->
                 val date = dateFormat.format(Date(craving.timestamp))
-                writer.write("Resisted,${craving.timestamp},\"$date\"\n")
+                writer.write("Resisted,${craving.timestamp},\"$date\",,\n")
             }
         }
         
@@ -70,6 +71,7 @@ object DataExporter {
             sessionObj.put("timestamp", session.timestamp)
             sessionObj.put("date", dateFormat.format(Date(session.timestamp)))
             sessionObj.put("substance", session.substance.name)
+            sessionObj.put("quantity", session.quantity)
             sessionsArray.put(sessionObj)
         }
         json.put("smoking_sessions", sessionsArray)
@@ -113,7 +115,8 @@ object DataExporter {
                 val obj = sessionsArray.getJSONObject(i)
                 val timestamp = obj.getLong("timestamp")
                 val substance = Substance.fromName(obj.optString("substance"))
-                sessionDao.insert(SmokingSession(timestamp, substance))
+                val quantity = obj.optDouble("quantity", 1.0)
+                sessionDao.insert(SmokingSession(timestamp, substance, quantity))
                 sessionsImported++
             }
         }
@@ -148,14 +151,22 @@ object DataExporter {
             reader.readLine()
 
             reader.forEachLine { line ->
-                val parts = line.split(",", limit = 3)
+                // limit=5 keeps the date column's quoted comma absent — date
+                // is "yyyy-MM-dd HH:mm:ss", no internal comma — so a plain
+                // split is safe. Extra columns past index 4 are unused.
+                val parts = line.split(",", limit = 5)
                 if (parts.size >= 2) {
                     val type = parts[0].trim()
                     val timestamp = parts[1].trim().toLongOrNull() ?: return@forEachLine
 
                     when (type) {
                         "Smoked" -> {
-                            sessionDao.insert(SmokingSession(timestamp))
+                            val substance = if (parts.size > 3) Substance.fromName(parts[3].trim())
+                                else Substance.DEFAULT
+                            val quantity = if (parts.size > 4)
+                                parts[4].trim().toDoubleOrNull() ?: 1.0
+                                else 1.0
+                            sessionDao.insert(SmokingSession(timestamp, substance, quantity))
                             sessionsImported++
                         }
                         "Resisted" -> {

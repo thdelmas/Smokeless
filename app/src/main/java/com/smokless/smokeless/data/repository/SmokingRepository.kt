@@ -34,22 +34,35 @@ class SmokingRepository(application: Application) {
         }
     }
 
-    fun recordSmoke(substance: Substance = Substance.DEFAULT) {
-        insert(SmokingSession(System.currentTimeMillis(), substance))
+    fun recordSmoke(
+        substance: Substance = Substance.DEFAULT,
+        quantity: Double = 1.0,
+    ) {
+        insert(SmokingSession(System.currentTimeMillis(), substance, quantity))
     }
 
     fun recordSmokeSync(
         exposureOffsetMs: Long = 0L,
         substance: Substance = Substance.DEFAULT,
+        quantity: Double = 1.0,
     ): Long {
         val timestamp = System.currentTimeMillis() + exposureOffsetMs
-        val id = smokingDao.insert(SmokingSession(timestamp, substance))
+        val id = smokingDao.insert(SmokingSession(timestamp, substance, quantity))
         biosClient.pushSmokingEvent(timestamp, substance)
         return id
     }
 
     fun deleteSession(id: Long) {
         smokingDao.deleteById(id)
+    }
+
+    /**
+     * Update the quantity on an already-logged session — backs the snackbar
+     * "modify size" action and the long-press sized picker's post-commit
+     * adjust path. Idempotent.
+     */
+    fun updateQuantity(id: Long, quantity: Double) {
+        smokingDao.updateQuantity(id, quantity)
     }
 
     fun recordCraving() {

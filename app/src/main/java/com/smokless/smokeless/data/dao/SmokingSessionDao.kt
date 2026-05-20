@@ -33,6 +33,9 @@ interface SmokingSessionDao {
     @Query("DELETE FROM smoking_sessions WHERE id = :id")
     fun deleteById(id: Long)
 
+    @Query("UPDATE smoking_sessions SET quantity = :quantity WHERE id = :id")
+    fun updateQuantity(id: Long, quantity: Double)
+
     @Query("DELETE FROM smoking_sessions")
     fun deleteAll()
 }
