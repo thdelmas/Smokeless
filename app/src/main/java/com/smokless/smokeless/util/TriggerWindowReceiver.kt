@@ -130,11 +130,25 @@ class TriggerWindowReceiver : BroadcastReceiver() {
             }
         }
         val tactic = CravingTactics.random()
+        // Stage context: show what the user's body is doing right now if the
+        // notification is about a single substance. Skip for mixed-substance
+        // peaks — the message would get noisy.
+        val stageHint = firing.singleOrNull()?.let { tw ->
+            val mostRecent = sessions
+                .filter { it.substance == tw.substance }
+                .maxOfOrNull { it.timestamp }
+            val hours = if (mostRecent == null) 0L
+                else (System.currentTimeMillis() - mostRecent) / TimeUnit.HOURS.toMillis(1)
+            HealthBenefits.getCurrentMilestone(hours, tw.substance)?.let {
+                "${it.icon} ${it.title}: ${it.description}"
+            }
+        }
         NotificationHelper.showTriggerWindowNotification(
             context = context,
             slotHour = nowHour,
             substanceLabel = substanceLabel,
             tactic = tactic,
+            stageHint = stageHint,
         )
 
         // Stale-data hygiene: if a user hasn't logged for 14 days, don't keep

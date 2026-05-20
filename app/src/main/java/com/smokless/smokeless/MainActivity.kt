@@ -500,10 +500,13 @@ class MainActivity : AppCompatActivity() {
         binding.fabResist.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             viewModel.recordCravingResisted()
+            val hours = (viewModel.currentScore.value ?: 0L) / 3_600_000L
             CravingRideOutSheet(
                 context = this,
                 onMadeIt = { showResistConfirmation() },
                 onSmokedAnyway = { showSmokePicker() },
+                substance = primarySubstance,
+                hoursSinceLast = hours,
             ).show()
         }
     }

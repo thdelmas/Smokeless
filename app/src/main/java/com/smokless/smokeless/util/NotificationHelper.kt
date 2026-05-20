@@ -63,6 +63,7 @@ object NotificationHelper {
         slotHour: Int,
         substanceLabel: String,
         tactic: CravingTactic,
+        stageHint: String? = null,
     ) {
         createTriggerChannel(context)
 
@@ -76,13 +77,18 @@ object NotificationHelper {
 
         val hourLabel = String.format("%02d:00", slotHour)
         val title = "⏰ $hourLabel — your $substanceLabel window"
-        val body = "${tactic.icon} ${tactic.title}: ${tactic.body}"
+        val tacticBody = "${tactic.icon} ${tactic.title}: ${tactic.body}"
+        val expandedBody = if (stageHint != null) {
+            "$stageHint\n\n$tacticBody"
+        } else {
+            tacticBody
+        }
 
         val notification = NotificationCompat.Builder(context, TRIGGER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_check)
             .setContentTitle(title)
             .setContentText("Heads up — this hour is usually a smoke moment. Tactic: ${tactic.title}.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(expandedBody))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
