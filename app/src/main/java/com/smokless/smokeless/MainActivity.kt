@@ -752,6 +752,59 @@ class MainActivity : AppCompatActivity() {
         viewModel.substanceLevels.observe(this) { levels -> updateSubstanceLevels(levels) }
         viewModel.triggerWindows.observe(this) { windows -> updateTriggerWindows(windows) }
         viewModel.resistanceStats.observe(this) { stats -> updateResistanceCard(stats) }
+        viewModel.weeklyDigest.observe(this) { digest -> updateWeeklyDigest(digest) }
+    }
+
+    private fun updateWeeklyDigest(digest: ScoreCalculator.WeeklyDigest) {
+        val sectionRoot = binding.sectionWeeklyDigest.root
+        val smokeCount = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSmokeCount)
+        val smokeLabel = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSmokeLabel)
+        val smokeDelta = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSmokeDelta)
+        val resisted = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestResistance)
+        val cleanDays = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestCleanDays)
+        val longest = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestLongestStretch)
+        val milestonesGroup = sectionRoot.findViewById<android.widget.LinearLayout>(R.id.groupDigestMilestones)
+        val milestonesText = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestMilestones)
+
+        smokeCount.text = digest.smokesThisWeek.toString()
+        val unit = if (digest.smokesThisWeek == 1) copy.unit else copy.units
+        smokeLabel.text = "$unit this week"
+
+        val change = digest.smokeChangePercent
+        if (change == null) {
+            smokeDelta.visibility = View.GONE
+        } else {
+            val rounded = change.roundToInt()
+            val (txt, colorRes) = when {
+                rounded >= 10 -> "↓ ${rounded}% vs last week" to R.color.status_champion
+                rounded >= 5 -> "↓ ${rounded}% vs last week" to R.color.status_strong
+                rounded <= -10 -> "↑ ${-rounded}% vs last week" to R.color.status_reset
+                rounded <= -5 -> "↑ ${-rounded}% vs last week" to R.color.accent_amber
+                else -> "→ steady vs last week" to R.color.text_secondary
+            }
+            smokeDelta.text = txt
+            smokeDelta.setTextColor(ContextCompat.getColor(this, colorRes))
+            smokeDelta.visibility = View.VISIBLE
+        }
+
+        resisted.text = digest.resistance.resistedCount.toString()
+        cleanDays.text = "${digest.cleanDaysThisWeek}/7"
+
+        val longestMs = digest.longestStretchMs
+        val longestHours = longestMs / java.util.concurrent.TimeUnit.HOURS.toMillis(1)
+        longest.text = when {
+            longestHours >= 24 -> "${longestHours / 24}d"
+            longestHours >= 1 -> "${longestHours}h"
+            else -> "${longestMs / 60_000}m"
+        }
+
+        val crossed = digest.milestonesReachedThisWeek
+        if (crossed.isEmpty()) {
+            milestonesGroup.visibility = View.GONE
+        } else {
+            milestonesText.text = crossed.joinToString(" · ") { "${it.icon} ${it.title}" }
+            milestonesGroup.visibility = View.VISIBLE
+        }
     }
 
     private fun updateResistanceCard(stats: ScoreCalculator.ResistanceStats) {

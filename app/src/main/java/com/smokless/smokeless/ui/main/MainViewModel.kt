@@ -133,6 +133,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _resistanceStats = MutableLiveData<ScoreCalculator.ResistanceStats>()
     val resistanceStats: LiveData<ScoreCalculator.ResistanceStats> = _resistanceStats
 
+    // Sunday-recap-shaped rollup of the last 7 days.
+    private val _weeklyDigest = MutableLiveData<ScoreCalculator.WeeklyDigest>()
+    val weeklyDigest: LiveData<ScoreCalculator.WeeklyDigest> = _weeklyDigest
+
     // Snapshot taken on each DB refresh so the per-second timer can tick the
     // banked counter without touching the database.
     private var firstSessionTimestamp = 0L
@@ -443,6 +447,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val primary = SubstanceCopy.primarySubstance(allSessions)
         _primarySubstance.postValue(primary)
         val copy = SubstanceCopy.forSubstance(primary)
+        _weeklyDigest.postValue(
+            ScoreCalculator.calculateWeeklyDigest(allSessions, cravings, primary)
+        )
 
         // Calculate goal and progress based on current goal period
         updateGoalForPeriod()

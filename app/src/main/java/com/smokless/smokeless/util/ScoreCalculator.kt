@@ -963,6 +963,115 @@ object ScoreCalculator {
             .filter { it.totalSessions > 0 }
     }
 
+    /**
+     * Sunday-recap-shaped rollup of the last 7 days. Pulls together every
+     * existing signal — reduction, resistance, milestones crossed, clean
+     * days, longest stretch — into one summary the user can read in 10
+     * seconds and recognize themselves in. Designed to be both honest (no
+     * cherry-picking) and motivating (deltas framed positively when warranted).
+     */
+    data class WeeklyDigest(
+        val nowMs: Long,
+        val smokesThisWeek: Int,
+        val smokesPriorWeek: Int,
+        /** Signed change as a percentage. Positive = reduced. Null when prior is zero and current is non-zero (no meaningful denominator). */
+        val smokeChangePercent: Double?,
+        val resistance: ResistanceStats,
+        /** Milestones whose crossing timestamp falls within the last 7 days and where the user has not slipped back below since. */
+        val milestonesReachedThisWeek: List<HealthMilestone>,
+        /** Days in the last 7 with zero logged sessions. */
+        val cleanDaysThisWeek: Int,
+        /** Longest gap between consecutive smokes (or from week-start to first smoke) in milliseconds. */
+        val longestStretchMs: Long,
+    )
+
+    fun calculateWeeklyDigest(
+        sessions: List<SmokingSession>,
+        cravings: List<Craving>,
+        primarySubstance: Substance,
+        nowMs: Long = System.currentTimeMillis(),
+    ): WeeklyDigest {
+        val day = TimeUnit.DAYS.toMillis(1)
+        val weekMs = 7 * day
+        val weekStart = nowMs - weekMs
+        val priorStart = nowMs - 2 * weekMs
+
+        val smokesThis = sessions.count { it.timestamp in weekStart until nowMs }
+        val smokesPrior = sessions.count { it.timestamp in priorStart until weekStart }
+        val smokeChange = when {
+            smokesPrior == 0 && smokesThis == 0 -> 0.0
+            smokesPrior == 0 -> null
+            else -> ((smokesPrior - smokesThis).toDouble() / smokesPrior) * 100.0
+        }
+
+        val resistance = calculateResistanceStats(cravings, sessions, nowMs, lookbackDays = 7)
+
+        // Milestones crossed this week: hours-mark whose anniversary falls in
+        // [weekStart, nowMs] AND user hasn't slipped past it since (i.e., the
+        // milestone is still currently achieved for the primary substance).
+        val lastSmokeForPrimary = sessions
+            .filter { it.substance == primarySubstance }
+            .maxOfOrNull { it.timestamp } ?: 0L
+        val currentHours = if (lastSmokeForPrimary == 0L) {
+            // No primary-substance smokes ever — every milestone counts as
+            // crossed at "the install moment", which is misleading. Skip.
+            -1L
+        } else {
+            (nowMs - lastSmokeForPrimary) / TimeUnit.HOURS.toMillis(1)
+        }
+        val crossings = if (currentHours < 0) emptyList()
+            else HealthBenefits.getMilestones(currentHours, primarySubstance)
+                .filter { it.isAchieved }
+                .filter {
+                    val crossTime = lastSmokeForPrimary + it.hours * TimeUnit.HOURS.toMillis(1)
+                    crossTime in weekStart..nowMs
+                }
+
+        // Clean-days count: days in window with no logged sessions.
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val endOfToday = cal.timeInMillis + day
+        var cleanDays = 0
+        for (d in 0 until 7) {
+            val dayStart = endOfToday - (d + 1) * day
+            val dayEnd = dayStart + day
+            val anySmoke = sessions.any { it.timestamp in dayStart until dayEnd }
+            if (!anySmoke) cleanDays++
+        }
+
+        // Longest stretch within the window: gap between consecutive smokes
+        // (clipped to the window edges).
+        val weekSmokes = sessions
+            .filter { it.timestamp in weekStart until nowMs }
+            .map { it.timestamp }
+            .sorted()
+        val longestStretch: Long = if (weekSmokes.isEmpty()) {
+            weekMs
+        } else {
+            val gaps = mutableListOf<Long>()
+            gaps += weekSmokes.first() - weekStart
+            for (i in 1 until weekSmokes.size) {
+                gaps += weekSmokes[i] - weekSmokes[i - 1]
+            }
+            gaps += nowMs - weekSmokes.last()
+            gaps.max()
+        }
+
+        return WeeklyDigest(
+            nowMs = nowMs,
+            smokesThisWeek = smokesThis,
+            smokesPriorWeek = smokesPrior,
+            smokeChangePercent = smokeChange,
+            resistance = resistance,
+            milestonesReachedThisWeek = crossings,
+            cleanDaysThisWeek = cleanDays,
+            longestStretchMs = longestStretch,
+        )
+    }
+
     fun estimateSubstanceLevels(
         allSessions: List<SmokingSession>,
         nowMs: Long = System.currentTimeMillis(),
