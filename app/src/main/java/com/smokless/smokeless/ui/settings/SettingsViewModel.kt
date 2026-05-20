@@ -61,6 +61,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _biosStatus = MutableLiveData<BiosClient.Status>()
     val biosStatus: LiveData<BiosClient.Status> = _biosStatus
 
+    private val _biosLastPushOutcome = MutableLiveData<BiosClient.LastPushOutcome>()
+    val biosLastPushOutcome: LiveData<BiosClient.LastPushOutcome> = _biosLastPushOutcome
+
     init {
         loadSettings()
     }
@@ -79,6 +82,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _currency.value = currencySymbol
         _biosEnabled.value = biosClient.isEnabled
         _biosStatus.value = biosClient.status()
+        _biosLastPushOutcome.value = biosClient.lastPushOutcome
         updateDescriptions(isStrict, level)
     }
 
@@ -86,10 +90,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         biosClient.setEnabled(enabled)
         _biosEnabled.value = enabled
         _biosStatus.value = biosClient.status()
+        _biosLastPushOutcome.value = biosClient.lastPushOutcome
     }
 
     fun refreshBiosStatus() {
         _biosStatus.value = biosClient.status()
+        _biosLastPushOutcome.value = biosClient.lastPushOutcome
     }
     
     fun setStrictMode(enabled: Boolean) {

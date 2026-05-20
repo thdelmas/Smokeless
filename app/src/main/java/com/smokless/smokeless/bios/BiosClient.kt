@@ -45,6 +45,25 @@ class BiosClient(private val context: Context) {
         else -> Status.CONNECTED
     }
 
+    /**
+     * Outcome of the most recent push attempt. Persisted so the settings UI
+     * can surface actionable guidance — particularly the
+     * [LastPushOutcome.PENDING_APPROVAL] state, which is the first-write
+     * response from Bios's CompanionGate (the owner has to approve
+     * Smokeless inside Bios → Settings → Companion Apps before any data
+     * lands). Without surfacing this, the user logs an event, sees nothing
+     * in Bios, and has no signal that the integration is one approval tap
+     * away from working.
+     */
+    val lastPushOutcome: LastPushOutcome
+        get() = prefs.getString(KEY_LAST_PUSH_OUTCOME, null)
+            ?.let { runCatching { LastPushOutcome.valueOf(it) }.getOrNull() }
+            ?: LastPushOutcome.NEVER_TRIED
+
+    private fun recordOutcome(outcome: LastPushOutcome) {
+        prefs.edit().putString(KEY_LAST_PUSH_OUTCOME, outcome.name).apply()
+    }
+
     fun pushSmokingEvent(timestamp: Long, substance: Substance) =
         push(useMetricFor(substance), timestamp)
 
@@ -88,11 +107,24 @@ class BiosClient(private val context: Context) {
         }
         return try {
             context.contentResolver.insert(uri, values)
+            recordOutcome(LastPushOutcome.OK)
             true
         } catch (e: SecurityException) {
-            Log.d(TAG, "Bios rejected $metricType: ${e.message}")
+            val msg = e.message.orEmpty()
+            // Bios's CompanionGate throws this exact message on first
+            // contact from a new package. Distinguish it from the
+            // post-revoke / cert-pin failures so the UI can guide the
+            // user to the approval tap instead of a generic error.
+            val outcome = if (msg.contains("not approved", ignoreCase = true)) {
+                LastPushOutcome.PENDING_APPROVAL
+            } else {
+                LastPushOutcome.OTHER_FAILURE
+            }
+            recordOutcome(outcome)
+            Log.d(TAG, "Bios rejected $metricType: $msg (outcome=$outcome)")
             false
         } catch (e: Exception) {
+            recordOutcome(LastPushOutcome.OTHER_FAILURE)
             Log.d(TAG, "Bios push failed for $metricType: ${e.message}")
             false
         }
@@ -100,12 +132,43 @@ class BiosClient(private val context: Context) {
 
     enum class Status { NOT_INSTALLED, NOT_ENABLED, CONNECTED }
 
+    /**
+     * What happened the last time Smokeless tried to write to Bios.
+     * Persisted across restarts so the settings screen can render a
+     * meaningful state on cold open.
+     */
+    enum class LastPushOutcome {
+        /** No push attempted yet (fresh install or integration just toggled on). */
+        NEVER_TRIED,
+
+        /** Last push landed. The integration is fully wired. */
+        OK,
+
+        /** Bios's CompanionGate rejected the write because the owner has
+         *  not yet approved Smokeless in Bios → Settings → Companion Apps. */
+        PENDING_APPROVAL,
+
+        /** Bios rejected the write for some other reason — most often a
+         *  paired-release mismatch (Bios doesn't yet whitelist a key
+         *  Smokeless writes). */
+        OTHER_FAILURE,
+    }
+
     data class BackfillResult(val pushed: Int, val failed: Int, val total: Int)
 
     companion object {
         private const val TAG = "BiosClient"
         private const val PREFS_NAME = "SmokelessPrefs"
         private const val KEY_ENABLED = "biosIntegrationEnabled"
+        private const val KEY_LAST_PUSH_OUTCOME = "biosLastPushOutcome"
+
+        /** Bios's `MainActivity` reads this extra to deep-link directly
+         *  into Settings → Companion Apps. Mirrors
+         *  `CompanionAccessNotifier.EXTRA_NAVIGATE_TO_COMPANIONS` in
+         *  Bios; pinned by string here because Smokeless doesn't depend
+         *  on Bios's source. */
+        const val BIOS_PACKAGE = "com.bios.app"
+        const val BIOS_EXTRA_NAVIGATE_TO_COMPANIONS = "navigate_to_companions"
 
         const val METRIC_TOBACCO_USE = "tobacco_use"
         const val METRIC_TOBACCO_CRAVING = "tobacco_craving"
