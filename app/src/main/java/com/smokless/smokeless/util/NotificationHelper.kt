@@ -74,10 +74,11 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-        val unit = if (digest.smokesThisWeek == 1) copy.unit else copy.units
+        val unit = if (kotlin.math.abs(digest.smokesThisWeek - 1.0) < 0.01)
+            copy.unit else copy.units
+        val displayCount = formatWeeklyCount(digest.smokesThisWeek)
         val change = digest.smokeChangePercent
         val changeLine = when {
-            change == null && digest.smokesPriorWeek == 0 -> ""
             change == null -> ""
             change >= 10 -> " (↓ ${change.toInt()}% vs last week)"
             change >= 5 -> " (↓ ${change.toInt()}% vs last week)"
@@ -87,9 +88,9 @@ object NotificationHelper {
         }
         val resisted = digest.resistance.resistedCount
         val title = "🌿 Your week in review"
-        val short = "${digest.smokesThisWeek} $unit · $resisted resisted$changeLine"
+        val short = "$displayCount $unit · $resisted resisted$changeLine"
         val longLines = mutableListOf<String>()
-        longLines += "${digest.smokesThisWeek} $unit this week$changeLine."
+        longLines += "$displayCount $unit this week$changeLine."
         longLines += "$resisted resistance ${if (resisted == 1) "moment held" else "moments held"}."
         if (digest.cleanDaysThisWeek > 0) {
             longLines += "${digest.cleanDaysThisWeek}/7 clean days."
@@ -114,6 +115,15 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_WEEKLY, notification)
         } catch (e: SecurityException) {
             // Permission not granted — silently swallow.
+        }
+    }
+
+    private fun formatWeeklyCount(value: Double): String {
+        val rounded = kotlin.math.round(value)
+        return if (kotlin.math.abs(value - rounded) < 0.05) {
+            rounded.toInt().toString()
+        } else {
+            String.format(java.util.Locale.getDefault(), "%.1f", value)
         }
     }
 

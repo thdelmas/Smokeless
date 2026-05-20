@@ -14,19 +14,25 @@ import kotlin.math.pow
 object ScoreCalculator {
     
     /**
-     * Statistics for a given time period
+     * Statistics for a given time period.
+     *
+     * Dose-weighted: [totalCigarettes], [averagePerDay], [bestDay], [worstDay]
+     * sum SmokingSession.quantity rather than event counts. A user who logs
+     * five drags (0.25 each) registers as 1.25 cig-equivalents, not 5.
+     * [cleanDays], [totalDays], and the streak fields stay event-based — a
+     * day with any logged session, even a drag, is not "clean."
      */
     data class PeriodStats(
-        val totalCigarettes: Int,
+        val totalCigarettes: Double,
         val averagePerDay: Double,
         val cleanDays: Int,
         val totalDays: Int,
         val currentStreak: Int,
         val bestStreak: Int,
         val trend: Double,  // Positive = improving (fewer cigs), Negative = worsening
-        val frequency: Double,  // Cigarettes per day (including clean days)
-        val bestDay: Int,  // Lowest cigarette count
-        val worstDay: Int  // Highest cigarette count
+        val frequency: Double,  // Cig-equivalents per day (including clean days)
+        val bestDay: Double,  // Lowest non-zero daily dose
+        val worstDay: Double  // Highest daily dose
     )
     
     /**
@@ -37,7 +43,7 @@ object ScoreCalculator {
             // When there's no data, return zeros with proper context
             // Note: totalDays = 0 signals "no data" vs "perfect period"
             return PeriodStats(
-                totalCigarettes = 0,
+                totalCigarettes = 0.0,
                 averagePerDay = 0.0,
                 cleanDays = 0,
                 totalDays = 0,  // Key indicator: 0 days means no tracking started
@@ -45,37 +51,35 @@ object ScoreCalculator {
                 bestStreak = 0,
                 trend = 0.0,
                 frequency = 0.0,
-                bestDay = 0,
-                worstDay = 0
+                bestDay = 0.0,
+                worstDay = 0.0
             )
         }
-        
+
+        // Two parallel daily breakdowns:
+        //  - dailyCounts (Int): event counts. Drives streaks, clean-day
+        //    counting, and the trend calculation (where a slip is a slip
+        //    regardless of dose).
+        //  - dailyDoses (Double): summed quantity. Drives every dose-weighted
+        //    headline (totalCigarettes, averagePerDay, bestDay/worstDay).
         val dailyCounts = getDailyCountsForScope(sessions, scope)
+        val dailyDoses = getDailyQuantityForScope(sessions, scope)
         val totalDays = dailyCounts.size
-        
-        // If we have tracking days but no cigarettes, that's actually perfect!
-        val totalCigarettes = dailyCounts.values.sum()
+
+        val totalCigarettes = dailyDoses.values.sum()
         val cleanDays = dailyCounts.count { it.value == 0 }
-        
-        // Calculate streaks
+
         val currentStreak = calculateCurrentStreak(dailyCounts)
         val bestStreak = calculateBestStreak(dailyCounts)
-        
-        // Calculate average (total cigarettes / total days)
-        val averagePerDay = if (totalDays > 0) {
-            totalCigarettes.toDouble() / totalDays
-        } else {
-            0.0
-        }
-        
-        // Calculate trend (comparing first half to second half)
+
+        val averagePerDay = if (totalDays > 0) totalCigarettes / totalDays else 0.0
+
         val trend = calculateTrend(dailyCounts)
-        
-        // Best and worst days (among days with cigarettes)
-        val counts = dailyCounts.values.filter { it > 0 }
-        val bestDay = counts.minOrNull() ?: 0
-        val worstDay = counts.maxOrNull() ?: 0
-        
+
+        val doses = dailyDoses.values.filter { it > 0.0 }
+        val bestDay = doses.minOrNull() ?: 0.0
+        val worstDay = doses.maxOrNull() ?: 0.0
+
         return PeriodStats(
             totalCigarettes = totalCigarettes,
             averagePerDay = averagePerDay,
@@ -88,6 +92,52 @@ object ScoreCalculator {
             bestDay = bestDay,
             worstDay = worstDay
         )
+    }
+
+    /**
+     * Parallel to [getDailyCountsForScope] but summing SmokingSession.quantity
+     * instead of counting events. Days with zero sessions appear with 0.0.
+     */
+    fun getDailyQuantityForScope(
+        sessions: List<SmokingSession>,
+        scope: String,
+    ): LinkedHashMap<String, Double> {
+        val daily = LinkedHashMap<String, Double>()
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        if (sessions.isEmpty()) return daily
+
+        val firstSessionTime = sessions.minOf { it.timestamp }
+        val scopeStartTime = System.currentTimeMillis() - when (scope.lowercase()) {
+            "year" -> TimeUnit.DAYS.toMillis(365)
+            "month" -> TimeUnit.DAYS.toMillis(30)
+            "week" -> TimeUnit.DAYS.toMillis(7)
+            "day" -> TimeUnit.DAYS.toMillis(1)
+            else -> Long.MAX_VALUE
+        }
+        val startTime = if (scope.lowercase() == "all") firstSessionTime
+            else max(firstSessionTime, scopeStartTime)
+
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = startTime
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val endCalendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        while (!calendar.after(endCalendar)) {
+            daily[dateFormat.format(calendar.time)] = 0.0
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        for (session in sessions) {
+            val dayKey = dateFormat.format(Date(session.timestamp))
+            if (daily.containsKey(dayKey)) {
+                daily[dayKey] = daily[dayKey]!! + session.quantity
+            }
+        }
+        return daily
     }
     
     /**
@@ -437,8 +487,11 @@ object ScoreCalculator {
         val sessionsLast30 = sessions.filter { it.timestamp >= start30d }
         val sessionsPrior30 = sessions.filter { it.timestamp in startPrior until start30d }
 
-        val avg7d = sessionsLast7.size / 7.0
-        val avgPrior = sessionsPrior30.size / 30.0
+        // Dose-weighted averages: reduction signal should reflect exposure,
+        // not just event count. A user who replaces three full smokes with
+        // three drags has reduced 75%, not 0%.
+        val avg7d = sessionsLast7.sumOf { it.quantity } / 7.0
+        val avgPrior = sessionsPrior30.sumOf { it.quantity } / 30.0
 
         val firstSession = sessions.minOf { it.timestamp }
         val trackedDays = ((now - firstSession) / day).toInt() + 1
@@ -972,8 +1025,9 @@ object ScoreCalculator {
      */
     data class WeeklyDigest(
         val nowMs: Long,
-        val smokesThisWeek: Int,
-        val smokesPriorWeek: Int,
+        /** Dose-weighted sum of smokes in the last 7 days. A drag is 0.25, full is 1.0, etc. */
+        val smokesThisWeek: Double,
+        val smokesPriorWeek: Double,
         /** Signed change as a percentage. Positive = reduced. Null when prior is zero and current is non-zero (no meaningful denominator). */
         val smokeChangePercent: Double?,
         val resistance: ResistanceStats,
@@ -996,12 +1050,19 @@ object ScoreCalculator {
         val weekStart = nowMs - weekMs
         val priorStart = nowMs - 2 * weekMs
 
-        val smokesThis = sessions.count { it.timestamp in weekStart until nowMs }
-        val smokesPrior = sessions.count { it.timestamp in priorStart until weekStart }
+        // Dose-weighted week totals: reduction reads honestly when a user
+        // logs five drags vs. five full smokes — the "smokes this week"
+        // number reflects exposure, not just event count.
+        val smokesThis = sessions
+            .filter { it.timestamp in weekStart until nowMs }
+            .sumOf { it.quantity }
+        val smokesPrior = sessions
+            .filter { it.timestamp in priorStart until weekStart }
+            .sumOf { it.quantity }
         val smokeChange = when {
-            smokesPrior == 0 && smokesThis == 0 -> 0.0
-            smokesPrior == 0 -> null
-            else -> ((smokesPrior - smokesThis).toDouble() / smokesPrior) * 100.0
+            smokesPrior < 0.01 && smokesThis < 0.01 -> 0.0
+            smokesPrior < 0.01 -> null
+            else -> ((smokesPrior - smokesThis) / smokesPrior) * 100.0
         }
 
         val resistance = calculateResistanceStats(cravings, sessions, nowMs, lookbackDays = 7)
@@ -1079,14 +1140,20 @@ object ScoreCalculator {
         if (allSessions.isEmpty()) return emptyList()
         val seen = allSessions.map { it.substance }.toSet().sortedBy { it.ordinal }
         return seen.map { sub ->
-            val last = allSessions.filter { it.substance == sub }.maxOfOrNull { it.timestamp }
+            val mostRecent = allSessions
+                .filter { it.substance == sub }
+                .maxByOrNull { it.timestamp }
             val halfLife = halfLifeHours(sub)
-            if (last == null) {
+            if (mostRecent == null) {
                 SubstanceLevel(sub, 0.0, Double.POSITIVE_INFINITY, halfLife, null)
             } else {
-                val hours = max(0.0, (nowMs - last).toDouble() / TimeUnit.HOURS.toMillis(1))
-                val pct = 100.0 * 0.5.pow(hours / halfLife)
-                SubstanceLevel(sub, pct, hours, halfLife, last)
+                val hours = max(0.0, (nowMs - mostRecent.timestamp).toDouble() /
+                    TimeUnit.HOURS.toMillis(1))
+                // Initial level scales with dose: a drag delivers ~25% of the
+                // full-cigarette nicotine load, so the post-drag plasma curve
+                // starts at 25%, not 100%. Decays normally from there.
+                val pct = 100.0 * mostRecent.quantity * 0.5.pow(hours / halfLife)
+                SubstanceLevel(sub, pct, hours, halfLife, mostRecent.timestamp)
             }
         }
     }

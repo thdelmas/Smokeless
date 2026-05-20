@@ -25,8 +25,8 @@ class WeeklyDigestTest {
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
-        assertEquals(0, d.smokesThisWeek)
-        assertEquals(0, d.smokesPriorWeek)
+        assertEquals(0.0, d.smokesThisWeek, 0.001)
+        assertEquals(0.0, d.smokesPriorWeek, 0.001)
         assertEquals(0.0, d.smokeChangePercent ?: -1.0, 0.001)
         assertEquals(7, d.cleanDaysThisWeek)
         assertEquals(0, d.resistance.resistedCount)
@@ -47,8 +47,8 @@ class WeeklyDigestTest {
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
-        assertEquals(5, d.smokesThisWeek)
-        assertEquals(10, d.smokesPriorWeek)
+        assertEquals(5.0, d.smokesThisWeek, 0.001)
+        assertEquals(10.0, d.smokesPriorWeek, 0.001)
         assertNotNull(d.smokeChangePercent)
         assertEquals(50.0, d.smokeChangePercent!!, 0.5)
     }

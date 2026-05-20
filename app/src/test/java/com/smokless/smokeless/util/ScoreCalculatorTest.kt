@@ -44,7 +44,7 @@ class ScoreCalculatorTest {
     @Test
     fun `calculatePeriodStats returns zeros for empty sessions`() {
         val stats = ScoreCalculator.calculatePeriodStats(emptyList(), "month")
-        assertEquals(0, stats.totalCigarettes)
+        assertEquals(0.0, stats.totalCigarettes, 0.001)
         assertEquals(0.0, stats.averagePerDay, 0.01)
         assertEquals(0, stats.cleanDays)
         assertEquals(0, stats.totalDays)

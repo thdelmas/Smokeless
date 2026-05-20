@@ -612,13 +612,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             type = ScoreData.StatType.STREAK
         ))
         
-        // 5. Total smoked - For context
+        // 5. Total smoked - dose-weighted ("3.5 cigs" = three full plus a half).
+        // value (Long) carries the rounded integer for legacy callers; the
+        // adapter prefers decimalValue when set.
+        val totalRounded = kotlin.math.round(stats.totalCigarettes).toLong()
         scores.add(ScoreData(
             label = "Total Smoked",
-            value = stats.totalCigarettes.toLong(),
-            decimalValue = stats.totalCigarettes.toDouble(),
+            value = totalRounded,
+            decimalValue = stats.totalCigarettes,
             percentage = 0.0,  // No percentage needed for raw total
-            unit = copy.unitFor(stats.totalCigarettes),
+            unit = copy.unitFor(totalRounded),
             type = ScoreData.StatType.COUNT
         ))
         

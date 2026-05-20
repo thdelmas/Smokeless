@@ -66,7 +66,7 @@ class ScoreCalculatorExtendedTest {
             createSession(now - TimeUnit.HOURS.toMillis(3))
         )
         val stats = ScoreCalculator.calculatePeriodStats(sessions, "day")
-        assertEquals(3, stats.totalCigarettes)
+        assertEquals(3.0, stats.totalCigarettes, 0.001)
     }
 
     @Test
@@ -79,7 +79,7 @@ class ScoreCalculatorExtendedTest {
             createSession(now)
         )
         val stats = ScoreCalculator.calculatePeriodStats(sessions, "week")
-        assertEquals(4, stats.totalCigarettes)
+        assertEquals(4.0, stats.totalCigarettes, 0.001)
         assertTrue(stats.totalDays >= 3)
     }
 

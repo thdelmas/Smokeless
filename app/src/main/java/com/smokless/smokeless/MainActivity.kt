@@ -551,6 +551,20 @@ class MainActivity : AppCompatActivity() {
         else -> null // full / non-bucket values — no badge
     }
 
+    /**
+     * Render a dose-weighted count: integers stay clean ("5"), fractional
+     * sums show one decimal ("3.5") so the bucket math is visible without
+     * cluttering whole-number totals.
+     */
+    private fun formatDoseCount(value: Double): String {
+        val rounded = kotlin.math.round(value)
+        return if (kotlin.math.abs(value - rounded) < 0.05) {
+            rounded.toInt().toString()
+        } else {
+            String.format(java.util.Locale.getDefault(), "%.1f", value)
+        }
+    }
+
     private fun setupResistFab() {
         binding.fabResist.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
@@ -821,8 +835,8 @@ class MainActivity : AppCompatActivity() {
         val milestonesGroup = sectionRoot.findViewById<android.widget.LinearLayout>(R.id.groupDigestMilestones)
         val milestonesText = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestMilestones)
 
-        smokeCount.text = digest.smokesThisWeek.toString()
-        val unit = if (digest.smokesThisWeek == 1) copy.unit else copy.units
+        smokeCount.text = formatDoseCount(digest.smokesThisWeek)
+        val unit = if (kotlin.math.abs(digest.smokesThisWeek - 1.0) < 0.01) copy.unit else copy.units
         smokeLabel.text = "$unit this week"
 
         val change = digest.smokeChangePercent
