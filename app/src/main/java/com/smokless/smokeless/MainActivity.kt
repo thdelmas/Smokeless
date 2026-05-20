@@ -733,6 +733,93 @@ class MainActivity : AppCompatActivity() {
         viewModel.perSubstancePace.observe(this) { entries -> updatePerSubstancePace(entries) }
         viewModel.firstSmokeOfDay.observe(this) { fs -> updateFirstSmokeOfDay(fs) }
         viewModel.substanceLevels.observe(this) { levels -> updateSubstanceLevels(levels) }
+        viewModel.triggerWindows.observe(this) { windows -> updateTriggerWindows(windows) }
+    }
+
+    private fun formatHourLabel(hour: Int): String = String.format("%02d:00", hour)
+
+    private fun updateTriggerWindows(windows: List<ScoreCalculator.TriggerWindow>) {
+        val sectionRoot = binding.sectionTriggerMap.root
+        val group = sectionRoot.findViewById<android.widget.LinearLayout>(R.id.groupTriggerWindows)
+        val empty = sectionRoot.findViewById<android.widget.TextView>(R.id.textTriggerEmpty)
+        val headsUp = sectionRoot.findViewById<android.widget.TextView>(R.id.textTriggerHeadsUp)
+
+        group.removeAllViews()
+        if (windows.isEmpty() || windows.all { it.peakHours.isEmpty() }) {
+            empty.visibility = View.VISIBLE
+            headsUp.visibility = View.GONE
+            return
+        }
+        empty.visibility = View.GONE
+
+        val nearPeakSubs = windows.filter { it.nearPeakNow }
+        if (nearPeakSubs.isNotEmpty()) {
+            val joined = nearPeakSubs.joinToString(" + ") { substanceLabel(it.substance) }
+            headsUp.text = "⏰ Heads up — typically a smoke window for you ($joined)"
+            headsUp.visibility = View.VISIBLE
+        } else {
+            headsUp.visibility = View.GONE
+        }
+
+        val inflater = layoutInflater
+        val nowHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        for (tw in windows) {
+            val row = inflater.inflate(R.layout.item_trigger_window, group, false)
+            val labelView = row.findViewById<android.widget.TextView>(R.id.textTriggerSubstance)
+            val peaksView = row.findViewById<android.widget.TextView>(R.id.textTriggerPeaks)
+            val strip = row.findViewById<android.widget.LinearLayout>(R.id.hourStrip)
+
+            labelView.text = substanceLabel(tw.substance)
+            peaksView.text = if (tw.peakHours.isEmpty()) {
+                "—"
+            } else {
+                tw.peakHours.joinToString(" · ") { formatHourLabel(it) }
+            }
+            renderHourStrip(strip, tw, nowHour)
+            group.addView(row)
+        }
+    }
+
+    private fun renderHourStrip(
+        container: android.widget.LinearLayout,
+        tw: ScoreCalculator.TriggerWindow,
+        nowHour: Int,
+    ) {
+        container.removeAllViews()
+        val max = tw.hourCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+        val peakSet = tw.peakHours.toSet()
+        val baseColor = ContextCompat.getColor(this, R.color.accent_primary)
+        val peakColor = ContextCompat.getColor(this, R.color.accent_amber)
+        val dimColor = ContextCompat.getColor(this, R.color.progress_track)
+        val nowOutline = ContextCompat.getColor(this, R.color.text_primary)
+
+        for (h in 0..23) {
+            val cell = View(this).apply {
+                val lp = android.widget.LinearLayout.LayoutParams(0, 0).apply {
+                    weight = 1f
+                    height = android.widget.LinearLayout.LayoutParams.MATCH_PARENT
+                    marginEnd = if (h < 23) (resources.displayMetrics.density * 1).toInt() else 0
+                }
+                layoutParams = lp
+            }
+            val count = tw.hourCounts[h]
+            val ratio = count.toDouble() / max
+            val isPeak = h in peakSet
+            val baseFill = when {
+                count == 0 -> dimColor
+                isPeak -> peakColor
+                else -> baseColor
+            }
+            val alpha = if (count == 0) 0.35f else (0.45f + 0.55f * ratio).toFloat()
+            val bg = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = resources.displayMetrics.density * 3
+                setColor(baseFill)
+                if (h == nowHour) setStroke((resources.displayMetrics.density * 1.5f).toInt(), nowOutline)
+            }
+            cell.background = bg
+            cell.alpha = alpha
+            container.addView(cell)
+        }
     }
 
     private fun substanceLabel(substance: Substance): String = when (substance) {

@@ -49,6 +49,8 @@
 
                 <include android:id="@+id/sectionProgression" layout="@layout/section_progression" />
 
+                <include android:id="@+id/sectionTriggerMap" layout="@layout/section_trigger_map" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

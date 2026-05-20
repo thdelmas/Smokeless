@@ -791,6 +791,105 @@ object ScoreCalculator {
         val lastTimestamp: Long?,
     )
 
+    /**
+     * Per-substance hour-of-day distribution over a lookback window. The
+     * `hourCounts` field has exactly 24 entries (index 0 = midnight..00:59,
+     * index 23 = 23:00..23:59). `peakHours` lists hours whose count is
+     * meaningfully above the user's baseline rate — the "trigger windows"
+     * worth flagging in copy. `nearPeakNow` is true when the current hour is
+     * within ±1h of any peak, used to drive a heads-up banner.
+     *
+     * Designed for the "anticipate, don't just react" frame: the existing
+     * surface only describes what already happened. This one says *when* the
+     * craving is most likely to fire.
+     */
+    data class TriggerWindow(
+        val substance: Substance,
+        val hourCounts: IntArray,
+        val peakHours: List<Int>,
+        val totalSessions: Int,
+        val nearPeakNow: Boolean,
+    ) {
+        // Auto-generated equals/hashCode would compare IntArray by reference;
+        // override so tests and diffing behave predictably.
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is TriggerWindow) return false
+            return substance == other.substance &&
+                hourCounts.contentEquals(other.hourCounts) &&
+                peakHours == other.peakHours &&
+                totalSessions == other.totalSessions &&
+                nearPeakNow == other.nearPeakNow
+        }
+        override fun hashCode(): Int {
+            var result = substance.hashCode()
+            result = 31 * result + hourCounts.contentHashCode()
+            result = 31 * result + peakHours.hashCode()
+            result = 31 * result + totalSessions
+            result = 31 * result + nearPeakNow.hashCode()
+            return result
+        }
+    }
+
+    /**
+     * Compute trigger windows per substance over the last [lookbackDays] days.
+     * A peak is any hour whose share of total sessions is ≥ [peakMultiplier]
+     * times the uniform-distribution baseline (1/24). Default multiplier of
+     * 1.8 means an hour has to carry at least 1.8× its "fair share" to count.
+     * Returns at most 4 peaks per substance, sorted by hour ascending for
+     * display.
+     */
+    fun calculateTriggerWindows(
+        allSessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+        lookbackDays: Int = 30,
+        peakMultiplier: Double = 1.8,
+        minSessionsToReport: Int = 5,
+    ): List<TriggerWindow> {
+        if (allSessions.isEmpty()) return emptyList()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val lookbackStart = nowMs - lookbackDays * day
+        val windowSessions = allSessions.filter { it.timestamp >= lookbackStart }
+        if (windowSessions.isEmpty()) return emptyList()
+
+        val nowHour = Calendar.getInstance().apply { timeInMillis = nowMs }
+            .get(Calendar.HOUR_OF_DAY)
+
+        val grouped = windowSessions.groupBy { it.substance }
+        return grouped.entries
+            .sortedBy { it.key.ordinal }
+            .map { (substance, sessions) ->
+                val counts = IntArray(24)
+                val cal = Calendar.getInstance()
+                for (s in sessions) {
+                    cal.timeInMillis = s.timestamp
+                    counts[cal.get(Calendar.HOUR_OF_DAY)]++
+                }
+                val total = sessions.size
+                val peaks = if (total >= minSessionsToReport) {
+                    val threshold = (total / 24.0) * peakMultiplier
+                    (0..23)
+                        .filter { counts[it] >= threshold && counts[it] >= 2 }
+                        .sortedByDescending { counts[it] }
+                        .take(4)
+                        .sorted()
+                } else emptyList()
+                val nearPeak = peaks.any { peakHour ->
+                    val diff = ((peakHour - nowHour + 36) % 24) - 12
+                    abs(diff) <= 1
+                }
+                TriggerWindow(
+                    substance = substance,
+                    hourCounts = counts,
+                    peakHours = peaks,
+                    totalSessions = total,
+                    nearPeakNow = nearPeak,
+                )
+            }
+            // Drop substances with zero useful signal — they'd render as empty rows.
+            .filter { it.totalSessions > 0 }
+    }
+
     fun estimateSubstanceLevels(
         allSessions: List<SmokingSession>,
         nowMs: Long = System.currentTimeMillis(),

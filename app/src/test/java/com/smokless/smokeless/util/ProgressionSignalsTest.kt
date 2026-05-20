@@ -137,6 +137,97 @@ class ProgressionSignalsTest {
             cannabis.percentRemaining > tobacco.percentRemaining + 50)
     }
 
+    // --- calculateTriggerWindows ---
+
+    @Test
+    fun `triggerWindows empty input returns empty list`() {
+        val r = ScoreCalculator.calculateTriggerWindows(emptyList())
+        assertTrue(r.isEmpty())
+    }
+
+    @Test
+    fun `triggerWindows detects clustered hours as peaks`() {
+        val now = atHour(today(), 12) // run "now" at noon
+        val sessions = mutableListOf<SmokingSession>()
+        // Over 20 days, 10 cigs at 09:00 daily and 8 at 22:00 daily, plus 2
+        // scattered at random hours. 09:00 and 22:00 should be peaks.
+        for (d in 1..20) {
+            sessions += SmokingSession(atHour(today() - d * day, 9))
+            sessions += SmokingSession(atHour(today() - d * day, 22))
+        }
+        val result = ScoreCalculator.calculateTriggerWindows(sessions, now)
+        assertEquals(1, result.size)
+        val tobacco = result.first { it.substance == Substance.TOBACCO }
+        assertTrue("09 should be a peak", 9 in tobacco.peakHours)
+        assertTrue("22 should be a peak", 22 in tobacco.peakHours)
+    }
+
+    @Test
+    fun `triggerWindows uniform distribution yields no peaks`() {
+        val now = atHour(today(), 12)
+        val sessions = mutableListOf<SmokingSession>()
+        // One session per hour for 15 days — perfectly uniform.
+        for (d in 1..15) {
+            for (h in 0..23) {
+                sessions += SmokingSession(atHour(today() - d * day, h))
+            }
+        }
+        val result = ScoreCalculator.calculateTriggerWindows(sessions, now)
+        val tobacco = result.first { it.substance == Substance.TOBACCO }
+        assertTrue("Uniform distribution should not have peaks",
+            tobacco.peakHours.isEmpty())
+    }
+
+    @Test
+    fun `triggerWindows separates substances`() {
+        val now = atHour(today(), 12)
+        val sessions = mutableListOf<SmokingSession>()
+        for (d in 1..15) {
+            // Tobacco mornings
+            sessions += SmokingSession(atHour(today() - d * day, 8), Substance.TOBACCO)
+            sessions += SmokingSession(atHour(today() - d * day, 9), Substance.TOBACCO)
+            // Cannabis evenings
+            sessions += SmokingSession(atHour(today() - d * day, 21), Substance.CANNABIS)
+            sessions += SmokingSession(atHour(today() - d * day, 22), Substance.CANNABIS)
+        }
+        val result = ScoreCalculator.calculateTriggerWindows(sessions, now)
+        val tobacco = result.first { it.substance == Substance.TOBACCO }
+        val cannabis = result.first { it.substance == Substance.CANNABIS }
+        assertTrue(tobacco.peakHours.any { it in listOf(8, 9) })
+        assertTrue(cannabis.peakHours.any { it in listOf(21, 22) })
+        // Tobacco peaks should NOT include cannabis hours and vice versa.
+        assertFalse(tobacco.peakHours.any { it >= 18 })
+        assertFalse(cannabis.peakHours.any { it < 12 })
+    }
+
+    @Test
+    fun `triggerWindows nearPeakNow flips when within one hour of peak`() {
+        val sessions = mutableListOf<SmokingSession>()
+        for (d in 1..15) {
+            sessions += SmokingSession(atHour(today() - d * day, 9))
+            sessions += SmokingSession(atHour(today() - d * day, 9))
+        }
+        val nearNow = atHour(today(), 10) // one hour after peak
+        val farNow = atHour(today(), 15)  // far from peak
+        val near = ScoreCalculator.calculateTriggerWindows(sessions, nearNow).first()
+        val far = ScoreCalculator.calculateTriggerWindows(sessions, farNow).first()
+        assertTrue(near.nearPeakNow)
+        assertFalse(far.nearPeakNow)
+    }
+
+    @Test
+    fun `triggerWindows withholds peaks under minimum-sessions threshold`() {
+        val now = atHour(today(), 12)
+        // Only 3 sessions total in window — not enough to call peaks.
+        val sessions = listOf(
+            SmokingSession(atHour(today() - 1 * day, 9)),
+            SmokingSession(atHour(today() - 2 * day, 9)),
+            SmokingSession(atHour(today() - 3 * day, 9)),
+        )
+        val result = ScoreCalculator.calculateTriggerWindows(sessions, now)
+        assertTrue(result.first().peakHours.isEmpty())
+    }
+
     // --- Helpers ---
 
     private fun today(): Long {

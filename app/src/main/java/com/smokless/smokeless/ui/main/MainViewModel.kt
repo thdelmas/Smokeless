@@ -125,6 +125,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _substanceLevels = MutableLiveData<List<ScoreCalculator.SubstanceLevel>>(emptyList())
     val substanceLevels: LiveData<List<ScoreCalculator.SubstanceLevel>> = _substanceLevels
 
+    // Hour-of-day distribution & peak windows per substance.
+    private val _triggerWindows = MutableLiveData<List<ScoreCalculator.TriggerWindow>>(emptyList())
+    val triggerWindows: LiveData<List<ScoreCalculator.TriggerWindow>> = _triggerWindows
+
     // Snapshot taken on each DB refresh so the per-second timer can tick the
     // banked counter without touching the database.
     private var firstSessionTimestamp = 0L
@@ -140,6 +144,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Per-substance last-smoke timestamps snapshotted on refresh. The decay
     // ticker re-evaluates each second from these without touching the DB.
     private var lastSubstanceTimestamps: Map<Substance, Long> = emptyMap()
+
+    // Trigger windows snapshot — peak hours don't move minute-to-minute, but
+    // the nearPeakNow flag flips as wall-clock advances, so the ticker
+    // recomputes it from the cached peakHours.
+    private var triggerWindowsSnapshot: List<ScoreCalculator.TriggerWindow> = emptyList()
+    private var lastNearPeakHour: Int = -1
 
     // Dominant substance for headline copy. Drives unit nouns and the
     // "smoke-free / clean" labeling per ROADMAP §2.2.
@@ -291,6 +301,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
+        // Re-evaluate nearPeakNow when the wall-clock hour changes. Cheap —
+        // only recomputes flags from the cached peak-hour lists. Avoids
+        // re-emitting the LiveData every second.
+        val nowHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        if (nowHour != lastNearPeakHour && triggerWindowsSnapshot.isNotEmpty()) {
+            lastNearPeakHour = nowHour
+            val refreshed = triggerWindowsSnapshot.map { tw ->
+                val near = tw.peakHours.any { peak ->
+                    val diff = ((peak - nowHour + 36) % 24) - 12
+                    kotlin.math.abs(diff) <= 1
+                }
+                if (near == tw.nearPeakNow) tw else tw.copy(nearPeakNow = near)
+            }
+            triggerWindowsSnapshot = refreshed
+            _triggerWindows.postValue(refreshed)
+        }
+
         // Decay substance levels from the snapshot. Cheap math, smooths
         // the percent-remaining as time passes.
         if (lastSubstanceTimestamps.isNotEmpty()) {
@@ -398,9 +425,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _perSubstancePace.postValue(ScoreCalculator.calculatePerSubstancePace(allSessions))
         _firstSmokeOfDay.postValue(ScoreCalculator.calculateFirstSmokeOfDay(allSessions))
         _substanceLevels.postValue(ScoreCalculator.estimateSubstanceLevels(allSessions))
+        _triggerWindows.postValue(ScoreCalculator.calculateTriggerWindows(allSessions))
         lastSubstanceTimestamps = allSessions
             .groupBy { it.substance }
             .mapValues { (_, list) -> list.maxOf { it.timestamp } }
+        triggerWindowsSnapshot = ScoreCalculator.calculateTriggerWindows(allSessions)
 
         // Primary substance drives headline copy (units, clean label).
         val primary = SubstanceCopy.primarySubstance(allSessions)
