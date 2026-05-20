@@ -109,6 +109,8 @@ class HealthTimelineActivity : AppCompatActivity() {
             val description: TextView = view.findViewById(R.id.textDescription)
             val details: LinearLayout = view.findViewById(R.id.groupDetails)
             val detailsText: TextView = view.findViewById(R.id.textDetails)
+            val actionsGroup: LinearLayout = view.findViewById(R.id.groupActions)
+            val actionsText: TextView = view.findViewById(R.id.textActions)
             val sourceText: TextView = view.findViewById(R.id.textSource)
         }
 
@@ -137,6 +139,12 @@ class HealthTimelineActivity : AppCompatActivity() {
             val isOpen = expanded.contains(position)
             holder.details.visibility = if (isOpen) View.VISIBLE else View.GONE
             holder.detailsText.text = milestone.details
+            if (milestone.actions.isNotEmpty()) {
+                holder.actionsGroup.visibility = View.VISIBLE
+                holder.actionsText.text = milestone.actions
+            } else {
+                holder.actionsGroup.visibility = View.GONE
+            }
             holder.sourceText.text = if (milestone.source.isNotEmpty())
                 "Source: ${milestone.source}"
             else ""

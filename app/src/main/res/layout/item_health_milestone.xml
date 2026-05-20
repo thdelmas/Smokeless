@@ -102,6 +102,37 @@
                 android:textSize="13sp"
                 android:lineSpacingMultiplier="1.5" />
 
+            <LinearLayout
+                android:id="@+id/groupActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="14dp"
+                android:padding="12dp"
+                android:background="@drawable/bg_stat_chip"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="What helps right now"
+                    android:textColor="@color/accent_primary"
+                    android:textSize="10sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.15"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/textActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:lineSpacingMultiplier="1.5" />
+
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/textSource"
                 android:layout_width="match_parent"
