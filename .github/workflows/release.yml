@@ -23,6 +23,11 @@ concurrency:
 
 env:
   WORKING_DIR: .
+  BUILD_TASK: assembleRelease
+  APK_GLOB: "app/build/outputs/apk/**/release/*.apk"
+  # Node 20 on runners is EOL Sept 2026. Force JS actions onto Node 24 now to
+  # silence the deprecation warning and surface compat issues before forced cutover.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
@@ -65,24 +70,35 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew ${{ env.BUILD_TASK }} --no-daemon
 
       - name: Locate APK
         id: find_apk
         run: |
-          APK="$(find "${{ env.WORKING_DIR }}/app/build/outputs/apk/release" -name '*.apk' | head -n1)"
-          if [ -z "$APK" ]; then
-            echo "::error::No release APK found."
+          shopt -s globstar nullglob
+          mapfile -t APKS < <(ls ${{ env.WORKING_DIR }}/${{ env.APK_GLOB }} 2>/dev/null | grep -v unsigned)
+          if [ ${#APKS[@]} -eq 0 ]; then
+            echo "::error::No release APK found under ${{ env.WORKING_DIR }}/${{ env.APK_GLOB }}"
             exit 1
           fi
           TAG="${GITHUB_REF#refs/tags/}"
           [ "$TAG" = "$GITHUB_REF" ] && TAG="${{ github.event.inputs.tag }}"
           REPO="${GITHUB_REPOSITORY##*/}"
-          OUT="${REPO}-${TAG}.apk"
-          cp "$APK" "$OUT"
-          sha256sum "$OUT" > "${OUT}.sha256"
-          echo "apk=$OUT" >> "$GITHUB_OUTPUT"
-          echo "sha=${OUT}.sha256" >> "$GITHUB_OUTPUT"
+          : > release-files.txt
+          for APK in "${APKS[@]}"; do
+            FLAVOR="$(basename "$(dirname "$(dirname "$APK")")")"
+            # If flavor dir is the same as variant ("release"), there is no flavor — drop suffix.
+            if [ "$FLAVOR" = "release" ] || [ "$FLAVOR" = "apk" ]; then
+              OUT="${REPO}-${TAG}.apk"
+            else
+              OUT="${REPO}-${FLAVOR}-${TAG}.apk"
+            fi
+            cp "$APK" "$OUT"
+            sha256sum "$OUT" > "${OUT}.sha256"
+            echo "$OUT" >> release-files.txt
+            echo "${OUT}.sha256" >> release-files.txt
+            echo "  built: $OUT"
+          done
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
@@ -90,8 +106,8 @@ jobs:
         with:
           name: release-apk
           path: |
-            ${{ steps.find_apk.outputs.apk }}
-            ${{ steps.find_apk.outputs.sha }}
+            *.apk
+            *.apk.sha256
           retention-days: 30
 
       - name: Publish GitHub Release
@@ -101,5 +117,5 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            ${{ steps.find_apk.outputs.apk }}
-            ${{ steps.find_apk.outputs.sha }}
+            *.apk
+            *.apk.sha256
