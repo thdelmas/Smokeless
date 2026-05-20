@@ -47,6 +47,8 @@
 
                 <include android:id="@+id/sectionRecoveryHero" layout="@layout/section_recovery_hero" />
 
+                <include android:id="@+id/sectionResistance" layout="@layout/section_resistance" />
+
                 <include android:id="@+id/sectionProgression" layout="@layout/section_progression" />
 
                 <include android:id="@+id/sectionTriggerMap" layout="@layout/section_trigger_map" />

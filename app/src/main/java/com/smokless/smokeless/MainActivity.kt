@@ -748,6 +748,61 @@ class MainActivity : AppCompatActivity() {
         viewModel.firstSmokeOfDay.observe(this) { fs -> updateFirstSmokeOfDay(fs) }
         viewModel.substanceLevels.observe(this) { levels -> updateSubstanceLevels(levels) }
         viewModel.triggerWindows.observe(this) { windows -> updateTriggerWindows(windows) }
+        viewModel.resistanceStats.observe(this) { stats -> updateResistanceCard(stats) }
+    }
+
+    private fun updateResistanceCard(stats: ScoreCalculator.ResistanceStats) {
+        val sectionRoot = binding.sectionResistance.root
+        val percentView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistancePercent)
+        val labelView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistanceLabel)
+        val deltaView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistanceDelta)
+        val breakdownView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistanceBreakdown)
+        val progress = sectionRoot.findViewById<
+            com.google.android.material.progressindicator.LinearProgressIndicator
+        >(R.id.progressResistance)
+
+        val total = stats.resistedCount + stats.smokedCount
+        if (total == 0) {
+            percentView.text = "—"
+            percentView.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+            labelView.text = "no urges logged yet"
+            breakdownView.text = "Tap \"I Resisted\" when an urge fires, even if you end up smoking. The ratio is what carries through."
+            progress.progress = 0
+            progress.setIndicatorColor(ContextCompat.getColor(this, R.color.progress_track))
+            deltaView.visibility = View.GONE
+            return
+        }
+
+        val pctInt = stats.resistancePercent.roundToInt().coerceIn(0, 100)
+        percentView.text = "$pctInt%"
+        labelView.text = "of urges held"
+
+        val colorRes = when {
+            pctInt >= 70 -> R.color.status_champion
+            pctInt >= 40 -> R.color.accent_amber
+            else -> R.color.status_reset
+        }
+        percentView.setTextColor(ContextCompat.getColor(this, colorRes))
+        progress.progress = pctInt
+        progress.setIndicatorColor(ContextCompat.getColor(this, colorRes))
+
+        breakdownView.text =
+            "${stats.resistedCount} resisted · ${stats.smokedCount} smoked  ·  $total moments this week"
+
+        val delta = stats.vsPriorPercent
+        if (delta == null) {
+            deltaView.visibility = View.GONE
+        } else {
+            val rounded = delta.roundToInt()
+            val (txt, deltaColor) = when {
+                rounded >= 5 -> "↑ +${rounded}pp vs last week" to R.color.status_champion
+                rounded <= -5 -> "↓ ${rounded}pp vs last week" to R.color.status_reset
+                else -> "→ steady vs last week" to R.color.text_secondary
+            }
+            deltaView.text = txt
+            deltaView.setTextColor(ContextCompat.getColor(this, deltaColor))
+            deltaView.visibility = View.VISIBLE
+        }
     }
 
     private fun formatHourLabel(hour: Int): String = String.format("%02d:00", hour)

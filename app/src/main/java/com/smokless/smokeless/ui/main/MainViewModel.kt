@@ -129,6 +129,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _triggerWindows = MutableLiveData<List<ScoreCalculator.TriggerWindow>>(emptyList())
     val triggerWindows: LiveData<List<ScoreCalculator.TriggerWindow>> = _triggerWindows
 
+    // Resistance signal: verified-held cravings vs. smokes, last 7 days.
+    private val _resistanceStats = MutableLiveData<ScoreCalculator.ResistanceStats>()
+    val resistanceStats: LiveData<ScoreCalculator.ResistanceStats> = _resistanceStats
+
     // Snapshot taken on each DB refresh so the per-second timer can tick the
     // banked counter without touching the database.
     private var firstSessionTimestamp = 0L
@@ -426,6 +430,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _firstSmokeOfDay.postValue(ScoreCalculator.calculateFirstSmokeOfDay(allSessions))
         _substanceLevels.postValue(ScoreCalculator.estimateSubstanceLevels(allSessions))
         _triggerWindows.postValue(ScoreCalculator.calculateTriggerWindows(allSessions))
+        val cravings = repository.getAllCravings()
+        _resistanceStats.postValue(
+            ScoreCalculator.calculateResistanceStats(cravings, allSessions)
+        )
         lastSubstanceTimestamps = allSessions
             .groupBy { it.substance }
             .mapValues { (_, list) -> list.maxOf { it.timestamp } }

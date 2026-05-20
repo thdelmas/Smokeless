@@ -486,6 +486,79 @@ object ScoreCalculator {
     /** Window after a craving log in which a smoke "cancels" the victory. */
     const val CRAVING_VICTORY_WINDOW_MS = 30L * 60 * 1000
 
+    /**
+     * The "moments of decision" view of recent activity. Per design note
+     * 2026-05-13 (streak-vs-reduce), the cleanest reduction signal available
+     * in current data is the ratio of held cravings to smokes — it answers
+     * "when the urge hit, what did I do?" without resetting on slips.
+     *
+     * - [resistedCount] is verified-held cravings: window of 30 min fully
+     *   elapsed, no real smoke landed inside it. Conservative on purpose.
+     * - [smokedCount] is every session in the window. No verification needed.
+     * - [resistancePercent] is resisted / (resisted + smoked), bounded 0–100.
+     * - [vsPriorPercent] is the change vs. the immediately prior window of
+     *   the same length. Positive = improving (more held, fewer smoked).
+     *   null when there isn't enough prior-window data to compare honestly.
+     */
+    data class ResistanceStats(
+        val resistedCount: Int,
+        val smokedCount: Int,
+        val resistancePercent: Double,
+        val vsPriorPercent: Double?,
+        val lookbackDays: Int,
+    )
+
+    fun calculateResistanceStats(
+        cravings: List<Craving>,
+        sessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+        lookbackDays: Int = 7,
+    ): ResistanceStats {
+        val day = TimeUnit.DAYS.toMillis(1)
+        val windowMs = lookbackDays * day
+        val windowStart = nowMs - windowMs
+        val priorStart = nowMs - 2 * windowMs
+
+        fun resistedIn(rangeStart: Long, rangeEnd: Long): Int {
+            // A craving counts only if its 30-min outcome window is fully past.
+            return cravings.count { c ->
+                val inRange = c.timestamp in rangeStart until rangeEnd
+                val windowElapsed = nowMs - c.timestamp >= CRAVING_VICTORY_WINDOW_MS
+                if (!inRange || !windowElapsed) return@count false
+                val windowEnd = c.timestamp + CRAVING_VICTORY_WINDOW_MS
+                val smokedWithin = sessions.any { s ->
+                    val realSmoke = s.timestamp - s.substance.exposureMs
+                    realSmoke in c.timestamp..windowEnd
+                }
+                !smokedWithin
+            }
+        }
+
+        fun smokedIn(rangeStart: Long, rangeEnd: Long): Int =
+            sessions.count { it.timestamp in rangeStart until rangeEnd }
+
+        val resisted = resistedIn(windowStart, nowMs)
+        val smoked = smokedIn(windowStart, nowMs)
+        val total = resisted + smoked
+        val pct = if (total == 0) 0.0 else (resisted.toDouble() / total) * 100.0
+
+        // Prior window: only compute delta if there's any prior activity at all.
+        val priorResisted = resistedIn(priorStart, windowStart)
+        val priorSmoked = smokedIn(priorStart, windowStart)
+        val priorTotal = priorResisted + priorSmoked
+        val priorPct = if (priorTotal == 0) null
+            else (priorResisted.toDouble() / priorTotal) * 100.0
+        val delta = if (priorPct == null) null else pct - priorPct
+
+        return ResistanceStats(
+            resistedCount = resisted,
+            smokedCount = smoked,
+            resistancePercent = pct,
+            vsPriorPercent = delta,
+            lookbackDays = lookbackDays,
+        )
+    }
+
     /** "How am I doing right now" — one-glance verdict for today vs typical pace. */
     enum class PaceState {
         CALIBRATING, // not enough history to compare against
