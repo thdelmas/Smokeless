@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/surface_card"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="28dp">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="20dp"
+        android:background="@color/divider" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="RIDE IT OUT"
+        android:textColor="@color/text_tertiary"
+        android:textSize="11sp"
+        android:letterSpacing="0.2"
+        android:fontFamily="sans-serif-medium" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Cravings usually pass in 3–5 minutes."
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:fontFamily="sans-serif" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="18dp">
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressRideOut"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|center_horizontal"
+            android:layout_marginTop="64dp"
+            app:indicatorColor="@color/accent_primary"
+            app:trackColor="@color/progress_track"
+            app:trackCornerRadius="6dp"
+            app:trackThickness="10dp" />
+
+        <TextView
+            android:id="@+id/textRideOutTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|top"
+            android:text="5:00"
+            android:textColor="@color/accent_primary"
+            android:textSize="52sp"
+            android:fontFamily="sans-serif-black"
+            android:includeFontPadding="false"
+            android:accessibilityLiveRegion="polite" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/cardTactic"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp"
+        android:background="@drawable/bg_stat_chip">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/textTacticIcon"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:gravity="center"
+                android:textSize="22sp"
+                android:background="@drawable/bg_stat_chip"
+                android:text="🌬️" />
+
+            <TextView
+                android:id="@+id/textTacticTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:text="Box breathing"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-bold" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/textTacticBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text=""
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:lineSpacingMultiplier="1.5" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAnotherTactic"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginStart="-8dp"
+            android:text="Try another tactic"
+            android:textColor="@color/accent_primary"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSmokedAnyway"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="I smoked"
+            android:textColor="@color/text_secondary"
+            app:strokeColor="@color/divider" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMadeIt"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Made it through"
+            android:textColor="@color/black"
+            android:backgroundTint="@color/status_champion" />
+
+    </LinearLayout>
+
+</LinearLayout>

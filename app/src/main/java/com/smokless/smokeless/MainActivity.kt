@@ -23,6 +23,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.smokless.smokeless.data.entity.Substance
 import com.smokless.smokeless.databinding.ActivityMainBinding
 import com.smokless.smokeless.ui.main.ChartData
+import com.smokless.smokeless.ui.main.CravingRideOutSheet
 import com.smokless.smokeless.ui.main.MainViewModel
 import com.smokless.smokeless.ui.main.RecoveryTimelineAdapter
 import com.smokless.smokeless.ui.main.ScoreAdapter
@@ -457,23 +458,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupFab() {
         binding.fabSmoke.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle("What did you smoke?")
-                .setMessage("Your banked smoke-free time is preserved. The exposure window pauses recovery — it doesn't erase it.")
-                .setPositiveButton("Cigarette (~10 min)") { _, _ ->
-                    recordSmokeAction(
-                        com.smokless.smokeless.data.entity.Substance.TOBACCO.exposureMs,
-                        com.smokless.smokeless.data.entity.Substance.TOBACCO,
-                    )
-                }
-                .setNegativeButton("Cancel", null)
-                .setNeutralButton("Weed (~30 min)") { _, _ ->
-                    recordSmokeAction(
-                        com.smokless.smokeless.data.entity.Substance.CANNABIS.exposureMs,
-                        com.smokless.smokeless.data.entity.Substance.CANNABIS,
-                    )
-                }
-                .show()
+            showSmokePicker()
         }
     }
 
@@ -515,8 +500,37 @@ class MainActivity : AppCompatActivity() {
         binding.fabResist.setOnClickListener { view ->
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             viewModel.recordCravingResisted()
-            showResistConfirmation()
+            CravingRideOutSheet(
+                context = this,
+                onMadeIt = { showResistConfirmation() },
+                onSmokedAnyway = { showSmokePicker() },
+            ).show()
         }
+    }
+
+    /**
+     * Opens the same substance picker the "I Smoked" FAB uses. Lifted to its
+     * own method so the ride-out sheet can route to it cleanly when the user
+     * taps "I smoked anyway."
+     */
+    private fun showSmokePicker() {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("What did you smoke?")
+            .setMessage("Your banked smoke-free time is preserved. The exposure window pauses recovery — it doesn't erase it.")
+            .setPositiveButton("Cigarette (~10 min)") { _, _ ->
+                recordSmokeAction(
+                    com.smokless.smokeless.data.entity.Substance.TOBACCO.exposureMs,
+                    com.smokless.smokeless.data.entity.Substance.TOBACCO,
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .setNeutralButton("Weed (~30 min)") { _, _ ->
+                recordSmokeAction(
+                    com.smokless.smokeless.data.entity.Substance.CANNABIS.exposureMs,
+                    com.smokless.smokeless.data.entity.Substance.CANNABIS,
+                )
+            }
+            .show()
     }
 
     private fun setupCollapsibleSections() {
