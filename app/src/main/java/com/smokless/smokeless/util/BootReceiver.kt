@@ -9,6 +9,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
             ReminderReceiver.schedule(context)
             TriggerWindowReceiver.schedule(context)
+            WeeklyDigestReceiver.schedule(context)
         }
     }
 }

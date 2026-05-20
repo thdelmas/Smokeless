@@ -24,6 +24,7 @@ object NotificationHelper {
 
     private const val NOTIFICATION_ID_BASE = 1000
     private const val NOTIFICATION_ID_TRIGGER = NOTIFICATION_ID_BASE + 12000
+    private const val NOTIFICATION_ID_WEEKLY = NOTIFICATION_ID_BASE + 13000
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -55,6 +56,64 @@ object NotificationHelper {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    fun showWeeklyDigestNotification(
+        context: Context,
+        digest: ScoreCalculator.WeeklyDigest,
+        copy: SubstanceCopy,
+    ) {
+        createTriggerChannel(context)
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        val unit = if (digest.smokesThisWeek == 1) copy.unit else copy.units
+        val change = digest.smokeChangePercent
+        val changeLine = when {
+            change == null && digest.smokesPriorWeek == 0 -> ""
+            change == null -> ""
+            change >= 10 -> " (↓ ${change.toInt()}% vs last week)"
+            change >= 5 -> " (↓ ${change.toInt()}% vs last week)"
+            change <= -10 -> " (↑ ${(-change).toInt()}% vs last week)"
+            change <= -5 -> " (↑ ${(-change).toInt()}% vs last week)"
+            else -> ""
+        }
+        val resisted = digest.resistance.resistedCount
+        val title = "🌿 Your week in review"
+        val short = "${digest.smokesThisWeek} $unit · $resisted resisted$changeLine"
+        val longLines = mutableListOf<String>()
+        longLines += "${digest.smokesThisWeek} $unit this week$changeLine."
+        longLines += "$resisted resistance ${if (resisted == 1) "moment held" else "moments held"}."
+        if (digest.cleanDaysThisWeek > 0) {
+            longLines += "${digest.cleanDaysThisWeek}/7 clean days."
+        }
+        if (digest.milestonesReachedThisWeek.isNotEmpty()) {
+            val list = digest.milestonesReachedThisWeek.joinToString(" · ") { "${it.icon} ${it.title}" }
+            longLines += "Milestones crossed: $list."
+        }
+        longLines += "Tap to see the full recap."
+
+        val notification = NotificationCompat.Builder(context, TRIGGER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_check)
+            .setContentTitle(title)
+            .setContentText(short)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(longLines.joinToString("\n")))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_WEEKLY, notification)
+        } catch (e: SecurityException) {
+            // Permission not granted — silently swallow.
         }
     }
 

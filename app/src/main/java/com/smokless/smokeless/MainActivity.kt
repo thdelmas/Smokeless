@@ -1270,6 +1270,7 @@ class MainActivity : AppCompatActivity() {
         startBreathingAnimation()
         // Idempotent — schedules only when the alarm hasn't been set yet.
         com.smokless.smokeless.util.TriggerWindowReceiver.schedule(this)
+        com.smokless.smokeless.util.WeeklyDigestReceiver.schedule(this)
     }
 
     override fun onPause() {

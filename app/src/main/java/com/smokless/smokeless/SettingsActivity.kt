@@ -302,6 +302,12 @@ class SettingsActivity : AppCompatActivity() {
         binding.switchTriggerHeadsUp.setOnCheckedChangeListener { _, isChecked ->
             com.smokless.smokeless.util.TriggerWindowReceiver.setEnabled(this, isChecked)
         }
+
+        binding.switchWeeklyDigest.isChecked =
+            com.smokless.smokeless.util.WeeklyDigestReceiver.isEnabled(this)
+        binding.switchWeeklyDigest.setOnCheckedChangeListener { _, isChecked ->
+            com.smokless.smokeless.util.WeeklyDigestReceiver.setEnabled(this, isChecked)
+        }
     }
 
     private fun formatHour(hour: Int): String {

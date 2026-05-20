@@ -70,6 +70,9 @@
             android:name=".util.TriggerWindowReceiver"
             android:exported="false" />
         <receiver
+            android:name=".util.WeeklyDigestReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".widget.SmokelessWidget"
             android:exported="false">
             <intent-filter>
