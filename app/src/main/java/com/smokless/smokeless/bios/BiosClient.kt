@@ -64,6 +64,54 @@ class BiosClient(private val context: Context) {
         prefs.edit().putString(KEY_LAST_PUSH_OUTCOME, outcome.name).apply()
     }
 
+    /**
+     * Most recent wake-up time according to Bios, or null if unavailable.
+     *
+     * Wake-up is read from the latest `sleep_duration` row in the last 24h:
+     * Bios writes that row's `timestamp` to the *end* of the sleep session
+     * (HealthConnectAdapter.kt:284), so the latest such row is "when the user
+     * last got up." Used to anchor Smokeless's "first smoke of the day"
+     * computation at wake-time instead of calendar midnight — a 00:15 smoke
+     * is then correctly the previous waking day's *last*, not the next day's
+     * first.
+     *
+     * Silent failure modes (all return null, caller falls back to midnight):
+     *  - Bios not installed
+     *  - READ_HEALTH not granted, or owner has not approved Smokeless for reads
+     *  - No sleep data within the lookback window
+     */
+    fun getWakeTimeMs(nowMs: Long = System.currentTimeMillis()): Long? {
+        if (!isAvailable) return null
+        val lookbackMs = java.util.concurrent.TimeUnit.HOURS.toMillis(24)
+        val startMs = nowMs - lookbackMs
+        val uri = BASE_URI.buildUpon()
+            .appendPath("readings")
+            .appendPath(METRIC_SLEEP_DURATION)
+            .appendQueryParameter("start", startMs.toString())
+            .appendQueryParameter("end", nowMs.toString())
+            .build()
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val tsCol = cursor.getColumnIndex("timestamp")
+                if (tsCol < 0) return@use null
+                var latest: Long? = null
+                while (cursor.moveToNext()) {
+                    val ts = cursor.getLong(tsCol)
+                    if (ts in startMs..nowMs && (latest == null || ts > latest)) {
+                        latest = ts
+                    }
+                }
+                latest
+            }
+        } catch (e: SecurityException) {
+            Log.d(TAG, "Bios read denied for sleep_duration: ${e.message}")
+            null
+        } catch (e: Exception) {
+            Log.d(TAG, "Bios read failed for sleep_duration: ${e.message}")
+            null
+        }
+    }
+
     fun pushSmokingEvent(timestamp: Long, substance: Substance) =
         push(useMetricFor(substance), timestamp)
 
@@ -174,6 +222,7 @@ class BiosClient(private val context: Context) {
         const val METRIC_TOBACCO_CRAVING = "tobacco_craving"
         const val METRIC_CANNABIS_USE = "cannabis_use"
         const val METRIC_CANNABIS_CRAVING = "cannabis_craving"
+        const val METRIC_SLEEP_DURATION = "sleep_duration"
 
         private val BASE_URI: Uri = Uri.parse("content://com.bios.app.health")
         private val COMPANION_URI: Uri = BASE_URI.buildUpon().appendPath("companion").build()

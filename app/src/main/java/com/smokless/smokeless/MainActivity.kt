@@ -33,7 +33,6 @@ import com.smokless.smokeless.util.ScoreCalculator
 import com.smokless.smokeless.util.SubstanceCopy
 import com.smokless.smokeless.util.TimeFormatter
 import java.text.DecimalFormat
-import java.util.concurrent.TimeUnit
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -860,7 +859,7 @@ class MainActivity : AppCompatActivity() {
         cleanDays.text = "${digest.cleanDaysThisWeek}/7"
 
         val longestMs = digest.longestStretchMs
-        val longestHours = longestMs / java.util.concurrent.TimeUnit.HOURS.toMillis(1)
+        val longestHours = longestMs / 3_600_000L
         longest.text = when {
             longestHours >= 24 -> "${longestHours / 24}d"
             longestHours >= 1 -> "${longestHours}h"
@@ -1094,22 +1093,20 @@ class MainActivity : AppCompatActivity() {
         val text = binding.sectionProgression.root.findViewById<android.widget.TextView>(
             R.id.textFirstSmoke
         )
-        if (fs.typicalFirstHour == null && fs.todayFirstMsFromStartOfDay == null) {
+        if (fs.typicalFirstHour == null && fs.todayFirstClockHour == null) {
             text.text = "Log a few mornings to compare today against your usual."
             text.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
             return
         }
         val typicalText = fs.typicalFirstHour?.let { "typically ${formatHourOfDay(it)}" }
 
-        if (fs.todayFirstMsFromStartOfDay == null) {
+        if (fs.todayFirstClockHour == null) {
             val typ = typicalText ?: "no typical time yet"
             text.text = "Haven't smoked yet today — $typ."
             text.setTextColor(ContextCompat.getColor(this, R.color.status_champion))
             return
         }
-        val todayHourFloat =
-            fs.todayFirstMsFromStartOfDay.toDouble() / TimeUnit.HOURS.toMillis(1)
-        val todayText = "First smoke at ${formatHourOfDay(todayHourFloat)}"
+        val todayText = "First smoke at ${formatHourOfDay(fs.todayFirstClockHour)}"
         val delta = fs.deltaMinutes
         val combined = when {
             delta == null -> "$todayText."
