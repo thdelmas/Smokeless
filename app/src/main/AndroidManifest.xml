@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <uses-permission android:name="com.bios.app.permission.WRITE_COMPANION" />
+    <uses-permission android:name="com.bios.app.permission.READ_HEALTH" />
 
     <queries>
         <package android:name="com.bios.app" />

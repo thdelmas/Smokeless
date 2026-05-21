@@ -58,7 +58,7 @@ class ProgressionSignalsTest {
     @Test
     fun `firstSmokeOfDay returns null fields when no data`() {
         val r = ScoreCalculator.calculateFirstSmokeOfDay(emptyList())
-        assertNull(r.todayFirstMsFromStartOfDay)
+        assertNull(r.todayFirstClockHour)
         assertNull(r.typicalFirstHour)
         assertNull(r.deltaMinutes)
         assertEquals(0, r.daysContributing)
@@ -77,7 +77,8 @@ class ProgressionSignalsTest {
         val r = ScoreCalculator.calculateFirstSmokeOfDay(sessions, now)
         assertNotNull(r.typicalFirstHour)
         assertEquals(8.0, r.typicalFirstHour!!, 0.01)
-        assertNotNull(r.todayFirstMsFromStartOfDay)
+        assertNotNull(r.todayFirstClockHour)
+        assertEquals(9.5, r.todayFirstClockHour!!, 0.01)
         // delta: 9:30 minus 8:00 = +90 min
         assertNotNull(r.deltaMinutes)
         assertEquals(90L, r.deltaMinutes)
@@ -94,6 +95,51 @@ class ProgressionSignalsTest {
         )
         val r = ScoreCalculator.calculateFirstSmokeOfDay(sessions, now)
         assertNull(r.typicalFirstHour)
+    }
+
+    @Test
+    fun `firstSmokeOfDay treats post-midnight smoke as new day's first when no wake anchor`() {
+        // User still up from prior evening, smokes at 00:15. Without a wake
+        // anchor, calendar midnight rolls the day and this counts as today's
+        // first — the exact bug the wake-time path is meant to fix.
+        val now = atHour(today(), 11)
+        val sessions = listOf(
+            SmokingSession(atHour(today(), 0) + 15 * 60 * 1000L), // 00:15
+        )
+        val r = ScoreCalculator.calculateFirstSmokeOfDay(sessions, now)
+        assertNotNull(r.todayFirstClockHour)
+        assertEquals(0.25, r.todayFirstClockHour!!, 0.01)
+    }
+
+    @Test
+    fun `firstSmokeOfDay ignores pre-wake smoke when dayStartMs anchors at wake time`() {
+        // Same 00:15 smoke as above, but the user's actual wake-up was 08:00.
+        // With the wake anchor, the 00:15 smoke is excluded — it belongs to
+        // the prior waking day. No smoke since wake → today's first is null.
+        val now = atHour(today(), 11)
+        val wake = atHour(today(), 8)
+        val sessions = listOf(
+            SmokingSession(atHour(today(), 0) + 15 * 60 * 1000L), // 00:15 pre-wake
+        )
+        val r = ScoreCalculator.calculateFirstSmokeOfDay(
+            sessions, now, dayStartMs = wake
+        )
+        assertNull(r.todayFirstClockHour)
+    }
+
+    @Test
+    fun `firstSmokeOfDay reports post-wake smoke clock hour with wake anchor set`() {
+        val now = atHour(today(), 11)
+        val wake = atHour(today(), 8)
+        val sessions = listOf(
+            SmokingSession(atHour(today(), 0) + 15 * 60 * 1000L), // 00:15 pre-wake, ignored
+            SmokingSession(atHour(today(), 9) + 30 * 60 * 1000L), // 09:30 post-wake
+        )
+        val r = ScoreCalculator.calculateFirstSmokeOfDay(
+            sessions, now, dayStartMs = wake
+        )
+        assertNotNull(r.todayFirstClockHour)
+        assertEquals(9.5, r.todayFirstClockHour!!, 0.01)
     }
 
     // --- estimateSubstanceLevels ---

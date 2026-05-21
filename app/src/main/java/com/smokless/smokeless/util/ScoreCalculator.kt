@@ -777,8 +777,8 @@ object ScoreCalculator {
      * well-known reduction lever: each delayed hour is real exposure avoided.
      */
     data class FirstSmokeOfDay(
-        /** Milliseconds since start-of-today for the first smoke; null if none yet today. */
-        val todayFirstMsFromStartOfDay: Long?,
+        /** Clock hour-of-day (0..24, e.g. 8.5 for 08:30) of the first smoke since [dayStartMs]. */
+        val todayFirstClockHour: Double?,
         /** Hour-of-day (0..24) of the typical first smoke over the lookback window; null if too little data. */
         val typicalFirstHour: Double?,
         /** today minus typical, in minutes; positive = later than usual (better). null if either side missing. */
@@ -787,27 +787,44 @@ object ScoreCalculator {
         val daysContributing: Int,
     )
 
+    /**
+     * @param dayStartMs anchor for "today's first smoke" — typically the user's
+     *   wake-up time pulled from Bios via [BiosClient.getWakeTimeMs]. When null,
+     *   falls back to calendar midnight (the prior behaviour). The wake anchor
+     *   matters because a smoke at 00:15 by someone still up from the previous
+     *   evening should count as the prior day's *last*, not the new day's
+     *   first.
+     */
     fun calculateFirstSmokeOfDay(
         allSessions: List<SmokingSession>,
         nowMs: Long = System.currentTimeMillis(),
         lookbackDays: Int = 14,
+        dayStartMs: Long? = null,
     ): FirstSmokeOfDay {
-        val cal = Calendar.getInstance().apply {
+        val midnightCal = Calendar.getInstance().apply {
             timeInMillis = nowMs
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }
-        val startOfToday = cal.timeInMillis
+        val midnight = midnightCal.timeInMillis
+        // Wake anchor controls *today's* filter only. Prior-day bucketing stays
+        // on calendar midnight — we don't have historical wake-times, and the
+        // typical-hour estimate is a 14-day average that absorbs occasional
+        // post-midnight noise without trouble.
+        val todayAnchor = dayStartMs ?: midnight
         val day = TimeUnit.DAYS.toMillis(1)
         val firstTodayTs = allSessions
-            .filter { it.timestamp >= startOfToday }
+            .filter { it.timestamp >= todayAnchor && it.timestamp <= nowMs }
             .minOfOrNull { it.timestamp }
-        val todayOffsetMs = firstTodayTs?.let { it - startOfToday }
+        val todayClockHour: Double? = firstTodayTs?.let {
+            val c = Calendar.getInstance().apply { timeInMillis = it }
+            c.get(Calendar.HOUR_OF_DAY) + c.get(Calendar.MINUTE) / 60.0
+        }
 
-        // Bucket prior sessions by day and take the earliest each day.
-        val priorStart = startOfToday - lookbackDays * day
+        // Bucket prior sessions by calendar day and take the earliest each day.
+        val priorStart = midnight - lookbackDays * day
         val priorByDay = allSessions
-            .filter { it.timestamp in priorStart until startOfToday }
+            .filter { it.timestamp in priorStart until midnight }
             .groupBy { (it.timestamp - priorStart) / day }
         val firstHours = priorByDay.values.mapNotNull { dayList ->
             val earliest = dayList.minOfOrNull { it.timestamp } ?: return@mapNotNull null
@@ -816,13 +833,12 @@ object ScoreCalculator {
         }
         val typicalHour = if (firstHours.size >= 3) firstHours.average() else null
 
-        val delta: Long? = if (typicalHour != null && todayOffsetMs != null) {
-            val todayHour = todayOffsetMs.toDouble() / TimeUnit.HOURS.toMillis(1)
-            ((todayHour - typicalHour) * 60.0).toLong()
+        val delta: Long? = if (typicalHour != null && todayClockHour != null) {
+            ((todayClockHour - typicalHour) * 60.0).toLong()
         } else null
 
         return FirstSmokeOfDay(
-            todayFirstMsFromStartOfDay = todayOffsetMs,
+            todayFirstClockHour = todayClockHour,
             typicalFirstHour = typicalHour,
             deltaMinutes = delta,
             daysContributing = firstHours.size,

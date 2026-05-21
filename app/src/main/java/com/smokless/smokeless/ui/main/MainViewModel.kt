@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.smokless.smokeless.bios.BiosClient
 import com.smokless.smokeless.data.AppDatabase
 import com.smokless.smokeless.data.repository.SmokingRepository
 import com.smokless.smokeless.data.entity.Substance
@@ -36,6 +37,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     private val repository = SmokingRepository(application)
+    private val biosClient = BiosClient(application)
     private val prefs = application.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     
     // Current time since last smoke (for hero timer)
@@ -432,7 +434,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Pedagogical "today vs before" panel inputs.
         _perSubstancePace.postValue(ScoreCalculator.calculatePerSubstancePace(allSessions))
-        _firstSmokeOfDay.postValue(ScoreCalculator.calculateFirstSmokeOfDay(allSessions))
+        // Anchor the "first smoke of today" filter at Bios's last wake-up if
+        // available, so a post-midnight cigarette (user still up from the
+        // prior evening) is correctly counted as that day's last, not the new
+        // day's first. Falls back to calendar midnight when Bios is absent,
+        // READ_HEALTH is not granted, or no sleep was recorded in the last 24h.
+        val wakeTimeMs = biosClient.getWakeTimeMs()
+        _firstSmokeOfDay.postValue(
+            ScoreCalculator.calculateFirstSmokeOfDay(allSessions, dayStartMs = wakeTimeMs)
+        )
         _substanceLevels.postValue(ScoreCalculator.estimateSubstanceLevels(allSessions))
         _triggerWindows.postValue(ScoreCalculator.calculateTriggerWindows(allSessions))
         val cravings = repository.getAllCravings()
