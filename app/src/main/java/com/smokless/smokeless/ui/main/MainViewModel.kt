@@ -147,7 +147,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Snapshot inputs for the today-pace ticker so updateTimer can re-evaluate
     // the pace verdict as the day progresses, without hitting the DB.
     private var paceBaselineDailyAvg = 0.0
-    private var paceActualToday = 0
+    private var paceActualToday = 0.0
     private var paceStartOfToday = 0L
     private var paceHasBaseline = false
 
@@ -301,7 +301,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val typicalByNow = paceBaselineDailyAvg * dayFraction
             val state = when {
                 paceBaselineDailyAvg < 0.5 ->
-                    if (paceActualToday == 0) ScoreCalculator.PaceState.CLEAN_TODAY
+                    if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
                     else ScoreCalculator.PaceState.CLEAN_BREAK
                 paceActualToday <= typicalByNow * 0.75 -> ScoreCalculator.PaceState.AHEAD
                 paceActualToday <= typicalByNow * 1.25 -> ScoreCalculator.PaceState.ON_PACE

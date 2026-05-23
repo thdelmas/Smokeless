@@ -115,7 +115,7 @@ class ScoreCalculatorTest {
         )
         val pace = ScoreCalculator.calculateTodayPace(sessions, now)
         assertEquals(ScoreCalculator.PaceState.CALIBRATING, pace.state)
-        assertEquals(1, pace.actualToday)
+        assertEquals(1.0, pace.actualToday, 1e-9)
     }
 
     @Test
@@ -130,7 +130,7 @@ class ScoreCalculatorTest {
         val today = List(4) { SmokingSession(now - it * 60_000L - 7_200_000).apply { id = (1000 + it).toLong() } }
         val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
         assertEquals(ScoreCalculator.PaceState.AHEAD, pace.state)
-        assertEquals(4, pace.actualToday)
+        assertEquals(4.0, pace.actualToday, 1e-9)
     }
 
     @Test
@@ -156,7 +156,7 @@ class ScoreCalculatorTest {
         val today = listOf(SmokingSession(now - 60_000L).apply { id = 2 })
         val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
         assertEquals(ScoreCalculator.PaceState.CLEAN_BREAK, pace.state)
-        assertEquals(1, pace.actualToday)
+        assertEquals(1.0, pace.actualToday, 1e-9)
     }
 
     @Test
@@ -166,7 +166,7 @@ class ScoreCalculatorTest {
         val priors = listOf(SmokingSession(now - 8 * day).apply { id = 1 })
         val pace = ScoreCalculator.calculateTodayPace(priors, now)
         assertEquals(ScoreCalculator.PaceState.CLEAN_TODAY, pace.state)
-        assertEquals(0, pace.actualToday)
+        assertEquals(0.0, pace.actualToday, 1e-9)
     }
 
     @Test
@@ -201,17 +201,46 @@ class ScoreCalculatorTest {
         } + SmokingSession(now - 30 * 60_000L).apply { id = 99_000L } // 00:30 today
 
         val withoutAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now)
-        // actualToday = the single 00:30 event. typicalByNow ≈ 10 * (1h/24h) = 0.42.
-        // 1 > 0.42 * 1.25 → BEHIND. Misleading — the user is actually on track.
+        // actualToday = the single 00:30 event (dose 1.0). typicalByNow ≈
+        // 10 * (1h/24h) = 0.42. 1 > 0.42 * 1.25 → BEHIND. Misleading — the
+        // user is actually on track.
         assertEquals(ScoreCalculator.PaceState.BEHIND, withoutAnchor.state)
-        assertEquals(1, withoutAnchor.actualToday)
+        assertEquals(1.0, withoutAnchor.actualToday, 1e-9)
 
         val withAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now, dayStartMs = wake)
-        // actualToday = 8 (whole awake window). typicalByNow = 10 * (18h/24h) = 7.5.
-        // 8/7.5 ≈ 1.07, within ±25% → ON_PACE.
+        // actualToday = 8 events × dose 1.0 = 8.0 (whole awake window).
+        // typicalByNow = 10 * (18h/24h) = 7.5. 8/7.5 ≈ 1.07, within ±25% → ON_PACE.
         assertEquals(ScoreCalculator.PaceState.ON_PACE, withAnchor.state)
-        assertEquals(8, withAnchor.actualToday)
+        assertEquals(8.0, withAnchor.actualToday, 1e-9)
         assertEquals(wake, withAnchor.dayStartMs)
+    }
+
+    @Test
+    fun `calculateTodayPace AHEAD when same-count today swaps full smokes for drags`() {
+        // Reduction thesis: replacing 5 full smokes with 5 drags is 75%
+        // reduction in exposure. Event count alone would call this "matching
+        // pace" (5 vs 5); dose-weighting correctly flags it AHEAD.
+        val now = paceNow(hourOfDay = 18) // 18/24 = 0.75 day elapsed
+        val day = 24L * 3_600_000
+
+        // 7 prior days of 10 *full* smokes/day → baseline dose 10/day, so
+        // typical-by-now at 18:00 = 7.5.
+        val priors = (1..7).flatMap { d ->
+            List(10) {
+                SmokingSession(now - d * day - it * 60_000L, quantity = 1.0)
+                    .apply { id = (d * 1000 + it).toLong() }
+            }
+        }
+        // Today: 5 drags (quantity 0.25 each) → dose 1.25, well below the
+        // 0.75 × 7.5 = 5.625 cutoff → AHEAD.
+        val today = List(5) {
+            SmokingSession(now - it * 60_000L - 7_200_000, quantity = 0.25)
+                .apply { id = (90_000 + it).toLong() }
+        }
+
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.AHEAD, pace.state)
+        assertEquals(1.25, pace.actualToday, 1e-9)
     }
 
     /** Returns a deterministic "now" at a fixed hour of day, avoiding clock flakiness. */

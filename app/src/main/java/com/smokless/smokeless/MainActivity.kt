@@ -1020,9 +1020,9 @@ class MainActivity : AppCompatActivity() {
         Substance.CANNABIS -> "🌿 Cannabis"
     }
 
-    private fun substanceUnit(substance: Substance, count: Int): String = when (substance) {
-        Substance.TOBACCO -> if (count == 1) "cig" else "cigs"
-        Substance.CANNABIS -> if (count == 1) "session" else "sessions"
+    private fun substanceUnit(substance: Substance, dose: Double): String = when (substance) {
+        Substance.TOBACCO -> if (dose == 1.0) "cig" else "cigs"
+        Substance.CANNABIS -> if (dose == 1.0) "session" else "sessions"
     }
 
     private fun updatePerSubstancePace(entries: List<ScoreCalculator.SubstancePace>) {
@@ -1047,8 +1047,10 @@ class MainActivity : AppCompatActivity() {
 
             label.text = substanceLabel(entry.substance)
             val actualUnit = substanceUnit(entry.substance, entry.pace.actualToday)
-            val typicalInt = entry.pace.typicalByNow.roundToInt()
-            value.text = "${entry.pace.actualToday} $actualUnit today · usually $typicalInt by now"
+            val doseFormat = DecimalFormat("0.##")
+            val actualStr = doseFormat.format(entry.pace.actualToday)
+            val typicalStr = doseFormat.format(entry.pace.typicalByNow)
+            value.text = "$actualStr $actualUnit today · usually $typicalStr by now"
 
             val (verdictText, colorRes) = when (entry.pace.state) {
                 ScoreCalculator.PaceState.CALIBRATING ->
@@ -1174,24 +1176,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateTodayPace(pace: com.smokless.smokeless.util.ScoreCalculator.TodayPace) {
-        val typicalRounded = kotlin.math.round(pace.typicalByNow).toInt()
-        val unit = copy.unitFor(pace.actualToday.toLong())
-        // Signed delta vs typical-by-now: positive = smoked more than usual
-        // (bad), negative = ahead of usual (good), zero = matching pace.
-        val delta = pace.actualToday - typicalRounded
+        // Dose-weighted — fractions are normal (a "drag" logs 0.25). The 0.##
+        // formatter drops trailing zeros, so whole-cigarette doses still
+        // render cleanly ("5" rather than "5.00").
+        val doseFormat = DecimalFormat("0.##")
+        val actualStr = doseFormat.format(pace.actualToday)
+        val typicalStr = doseFormat.format(pace.typicalByNow)
+        val unit = copy.unitFor(pace.actualToday)
+        // Signed dose-delta vs typical-by-now: positive = smoked more than
+        // usual (bad), negative = ahead of usual (good), zero = matching pace.
+        val delta = pace.actualToday - pace.typicalByNow
         val (text, colorRes) = when (pace.state) {
             com.smokless.smokeless.util.ScoreCalculator.PaceState.CALIBRATING ->
                 "Keep logging — your pace verdict shows up after 3 days" to R.color.text_secondary
             com.smokless.smokeless.util.ScoreCalculator.PaceState.AHEAD ->
-                "Ahead of pace — ${pace.actualToday} $unit today, usually $typicalRounded by now" to R.color.status_champion
+                "Ahead of pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_champion
             com.smokless.smokeless.util.ScoreCalculator.PaceState.ON_PACE ->
-                "On pace — ${pace.actualToday} $unit today, usually $typicalRounded by now" to R.color.accent_amber
+                "On pace — $actualStr $unit today, usually $typicalStr by now" to R.color.accent_amber
             com.smokless.smokeless.util.ScoreCalculator.PaceState.BEHIND ->
-                "Behind pace — ${pace.actualToday} $unit today, usually $typicalRounded by now" to R.color.status_reset
+                "Behind pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_reset
             com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_TODAY ->
                 "Matching your clean baseline — 0 today" to R.color.status_champion
             com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_BREAK ->
-                "${pace.actualToday} $unit today — you've been clean lately, gentle reset" to R.color.accent_amber
+                "$actualStr $unit today — you've been clean lately, gentle reset" to R.color.accent_amber
         }
         binding.textTodayPace.text = text
         binding.textTodayPace.setTextColor(ContextCompat.getColor(this, colorRes))
@@ -1206,10 +1213,13 @@ class MainActivity : AppCompatActivity() {
             else -> true
         }
         if (showBadge) {
+            val absStr = doseFormat.format(kotlin.math.abs(delta))
             val badge = when {
-                delta > 0 -> "+$delta"
-                delta < 0 -> "$delta" // negative sign already included
-                else -> "±0"
+                // Within ¼ cigarette of typical reads as on-pace — avoids
+                // showing "+0.1" jitter when the verdict says ON_PACE.
+                kotlin.math.abs(delta) < 0.25 -> "±0"
+                delta > 0 -> "+$absStr"
+                else -> "−$absStr"
             }
             binding.textTodayPaceDelta.text = badge
             binding.textTodayPaceDelta.setTextColor(ContextCompat.getColor(this, colorRes))

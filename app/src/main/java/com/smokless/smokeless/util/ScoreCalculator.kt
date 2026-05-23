@@ -566,7 +566,14 @@ object ScoreCalculator {
 
     data class TodayPace(
         val state: PaceState,
-        val actualToday: Int,
+        /**
+         * Today's smoking expressed as dose-weighted "cigarette-equivalents"
+         * — sum of [SmokingSession.quantity] over the window, NOT a raw
+         * event count. A user who replaces three full smokes with three
+         * drags shows 0.75 here, not 3, so the verdict correctly registers
+         * the reduction.
+         */
+        val actualToday: Double,
         val typicalByNow: Double,
         val baselineDailyAvg: Double,
         /**
@@ -584,6 +591,11 @@ object ScoreCalculator {
      * baseline excludes today (so a heavy morning doesn't reset its own bar).
      * Requires at least 3 prior days of tracking — fewer than that and we
      * return CALIBRATING rather than a misleading verdict.
+     *
+     * All comparisons are dose-weighted (sum of [SmokingSession.quantity]),
+     * not event counts. This matches [calculateReductionStats] and the
+     * substance app's reduction thesis: replacing full smokes with drags
+     * counts as progress, and the pace verdict reflects that.
      *
      * @param dayStartMs anchor for "today's window" — typically the user's
      *   wake-up time pulled from Bios via [BiosClient.getWakeTimeMs]. When
@@ -610,9 +622,11 @@ object ScoreCalculator {
         // boundary noise (same rationale as calculateFirstSmokeOfDay).
         val todayAnchor = dayStartMs ?: midnight
 
-        if (allSessions.isEmpty()) return TodayPace(PaceState.CALIBRATING, 0, 0.0, 0.0, todayAnchor)
+        if (allSessions.isEmpty()) return TodayPace(PaceState.CALIBRATING, 0.0, 0.0, 0.0, todayAnchor)
 
-        val actualToday = allSessions.count { it.timestamp >= todayAnchor }
+        val actualToday = allSessions
+            .filter { it.timestamp >= todayAnchor }
+            .sumOf { it.quantity }
 
         val day = TimeUnit.DAYS.toMillis(1)
         val firstSession = allSessions.minOf { it.timestamp }
@@ -621,14 +635,16 @@ object ScoreCalculator {
         if (priorDays < 3) return TodayPace(PaceState.CALIBRATING, actualToday, 0.0, 0.0, todayAnchor)
 
         val priorStart = midnight - priorDays * day
-        val priorCount = allSessions.count { it.timestamp in priorStart until midnight }
-        val baselineDailyAvg = priorCount.toDouble() / priorDays
+        val priorDose = allSessions
+            .filter { it.timestamp in priorStart until midnight }
+            .sumOf { it.quantity }
+        val baselineDailyAvg = priorDose / priorDays
 
         val dayFraction = ((nowMs - todayAnchor).toDouble() / day).coerceIn(0.0, 1.0)
         val typicalByNow = baselineDailyAvg * dayFraction
 
         val state = when {
-            baselineDailyAvg < 0.5 -> if (actualToday == 0) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
+            baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
             actualToday <= typicalByNow * 0.75 -> PaceState.AHEAD
             actualToday <= typicalByNow * 1.25 -> PaceState.ON_PACE
             else -> PaceState.BEHIND
