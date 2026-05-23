@@ -92,48 +92,17 @@
         android:gravity="center"
         android:paddingHorizontal="20dp">
 
-        <!-- Today's pace chip: the headline delta badge sits above the
-             contextual copy. Badge = signed count vs. typical-by-now
-             (− = ahead, + = behind, ±0 = on pace). Hidden while
-             calibrating and during clean-baseline states (where the copy
-             below carries the full message). -->
+        <!-- Today's pace: one chip per substance the user logs (tobacco /
+             cannabis), each with its own delta badge (− = ahead of usual,
+             + = behind, ±0 = on pace). Single-substance users see exactly
+             one chip without a substance prefix — same visual weight as
+             the previous combined chip. Populated at runtime by
+             MainActivity.updateHeroPace. -->
         <LinearLayout
             android:id="@+id/containerTodayPace"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
-            android:background="@drawable/bg_stat_chip">
-
-            <TextView
-                android:id="@+id/textTodayPaceDelta"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="@color/text_secondary"
-                android:textSize="28sp"
-                android:fontFamily="sans-serif-black"
-                android:letterSpacing="-0.02"
-                android:includeFontPadding="false"
-                android:visibility="gone"
-                android:contentDescription="Number of cigarettes ahead of or behind your usual pace" />
-
-            <TextView
-                android:id="@+id/textTodayPace"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Keep logging — your pace shows up after 3 days"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:fontFamily="sans-serif-medium"
-                android:gravity="center"
-                android:contentDescription="Today's pace versus your typical pace"
-                android:accessibilityLiveRegion="polite" />
-
-        </LinearLayout>
+            android:orientation="vertical" />
 
         <LinearLayout
             android:layout_width="wrap_content"
