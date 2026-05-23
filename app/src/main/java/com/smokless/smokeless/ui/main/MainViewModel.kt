@@ -311,13 +311,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 (elapsedHours / 24.0).coerceIn(0.0, 1.0)
             }
             val typicalByNow = paceBaselineDailyAvg * effectiveFraction
+            // Threshold logic mirrors ScoreCalculator.calculateTodayPace —
+            // ±25% of typical with an absolute floor of ½ cig-equiv, so
+            // late-stage reduction users don't see whiplash from a single
+            // extra drag. Keep in sync if the calculator changes.
+            val band = max(typicalByNow * 0.25, 0.5)
             val state = when {
                 paceBaselineDailyAvg < 0.5 ->
                     if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
                     else ScoreCalculator.PaceState.CLEAN_BREAK
-                paceActualToday <= typicalByNow * 0.75 -> ScoreCalculator.PaceState.AHEAD
-                paceActualToday <= typicalByNow * 1.25 -> ScoreCalculator.PaceState.ON_PACE
-                else -> ScoreCalculator.PaceState.BEHIND
+                paceActualToday <= typicalByNow - band -> ScoreCalculator.PaceState.AHEAD
+                paceActualToday > typicalByNow + band -> ScoreCalculator.PaceState.BEHIND
+                else -> ScoreCalculator.PaceState.ON_PACE
             }
             _todayPace.postValue(
                 ScoreCalculator.TodayPace(
