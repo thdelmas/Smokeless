@@ -19,8 +19,7 @@ data class SmokingSession(
      *                 defaulting to this value)
      *   more  = 1.5  (a long pull, a back-to-back, a fat joint)
      * Stats that sum exposure (reduction trend, money saved, half-life decay)
-     * weight by this value; event-count stats (trigger windows, resistance
-     * ratio) ignore it.
+     * weight by this value; event-count stats (trigger windows) ignore it.
      */
     @ColumnInfo(defaultValue = "1.0")
     val quantity: Double = 1.0,

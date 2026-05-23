@@ -102,7 +102,7 @@ class SettingsActivity : AppCompatActivity() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Sync history to Bios")
             .setMessage(
-                "Push every existing smoking and craving record to Bios so it can " +
+                "Push every existing smoking record to Bios so it can " +
                 "correlate them with your past health metrics.\n\n" +
                 "Running this more than once may create duplicate events in Bios."
             )
@@ -211,11 +211,10 @@ class SettingsActivity : AppCompatActivity() {
             try {
                 val db = AppDatabase.getInstance(application)
                 val sessions = db.smokingSessionDao().getAllSessions()
-                val cravings = db.cravingDao().getAllCravings()
-                
+
                 val file = when (format) {
-                    "csv" -> DataExporter.exportAsCSV(this, sessions, cravings)
-                    "json" -> DataExporter.exportAsJSON(this, sessions, cravings)
+                    "csv" -> DataExporter.exportAsCSV(this, sessions)
+                    "json" -> DataExporter.exportAsJSON(this, sessions)
                     else -> return@execute
                 }
                 
@@ -247,16 +246,16 @@ class SettingsActivity : AppCompatActivity() {
                     ?: throw Exception("Could not open file")
 
                 val fileName = uri.lastPathSegment ?: ""
-                val (sessions, cravings) = if (fileName.endsWith(".csv")) {
-                    DataExporter.importFromCSV(inputStream, db.smokingSessionDao(), db.cravingDao())
+                val sessions = if (fileName.endsWith(".csv")) {
+                    DataExporter.importFromCSV(inputStream, db.smokingSessionDao())
                 } else {
-                    DataExporter.importFromJSON(inputStream, db.smokingSessionDao(), db.cravingDao())
+                    DataExporter.importFromJSON(inputStream, db.smokingSessionDao())
                 }
 
                 runOnUiThread {
                     Snackbar.make(
                         binding.root,
-                        "Imported $sessions sessions and $cravings cravings",
+                        "Imported $sessions sessions",
                         Snackbar.LENGTH_LONG
                     ).show()
                 }
@@ -276,12 +275,11 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnResetData.setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Reset All Data")
-                .setMessage("This will permanently delete all smoking sessions and craving records. This cannot be undone.\n\nAre you sure?")
+                .setMessage("This will permanently delete all smoking sessions. This cannot be undone.\n\nAre you sure?")
                 .setPositiveButton("Reset") { _, _ ->
                     AppDatabase.databaseExecutor.execute {
                         val db = AppDatabase.getInstance(application)
                         db.smokingSessionDao().deleteAll()
-                        db.cravingDao().deleteAll()
                         runOnUiThread {
                             Snackbar.make(binding.root, "All data has been reset", Snackbar.LENGTH_SHORT).show()
                         }

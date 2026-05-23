@@ -128,11 +128,9 @@ class WeeklyDigestReceiver : BroadcastReceiver() {
         val day = TimeUnit.DAYS.toMillis(1)
         if (now - mostRecent > 14 * day) return
 
-        val cravings = db.cravingDao().getAllCravings()
         val primary = SubstanceCopy.primarySubstance(sessions)
         val digest = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = cravings,
             primarySubstance = primary,
             nowMs = now,
         )

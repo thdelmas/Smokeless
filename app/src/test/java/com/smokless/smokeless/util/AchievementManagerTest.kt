@@ -32,19 +32,6 @@ class AchievementManagerTest {
     }
 
     @Test
-    fun `getCravingsAchievements returns 5 achievements`() {
-        val achievements = AchievementManager.getCravingsAchievements(0)
-        assertEquals(5, achievements.size)
-    }
-
-    @Test
-    fun `getCravingsAchievements unlocks at 10 resists`() {
-        val achievements = AchievementManager.getCravingsAchievements(10)
-        val unlocked = achievements.filter { it.isUnlocked }
-        assertEquals(2, unlocked.size) // 1 and 10
-    }
-
-    @Test
     fun `getCleanDaysAchievements returns 4 achievements`() {
         val achievements = AchievementManager.getCleanDaysAchievements(0)
         assertEquals(4, achievements.size)
@@ -52,20 +39,20 @@ class AchievementManagerTest {
 
     @Test
     fun `getAllAchievements returns all categories combined`() {
-        val all = AchievementManager.getAllAchievements(0, 0, 0)
-        assertEquals(18, all.size) // 9 + 5 + 4
+        val all = AchievementManager.getAllAchievements(0, 0)
+        assertEquals(13, all.size) // 9 + 4
     }
 
     @Test
     fun `getNextAchievement returns first locked achievement`() {
-        val next = AchievementManager.getNextAchievement(0, 0, 0)
+        val next = AchievementManager.getNextAchievement(0, 0)
         assertNotNull(next)
         assertFalse(next!!.isUnlocked)
     }
 
     @Test
     fun `getNextAchievement returns null when all unlocked`() {
-        val next = AchievementManager.getNextAchievement(365, 500, 100)
+        val next = AchievementManager.getNextAchievement(365, 100)
         assertNull(next)
     }
 

@@ -86,12 +86,10 @@ object NotificationHelper {
             change <= -5 -> " (↑ ${(-change).toInt()}% vs last week)"
             else -> ""
         }
-        val resisted = digest.resistance.resistedCount
         val title = "🌿 Your week in review"
-        val short = "$displayCount $unit · $resisted resisted$changeLine"
+        val short = "$displayCount $unit · ${digest.cleanDaysThisWeek}/7 clean$changeLine"
         val longLines = mutableListOf<String>()
         longLines += "$displayCount $unit this week$changeLine."
-        longLines += "$resisted resistance ${if (resisted == 1) "moment held" else "moments held"}."
         if (digest.cleanDaysThisWeek > 0) {
             longLines += "${digest.cleanDaysThisWeek}/7 clean days."
         }

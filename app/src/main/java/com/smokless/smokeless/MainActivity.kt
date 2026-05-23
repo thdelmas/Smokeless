@@ -23,7 +23,6 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.smokless.smokeless.data.entity.Substance
 import com.smokless.smokeless.databinding.ActivityMainBinding
 import com.smokless.smokeless.ui.main.ChartData
-import com.smokless.smokeless.ui.main.CravingRideOutSheet
 import com.smokless.smokeless.ui.main.MainViewModel
 import com.smokless.smokeless.ui.main.RecoveryTimelineAdapter
 import com.smokless.smokeless.ui.main.ScoreAdapter
@@ -85,7 +84,6 @@ class MainActivity : AppCompatActivity() {
         setupChipGroup()
         setupCharts()
         setupFab()
-        setupResistFab()
         setupCollapsibleSections()
         setupSwipeRefresh()
         observeViewModel()
@@ -555,26 +553,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupResistFab() {
-        binding.fabResist.setOnClickListener { view ->
-            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-            viewModel.recordCravingResisted()
-            val hours = (viewModel.currentScore.value ?: 0L) / 3_600_000L
-            CravingRideOutSheet(
-                context = this,
-                onMadeIt = { showResistConfirmation() },
-                onSmokedAnyway = { showSmokePicker() },
-                substance = primarySubstance,
-                hoursSinceLast = hours,
-            ).show()
-        }
-    }
-
-    /**
-     * Opens the same substance picker the "I Smoked" FAB uses. Lifted to its
-     * own method so the ride-out sheet can route to it cleanly when the user
-     * taps "I smoked anyway."
-     */
     private fun showSmokePicker() {
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("What did you smoke?")
@@ -631,34 +609,6 @@ class MainActivity : AppCompatActivity() {
             viewModel.refreshData()
             binding.swipeRefresh.postDelayed({ binding.swipeRefresh.isRefreshing = false }, 800)
         }
-    }
-
-    private fun showResistConfirmation() {
-        val messages = listOf(
-            "💚 Logged. Cravings usually pass in 3–5 minutes.",
-            "🌊 Riding it out. Breathe.",
-            "🌱 You named it. That's the first move.",
-            "✊ One thought at a time.",
-            "⏳ Let's see if it holds.",
-        )
-        com.google.android.material.snackbar.Snackbar
-            .make(binding.root, messages.random(), com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
-            .setBackgroundTint(ContextCompat.getColor(this, R.color.surface_elevated))
-            .setTextColor(ContextCompat.getColor(this, R.color.text_primary))
-            .show()
-    }
-
-    private fun showVictorySnackbar(count: Int) {
-        val message = if (count == 1) {
-            "🏅 1 craving held — verified smoke-free 30 min later."
-        } else {
-            "🏅 $count cravings held — verified smoke-free 30 min later."
-        }
-        com.google.android.material.snackbar.Snackbar
-            .make(binding.root, message, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-            .setBackgroundTint(ContextCompat.getColor(this, R.color.status_champion))
-            .setTextColor(ContextCompat.getColor(this, R.color.white))
-            .show()
     }
 
     private var primarySubstance: Substance = Substance.DEFAULT
@@ -798,18 +748,10 @@ class MainActivity : AppCompatActivity() {
         // misleading for multi-substance users.
         viewModel.perSubstancePace.observe(this) { entries -> updateHeroPace(entries) }
 
-        viewModel.newCravingVictories.observe(this) { count ->
-            if (count > 0) {
-                showVictorySnackbar(count)
-                viewModel.dismissNewVictories()
-            }
-        }
-
         viewModel.reductionStats.observe(this) { stats -> updateReductionTrend(stats) }
         viewModel.firstSmokeOfDay.observe(this) { fs -> updateFirstSmokeOfDay(fs) }
         viewModel.substanceLevels.observe(this) { levels -> updateSubstanceLevels(levels) }
         viewModel.triggerWindows.observe(this) { windows -> updateTriggerWindows(windows) }
-        viewModel.resistanceStats.observe(this) { stats -> updateResistanceCard(stats) }
         viewModel.weeklyDigest.observe(this) { digest -> updateWeeklyDigest(digest) }
     }
 
@@ -818,7 +760,6 @@ class MainActivity : AppCompatActivity() {
         val smokeCount = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSmokeCount)
         val smokeLabel = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSmokeLabel)
         val smokeDelta = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSmokeDelta)
-        val resisted = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestResistance)
         val cleanDays = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestCleanDays)
         val longest = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestLongestStretch)
         val milestonesGroup = sectionRoot.findViewById<android.widget.LinearLayout>(R.id.groupDigestMilestones)
@@ -845,7 +786,6 @@ class MainActivity : AppCompatActivity() {
             smokeDelta.visibility = View.VISIBLE
         }
 
-        resisted.text = digest.resistance.resistedCount.toString()
         cleanDays.text = "${digest.cleanDaysThisWeek}/7"
 
         val longestMs = digest.longestStretchMs
@@ -862,60 +802,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             milestonesText.text = crossed.joinToString(" · ") { "${it.icon} ${it.title}" }
             milestonesGroup.visibility = View.VISIBLE
-        }
-    }
-
-    private fun updateResistanceCard(stats: ScoreCalculator.ResistanceStats) {
-        val sectionRoot = binding.sectionResistance.root
-        val percentView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistancePercent)
-        val labelView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistanceLabel)
-        val deltaView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistanceDelta)
-        val breakdownView = sectionRoot.findViewById<android.widget.TextView>(R.id.textResistanceBreakdown)
-        val progress = sectionRoot.findViewById<
-            com.google.android.material.progressindicator.LinearProgressIndicator
-        >(R.id.progressResistance)
-
-        val total = stats.resistedCount + stats.smokedCount
-        if (total == 0) {
-            percentView.text = "—"
-            percentView.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
-            labelView.text = "no urges logged yet"
-            breakdownView.text = "Tap \"I Resisted\" when an urge fires, even if you end up smoking. The ratio is what carries through."
-            progress.progress = 0
-            progress.setIndicatorColor(ContextCompat.getColor(this, R.color.progress_track))
-            deltaView.visibility = View.GONE
-            return
-        }
-
-        val pctInt = stats.resistancePercent.roundToInt().coerceIn(0, 100)
-        percentView.text = "$pctInt%"
-        labelView.text = "of urges held"
-
-        val colorRes = when {
-            pctInt >= 70 -> R.color.status_champion
-            pctInt >= 40 -> R.color.accent_amber
-            else -> R.color.status_reset
-        }
-        percentView.setTextColor(ContextCompat.getColor(this, colorRes))
-        progress.progress = pctInt
-        progress.setIndicatorColor(ContextCompat.getColor(this, colorRes))
-
-        breakdownView.text =
-            "${stats.resistedCount} resisted · ${stats.smokedCount} smoked  ·  $total moments this week"
-
-        val delta = stats.vsPriorPercent
-        if (delta == null) {
-            deltaView.visibility = View.GONE
-        } else {
-            val rounded = delta.roundToInt()
-            val (txt, deltaColor) = when {
-                rounded >= 5 -> "↑ +${rounded}pp vs last week" to R.color.status_champion
-                rounded <= -5 -> "↓ ${rounded}pp vs last week" to R.color.status_reset
-                else -> "→ steady vs last week" to R.color.text_secondary
-            }
-            deltaView.text = txt
-            deltaView.setTextColor(ContextCompat.getColor(this, deltaColor))
-            deltaView.visibility = View.VISIBLE
         }
     }
 

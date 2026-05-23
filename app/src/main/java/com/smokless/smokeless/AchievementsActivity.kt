@@ -33,7 +33,6 @@ class AchievementsActivity : AppCompatActivity() {
         AppDatabase.databaseExecutor.execute {
             val db = AppDatabase.getInstance(application)
             val sessions = db.smokingSessionDao().getAllSessions()
-            val cravings = db.cravingDao().getAllCravings()
 
             val bestStreak = if (sessions.isEmpty()) 0
             else com.smokless.smokeless.util.ScoreCalculator.calculatePeriodStats(sessions, "all").bestStreak
@@ -43,7 +42,7 @@ class AchievementsActivity : AppCompatActivity() {
 
             val copy = SubstanceCopy.forSubstance(SubstanceCopy.primarySubstance(sessions))
             val achievements = AchievementManager.getAllAchievements(
-                bestStreak, cravings.size, cleanDays, copy
+                bestStreak, cleanDays, copy
             )
 
             val unlockedCount = achievements.count { it.isUnlocked }

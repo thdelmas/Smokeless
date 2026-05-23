@@ -1,6 +1,5 @@
 package com.smokless.smokeless.util
 
-import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import com.smokless.smokeless.data.entity.Substance
 import org.junit.Assert.*
@@ -63,37 +62,6 @@ class ScoreCalculatorTest {
         val result = ScoreCalculator.calculateTimeSinceLastSmoke(oneHourAgo)
         assertTrue(result > 0)
         assertTrue(result in 3590_000L..3610_000L) // ~1 hour with tolerance
-    }
-
-    @Test
-    fun `detectCravingVictories counts only confirmed windows past the cursor`() {
-        val now = 10_000_000_000L
-        val hour = 3_600_000L
-        val cursor = now - 5 * hour
-        val cravings = listOf(
-            Craving(now - 6 * hour).apply { id = 1 }, // before cursor → ignored
-            Craving(now - 4 * hour).apply { id = 2 }, // past cursor, window elapsed → victory
-            Craving(now - 3 * hour).apply { id = 3 }, // past cursor, smoked within window → not a victory
-            Craving(now - 10 * 60 * 1000).apply { id = 4 }, // window not yet elapsed → not confirmable
-        )
-        val sessions = listOf(
-            // Real smoke at (now - 3h + 10min), exposure 10min → timestamp = now - 3h + 20min.
-            SmokingSession(now - 3 * hour + 20 * 60 * 1000, Substance.TOBACCO).apply { id = 1 },
-        )
-        val result = ScoreCalculator.detectCravingVictories(cravings, sessions, cursor, now)
-        assertEquals(1, result.newCount)
-        // Cursor advances past every craving whose window has fully elapsed (id 2 and 3),
-        // but NOT past id 4 (still within its 30-min window).
-        assertEquals(now - 3 * hour, result.newCursor)
-    }
-
-    @Test
-    fun `detectCravingVictories returns zero when nothing is confirmable yet`() {
-        val now = 10_000_000_000L
-        val cravings = listOf(Craving(now - 5 * 60 * 1000).apply { id = 1 })
-        val result = ScoreCalculator.detectCravingVictories(cravings, emptyList(), 0L, now)
-        assertEquals(0, result.newCount)
-        assertEquals(0L, result.newCursor)
     }
 
     @Test
@@ -334,17 +302,4 @@ class ScoreCalculatorTest {
         return cal.timeInMillis
     }
 
-    @Test
-    fun `detectCravingVictories uses real smoke time accounting for exposure offset`() {
-        val now = 10_000_000_000L
-        val win = ScoreCalculator.CRAVING_VICTORY_WINDOW_MS
-        val craving = Craving(now - 2 * win).apply { id = 1 }
-        // Cannabis: 30 min exposure. Real smoke at craving - 5 min, timestamp = real + 30min,
-        // so the *stored* timestamp falls inside the window even though the smoke is outside.
-        val realSmoke = craving.timestamp - 5 * 60 * 1000
-        val session = SmokingSession(realSmoke + Substance.CANNABIS.exposureMs, Substance.CANNABIS).apply { id = 1 }
-        val result = ScoreCalculator.detectCravingVictories(listOf(craving), listOf(session), 0L, now)
-        // Real smoke landed BEFORE the craving → should count as a victory.
-        assertEquals(1, result.newCount)
-    }
 }

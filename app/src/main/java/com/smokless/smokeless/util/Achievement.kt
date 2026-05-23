@@ -33,20 +33,6 @@ object AchievementManager {
         }
     }
     
-    fun getCravingsAchievements(resistedCount: Int): List<Achievement> {
-        val cravingAchievements = listOf(
-            Achievement("first_resist", "Willpower", "Resisted first craving", "💪", 1),
-            Achievement("ten_resists", "Strong Mind", "Resisted 10 cravings", "🧠", 10),
-            Achievement("fifty_resists", "Iron Will", "Resisted 50 cravings", "🛡️", 50),
-            Achievement("hundred_resists", "Unbreakable", "Resisted 100 cravings", "💎", 100),
-            Achievement("five_hundred_resists", "Legend", "Resisted 500 cravings", "⚡", 500)
-        )
-        
-        return cravingAchievements.map { achievement ->
-            achievement.copy(isUnlocked = resistedCount >= achievement.requirement)
-        }
-    }
-    
     fun getCleanDaysAchievements(cleanDays: Int): List<Achievement> {
         val cleanAchievements = listOf(
             Achievement("five_clean", "Getting Started", "5 clean days", "🌱", 5),
@@ -62,22 +48,19 @@ object AchievementManager {
     
     fun getAllAchievements(
         bestStreak: Int,
-        resistedCount: Int,
         cleanDays: Int,
         copy: SubstanceCopy = SubstanceCopy.TOBACCO,
     ): List<Achievement> {
         return getStreakAchievements(bestStreak, copy) +
-               getCravingsAchievements(resistedCount) +
                getCleanDaysAchievements(cleanDays)
     }
 
     fun getNextAchievement(
         bestStreak: Int,
-        resistedCount: Int,
         cleanDays: Int,
         copy: SubstanceCopy = SubstanceCopy.TOBACCO,
     ): Achievement? {
-        val all = getAllAchievements(bestStreak, resistedCount, cleanDays, copy)
+        val all = getAllAchievements(bestStreak, cleanDays, copy)
         return all.firstOrNull { !it.isUnlocked }
     }
 }
