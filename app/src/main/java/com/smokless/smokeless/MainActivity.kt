@@ -510,15 +510,6 @@ class MainActivity : AppCompatActivity() {
         substance: com.smokless.smokeless.data.entity.Substance,
         quantity: Double = 1.0,
     ) {
-        binding.sectionRecoveryHero.textBankedTimer.animate()
-            .scaleX(0.92f).scaleY(0.92f).alpha(0.6f)
-            .setDuration(150)
-            .withEndAction {
-                binding.sectionRecoveryHero.textBankedTimer.animate()
-                    .scaleX(1f).scaleY(1f).alpha(1f)
-                    .setDuration(200).start()
-            }.start()
-
         viewModel.recordSmokeWithId(exposureOffsetMs, substance, quantity) { sessionId ->
             updateWidgets()
             val bankedMs = viewModel.bankedSmokeFreeMs.value ?: 0L
@@ -673,15 +664,14 @@ class MainActivity : AppCompatActivity() {
     private var primarySubstance: Substance = Substance.DEFAULT
 
     /**
-     * Banked time grows monotonically, but the body's recovery milestones
-     * (heart rate, CO, circulation, etc.) reset after each cigarette — that's
-     * biology, not a UX choice. So the milestone list is driven by the current
-     * clean streak (time since last smoke). Banked stays as the lifetime
-     * "never erased" metric in the timer text above.
+     * Body's recovery milestones (heart rate, CO, circulation, etc.) reset
+     * after each cigarette — that's biology, not a UX choice. So the
+     * milestone list is driven by the current clean streak (time since last
+     * smoke). Lifetime banked time is no longer surfaced here; the
+     * post-log snackbar reframes a slip with banked time when it's
+     * actually motivating.
      */
-    private fun updateRecoveryHero(bankedMs: Long, timeSinceLastSmokeMs: Long) {
-        binding.sectionRecoveryHero.textBankedTimer.text = TimeFormatter.formatShort(bankedMs)
-
+    private fun updateRecoveryHero(timeSinceLastSmokeMs: Long) {
         val cleanHours = timeSinceLastSmokeMs / 3_600_000L
         val substance = primarySubstance
         val milestones = HealthBenefits.getMilestones(cleanHours, substance)
@@ -742,22 +732,18 @@ class MainActivity : AppCompatActivity() {
             // Substance change re-anchors the milestone list. Force a refresh
             // even when the achieved-count number is unchanged.
             lastAchievedCount = -1
-            val banked = viewModel.bankedSmokeFreeMs.value ?: 0L
-            val score = viewModel.currentScore.value ?: 0L
-            updateRecoveryHero(banked, score)
+            updateRecoveryHero(viewModel.currentScore.value ?: 0L)
         }
 
         viewModel.currentScore.observe(this) { score ->
             updatePausedBadge(score)
-            // Milestones reflect the current clean streak, so they update each
-            // tick. Banked timer is refreshed from its own LiveData below.
-            val banked = viewModel.bankedSmokeFreeMs.value ?: 0L
-            updateRecoveryHero(banked, score)
+            // Milestones reflect the current clean streak, so they update each tick.
+            updateRecoveryHero(score)
         }
 
+        // Banked time no longer drives the hero — it surfaces in the records
+        // section and in the post-log snackbar instead.
         viewModel.bankedSmokeFreeMs.observe(this) { ms ->
-            val score = viewModel.currentScore.value ?: 0L
-            updateRecoveryHero(ms, score)
             binding.sectionRecords.textBankedHours.text = TimeFormatter.formatShort(ms)
         }
 
@@ -1311,51 +1297,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Breathing-guided animation on the orb behind the banked timer.
-     * Asymmetric 4s inhale / 6s exhale activates the vagus nerve → parasympathetic
-     * calming. Visual rhythm entrains the user's breath without instruction.
-     */
-    private var breathingAnimator: android.animation.ValueAnimator? = null
-
-    private fun startBreathingAnimation() {
-        if (breathingAnimator != null) return
-        val orb = binding.sectionRecoveryHero.breathingOrb
-        breathingAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 10_000L
-            repeatCount = android.animation.ValueAnimator.INFINITE
-            repeatMode = android.animation.ValueAnimator.RESTART
-            interpolator = android.view.animation.LinearInterpolator()
-            addUpdateListener { anim ->
-                val t = anim.animatedValue as Float
-                val breath = if (t < 0.4f) {
-                    val p = t / 0.4f; p * p
-                } else {
-                    val p = (t - 0.4f) / 0.6f; 1f - p * p
-                }
-                orb.scaleX = 0.4f + breath * 0.6f
-                orb.scaleY = 0.4f + breath * 0.6f
-                orb.alpha = breath
-            }
-            start()
-        }
-    }
-
-    private fun stopBreathingAnimation() {
-        breathingAnimator?.cancel()
-        breathingAnimator = null
-        binding.sectionRecoveryHero.breathingOrb.apply {
-            scaleX = 0.4f
-            scaleY = 0.4f
-            alpha = 0f
-        }
-    }
-
     override fun onResume() {
         super.onResume()
         viewModel.refreshData()
         refreshHandler.postDelayed(refreshRunnable, 1000)
-        startBreathingAnimation()
         // Idempotent — schedules only when the alarm hasn't been set yet.
         com.smokless.smokeless.util.TriggerWindowReceiver.schedule(this)
         com.smokless.smokeless.util.WeeklyDigestReceiver.schedule(this)
@@ -1364,7 +1309,6 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         refreshHandler.removeCallbacks(refreshRunnable)
-        stopBreathingAnimation()
     }
 
     private fun updateWidgets() {

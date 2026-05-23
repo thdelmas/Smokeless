@@ -35,74 +35,26 @@
 
     </LinearLayout>
 
-    <!-- Hero card: banked smoke-free time at the center -->
+    <!-- Hero card: recovery milestones. The lifetime banked timer used to
+         sit here behind a breathing orb but the user found it took too much
+         space for too little daily signal — banked time still surfaces in
+         the post-log snackbar where the "still yours" reframe is well-timed. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_hero_card"
         android:gravity="center"
-        android:paddingTop="28dp"
-        android:paddingBottom="24dp"
-        android:paddingHorizontal="24dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SMOKE-FREE BANKED"
-            android:textColor="@color/text_tertiary"
-            android:textSize="11sp"
-            android:letterSpacing="0.2"
-            android:fontFamily="sans-serif-medium" />
-
-        <!-- Banked timer with breathing orb behind it -->
-        <FrameLayout
-            android:layout_width="260dp"
-            android:layout_height="220dp"
-            android:layout_marginTop="-12dp"
-            android:layout_marginBottom="-24dp">
-
-            <View
-                android:id="@+id/breathingOrb"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_gravity="center"
-                android:background="@drawable/bg_breathing_orb"
-                android:alpha="0.5" />
-
-            <TextView
-                android:id="@+id/textBankedTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="0h"
-                android:textColor="@color/accent_primary"
-                android:textSize="42sp"
-                android:fontFamily="sans-serif-black"
-                android:includeFontPadding="false"
-                android:letterSpacing="-0.02"
-                android:contentDescription="Banked smoke-free time, lifetime additive"
-                android:accessibilityLiveRegion="polite" />
-
-        </FrameLayout>
-
-        <TextView
-            android:id="@+id/textBankedSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Lifetime cumulative — slips never erase it."
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            android:gravity="center"
-            android:fontFamily="sans-serif" />
+        android:paddingTop="20dp"
+        android:paddingBottom="20dp"
+        android:paddingHorizontal="20dp">
 
         <!-- Paused-during-exposure badge (visible only while in exposure window) -->
         <TextView
             android:id="@+id/textPausedBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginBottom="14dp"
             android:paddingHorizontal="14dp"
             android:paddingVertical="6dp"
             android:background="@drawable/bg_stat_chip"
