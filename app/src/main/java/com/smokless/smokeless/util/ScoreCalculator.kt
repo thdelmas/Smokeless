@@ -569,6 +569,13 @@ object ScoreCalculator {
         val actualToday: Int,
         val typicalByNow: Double,
         val baselineDailyAvg: Double,
+        /**
+         * Effective start-of-today anchor used by this computation — either
+         * the wake-time the caller supplied, or calendar midnight as a
+         * fallback. Exposed so per-second UI ticks can re-evaluate the verdict
+         * against the same anchor without re-querying the DB.
+         */
+        val dayStartMs: Long = 0L,
     )
 
     /**
@@ -577,32 +584,47 @@ object ScoreCalculator {
      * baseline excludes today (so a heavy morning doesn't reset its own bar).
      * Requires at least 3 prior days of tracking — fewer than that and we
      * return CALIBRATING rather than a misleading verdict.
+     *
+     * @param dayStartMs anchor for "today's window" — typically the user's
+     *   wake-up time pulled from Bios via [BiosClient.getWakeTimeMs]. When
+     *   null, falls back to calendar midnight (the prior behaviour). The wake
+     *   anchor matters at the day boundary: a 01:00 cigarette from someone
+     *   still up from the evening before should count in that prior waking
+     *   stretch, and the day-fraction scaling should reflect how long the
+     *   user has actually been awake.
      */
     fun calculateTodayPace(
         allSessions: List<SmokingSession>,
         nowMs: Long = System.currentTimeMillis(),
+        dayStartMs: Long? = null,
     ): TodayPace {
-        if (allSessions.isEmpty()) return TodayPace(PaceState.CALIBRATING, 0, 0.0, 0.0)
-
         val cal = Calendar.getInstance().apply {
             timeInMillis = nowMs
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }
-        val startOfToday = cal.timeInMillis
-        val actualToday = allSessions.count { it.timestamp >= startOfToday }
+        val midnight = cal.timeInMillis
+        // Wake anchor controls today's session window and the day-fraction
+        // scaling. Prior-day bucketing stays on calendar midnight — we don't
+        // have historical wake-times, and the 14-day average absorbs any
+        // boundary noise (same rationale as calculateFirstSmokeOfDay).
+        val todayAnchor = dayStartMs ?: midnight
+
+        if (allSessions.isEmpty()) return TodayPace(PaceState.CALIBRATING, 0, 0.0, 0.0, todayAnchor)
+
+        val actualToday = allSessions.count { it.timestamp >= todayAnchor }
 
         val day = TimeUnit.DAYS.toMillis(1)
         val firstSession = allSessions.minOf { it.timestamp }
         val trackedDays = ((nowMs - firstSession) / day).toInt() + 1
         val priorDays = (trackedDays - 1).coerceAtMost(14)
-        if (priorDays < 3) return TodayPace(PaceState.CALIBRATING, actualToday, 0.0, 0.0)
+        if (priorDays < 3) return TodayPace(PaceState.CALIBRATING, actualToday, 0.0, 0.0, todayAnchor)
 
-        val priorStart = startOfToday - priorDays * day
-        val priorCount = allSessions.count { it.timestamp in priorStart until startOfToday }
+        val priorStart = midnight - priorDays * day
+        val priorCount = allSessions.count { it.timestamp in priorStart until midnight }
         val baselineDailyAvg = priorCount.toDouble() / priorDays
 
-        val dayFraction = ((nowMs - startOfToday).toDouble() / day).coerceIn(0.0, 1.0)
+        val dayFraction = ((nowMs - todayAnchor).toDouble() / day).coerceIn(0.0, 1.0)
         val typicalByNow = baselineDailyAvg * dayFraction
 
         val state = when {
@@ -611,7 +633,7 @@ object ScoreCalculator {
             actualToday <= typicalByNow * 1.25 -> PaceState.ON_PACE
             else -> PaceState.BEHIND
         }
-        return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg)
+        return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor)
     }
 
     data class CravingVictories(
@@ -745,6 +767,7 @@ object ScoreCalculator {
     fun calculatePerSubstancePace(
         allSessions: List<SmokingSession>,
         nowMs: Long = System.currentTimeMillis(),
+        dayStartMs: Long? = null,
     ): List<SubstancePace> {
         if (allSessions.isEmpty()) return emptyList()
         val day = TimeUnit.DAYS.toMillis(1)
@@ -753,21 +776,22 @@ object ScoreCalculator {
             .filter { it.timestamp >= lookbackStart }
             .map { it.substance }
             .toSet()
-        // Include substances seen today even if recent window is sparse.
+        // Include substances seen since the wake anchor (or midnight fallback)
+        // even if the 14-day window is sparse.
         val cal = Calendar.getInstance().apply {
             timeInMillis = nowMs
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }
-        val startOfToday = cal.timeInMillis
+        val todayAnchor = dayStartMs ?: cal.timeInMillis
         val todaySubstances = allSessions
-            .filter { it.timestamp >= startOfToday }
+            .filter { it.timestamp >= todayAnchor }
             .map { it.substance }
             .toSet()
         val substances = (recentSubstances + todaySubstances).sortedBy { it.ordinal }
         return substances.map { sub ->
             val subset = allSessions.filter { it.substance == sub }
-            SubstancePace(sub, calculateTodayPace(subset, nowMs))
+            SubstancePace(sub, calculateTodayPace(subset, nowMs, dayStartMs))
         }
     }
 

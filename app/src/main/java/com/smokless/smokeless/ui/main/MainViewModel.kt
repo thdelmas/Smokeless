@@ -308,7 +308,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 else -> ScoreCalculator.PaceState.BEHIND
             }
             _todayPace.postValue(
-                ScoreCalculator.TodayPace(state, paceActualToday, typicalByNow, paceBaselineDailyAvg)
+                ScoreCalculator.TodayPace(
+                    state, paceActualToday, typicalByNow, paceBaselineDailyAvg, paceStartOfToday
+                )
             )
         }
 
@@ -419,27 +421,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         totalExposureMs = allSessions.sumOf { it.substance.exposureMs }
         _bankedSmokeFreeMs.postValue(ScoreCalculator.calculateBankedSmokeFreeMs(allSessions))
 
+        // Anchor "today" at Bios's last wake-up if available, so a post-
+        // midnight cigarette (user still up from the prior evening) is
+        // correctly counted in the previous waking stretch and the day-
+        // fraction scaling reflects awake-time, not clock midnight. Falls
+        // back to calendar midnight when Bios is absent, READ_HEALTH is not
+        // granted, or no sleep was recorded in the last 24h.
+        val wakeTimeMs = biosClient.getWakeTimeMs()
+
         // Snapshot today-pace inputs so the per-second tick can re-evaluate
         // the verdict as the day's expected count grows.
-        val pace = ScoreCalculator.calculateTodayPace(allSessions)
+        val pace = ScoreCalculator.calculateTodayPace(allSessions, dayStartMs = wakeTimeMs)
         _todayPace.postValue(pace)
         paceBaselineDailyAvg = pace.baselineDailyAvg
         paceActualToday = pace.actualToday
         paceHasBaseline = pace.state != ScoreCalculator.PaceState.CALIBRATING
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-        }
-        paceStartOfToday = cal.timeInMillis
+        paceStartOfToday = pace.dayStartMs
 
         // Pedagogical "today vs before" panel inputs.
-        _perSubstancePace.postValue(ScoreCalculator.calculatePerSubstancePace(allSessions))
-        // Anchor the "first smoke of today" filter at Bios's last wake-up if
-        // available, so a post-midnight cigarette (user still up from the
-        // prior evening) is correctly counted as that day's last, not the new
-        // day's first. Falls back to calendar midnight when Bios is absent,
-        // READ_HEALTH is not granted, or no sleep was recorded in the last 24h.
-        val wakeTimeMs = biosClient.getWakeTimeMs()
+        _perSubstancePace.postValue(
+            ScoreCalculator.calculatePerSubstancePace(allSessions, dayStartMs = wakeTimeMs)
+        )
         _firstSmokeOfDay.postValue(
             ScoreCalculator.calculateFirstSmokeOfDay(allSessions, dayStartMs = wakeTimeMs)
         )

@@ -169,6 +169,51 @@ class ScoreCalculatorTest {
         assertEquals(0, pace.actualToday)
     }
 
+    @Test
+    fun `calculateTodayPace with wake anchor counts post-midnight smokes into the prior waking stretch`() {
+        // Setup: now is 01:00 today. User woke at 07:00 yesterday and is
+        // still up (18h awake). Without a wake anchor, only the 00:30 smoke
+        // is "today" and the projection (1h of 24h elapsed) is tiny, so a
+        // single event reads BEHIND. With wake anchor, the whole awake
+        // window counts and the verdict reflects reality.
+        val hour = 3_600_000L
+        val day = 24 * hour
+        val midnight = paceNow(hourOfDay = 0)
+        val now = midnight + hour // 01:00 today
+        val wake = midnight - day + 7 * hour // yesterday 07:00 (18h before now)
+
+        // 14 prior days, 10 events each at 06:00 — placed before the 07:00
+        // wake anchor so they're clearly pre-wake "prior days" and don't
+        // bleed into the wake-anchored "today" window. trackedDays resolves
+        // to priorDays=13, so d=14 events fall just outside the window:
+        // d=1..13 = 130 events / 13 days = baseline 10/day.
+        val priors = (1..14).flatMap { d ->
+            List(10) { i ->
+                SmokingSession(midnight - d * day + 6 * hour + i * 60_000L)
+                    .apply { id = (d * 1000 + i).toLong() }
+            }
+        }
+
+        // 7 smokes during yesterday's awake hours + 1 post-midnight smoke.
+        val sinceWake = (0..6).map { i ->
+            SmokingSession(wake + i * 2 * hour + 30 * 60_000L)
+                .apply { id = (90_000 + i).toLong() }
+        } + SmokingSession(now - 30 * 60_000L).apply { id = 99_000L } // 00:30 today
+
+        val withoutAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now)
+        // actualToday = the single 00:30 event. typicalByNow ≈ 10 * (1h/24h) = 0.42.
+        // 1 > 0.42 * 1.25 → BEHIND. Misleading — the user is actually on track.
+        assertEquals(ScoreCalculator.PaceState.BEHIND, withoutAnchor.state)
+        assertEquals(1, withoutAnchor.actualToday)
+
+        val withAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now, dayStartMs = wake)
+        // actualToday = 8 (whole awake window). typicalByNow = 10 * (18h/24h) = 7.5.
+        // 8/7.5 ≈ 1.07, within ±25% → ON_PACE.
+        assertEquals(ScoreCalculator.PaceState.ON_PACE, withAnchor.state)
+        assertEquals(8, withAnchor.actualToday)
+        assertEquals(wake, withAnchor.dayStartMs)
+    }
+
     /** Returns a deterministic "now" at a fixed hour of day, avoiding clock flakiness. */
     private fun paceNow(hourOfDay: Int): Long {
         val cal = java.util.Calendar.getInstance().apply {
