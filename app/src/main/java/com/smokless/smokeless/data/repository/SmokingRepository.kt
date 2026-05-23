@@ -4,9 +4,7 @@ import android.app.Application
 import androidx.lifecycle.LiveData
 import com.smokless.smokeless.bios.BiosClient
 import com.smokless.smokeless.data.AppDatabase
-import com.smokless.smokeless.data.dao.CravingDao
 import com.smokless.smokeless.data.dao.SmokingSessionDao
-import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import com.smokless.smokeless.data.entity.Substance
 import java.util.concurrent.TimeUnit
@@ -14,14 +12,12 @@ import java.util.concurrent.TimeUnit
 class SmokingRepository(application: Application) {
 
     private val smokingDao: SmokingSessionDao
-    private val cravingDao: CravingDao
     private val allSessions: LiveData<List<SmokingSession>>
     private val biosClient: BiosClient = BiosClient(application)
 
     init {
         val db = AppDatabase.getInstance(application)
         smokingDao = db.smokingSessionDao()
-        cravingDao = db.cravingDao()
         allSessions = smokingDao.getAllSessionsLive()
     }
 
@@ -65,18 +61,9 @@ class SmokingRepository(application: Application) {
         smokingDao.updateQuantity(id, quantity)
     }
 
-    fun recordCraving() {
-        AppDatabase.databaseExecutor.execute {
-            val timestamp = System.currentTimeMillis()
-            cravingDao.insert(Craving(timestamp))
-            biosClient.pushCravingEvent(timestamp)
-        }
-    }
-
     fun backfillBios(): BiosClient.BackfillResult {
         val smokingEvents = smokingDao.getAllSessions().map { it.timestamp to it.substance }
-        val cravingTimestamps = cravingDao.getAllCravings().map { it.timestamp }
-        return biosClient.backfill(smokingEvents, cravingTimestamps)
+        return biosClient.backfill(smokingEvents)
     }
 
     fun getLastTimestamp(): Long? = smokingDao.getLastTimestamp()
@@ -84,17 +71,6 @@ class SmokingRepository(application: Application) {
     fun getSessionsSince(startTime: Long): List<SmokingSession> = smokingDao.getSessionsSince(startTime)
 
     fun getAllSessionsSync(): List<SmokingSession> = smokingDao.getAllSessions()
-
-    fun getAllCravings(): List<Craving> = cravingDao.getAllCravings()
-
-    fun getCravingsForScope(scope: String): List<Craving> {
-        val startTime = getStartTimeForScope(scope)
-        return if (startTime == 0L) {
-            cravingDao.getAllCravings()
-        } else {
-            cravingDao.getCravingsSince(startTime)
-        }
-    }
 
     fun getSessionsForScope(scope: String): List<SmokingSession> {
         val startTime = getStartTimeForScope(scope)

@@ -1,6 +1,5 @@
 package com.smokless.smokeless.util
 
-import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import com.smokless.smokeless.data.entity.Substance
 import java.text.SimpleDateFormat
@@ -478,82 +477,6 @@ object ScoreCalculator {
         )
     }
 
-    /** Window after a craving log in which a smoke "cancels" the victory. */
-    const val CRAVING_VICTORY_WINDOW_MS = 30L * 60 * 1000
-
-    /**
-     * The "moments of decision" view of recent activity. Per design note
-     * 2026-05-13 (streak-vs-reduce), the cleanest reduction signal available
-     * in current data is the ratio of held cravings to smokes — it answers
-     * "when the urge hit, what did I do?" without resetting on slips.
-     *
-     * - [resistedCount] is verified-held cravings: window of 30 min fully
-     *   elapsed, no real smoke landed inside it. Conservative on purpose.
-     * - [smokedCount] is every session in the window. No verification needed.
-     * - [resistancePercent] is resisted / (resisted + smoked), bounded 0–100.
-     * - [vsPriorPercent] is the change vs. the immediately prior window of
-     *   the same length. Positive = improving (more held, fewer smoked).
-     *   null when there isn't enough prior-window data to compare honestly.
-     */
-    data class ResistanceStats(
-        val resistedCount: Int,
-        val smokedCount: Int,
-        val resistancePercent: Double,
-        val vsPriorPercent: Double?,
-        val lookbackDays: Int,
-    )
-
-    fun calculateResistanceStats(
-        cravings: List<Craving>,
-        sessions: List<SmokingSession>,
-        nowMs: Long = System.currentTimeMillis(),
-        lookbackDays: Int = 7,
-    ): ResistanceStats {
-        val day = TimeUnit.DAYS.toMillis(1)
-        val windowMs = lookbackDays * day
-        val windowStart = nowMs - windowMs
-        val priorStart = nowMs - 2 * windowMs
-
-        fun resistedIn(rangeStart: Long, rangeEnd: Long): Int {
-            // A craving counts only if its 30-min outcome window is fully past.
-            return cravings.count { c ->
-                val inRange = c.timestamp in rangeStart until rangeEnd
-                val windowElapsed = nowMs - c.timestamp >= CRAVING_VICTORY_WINDOW_MS
-                if (!inRange || !windowElapsed) return@count false
-                val windowEnd = c.timestamp + CRAVING_VICTORY_WINDOW_MS
-                val smokedWithin = sessions.any { s ->
-                    val realSmoke = s.timestamp - s.substance.exposureMs
-                    realSmoke in c.timestamp..windowEnd
-                }
-                !smokedWithin
-            }
-        }
-
-        fun smokedIn(rangeStart: Long, rangeEnd: Long): Int =
-            sessions.count { it.timestamp in rangeStart until rangeEnd }
-
-        val resisted = resistedIn(windowStart, nowMs)
-        val smoked = smokedIn(windowStart, nowMs)
-        val total = resisted + smoked
-        val pct = if (total == 0) 0.0 else (resisted.toDouble() / total) * 100.0
-
-        // Prior window: only compute delta if there's any prior activity at all.
-        val priorResisted = resistedIn(priorStart, windowStart)
-        val priorSmoked = smokedIn(priorStart, windowStart)
-        val priorTotal = priorResisted + priorSmoked
-        val priorPct = if (priorTotal == 0) null
-            else (priorResisted.toDouble() / priorTotal) * 100.0
-        val delta = if (priorPct == null) null else pct - priorPct
-
-        return ResistanceStats(
-            resistedCount = resisted,
-            smokedCount = smoked,
-            resistancePercent = pct,
-            vsPriorPercent = delta,
-            lookbackDays = lookbackDays,
-        )
-    }
-
     /** "How am I doing right now" — one-glance verdict for today vs typical pace. */
     enum class PaceState {
         CALIBRATING, // not enough history to compare against
@@ -736,46 +659,6 @@ object ScoreCalculator {
             else -> PaceState.ON_PACE
         }
         return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor, rhythmCdf)
-    }
-
-    data class CravingVictories(
-        /** Number of confirmed victories beyond the cursor (verified: window elapsed, no smoke landed). */
-        val newCount: Int,
-        /** Updated cursor — advance past every craving whose window has fully elapsed, win or not. */
-        val newCursor: Long,
-    )
-
-    /**
-     * Detect craving victories: a logged craving counts when its 30-min window
-     * has fully elapsed AND no real smoke landed inside it. Smokes are matched
-     * against the actual smoke moment (timestamp minus the exposure offset
-     * already baked into [SmokingSession.timestamp]).
-     *
-     * Caller should initialize the cursor to "now" on first run to avoid
-     * surfacing a backlog of historical victories.
-     */
-    fun detectCravingVictories(
-        cravings: List<Craving>,
-        sessions: List<SmokingSession>,
-        cursor: Long,
-        nowMs: Long = System.currentTimeMillis(),
-    ): CravingVictories {
-        val confirmable = cravings.filter {
-            it.timestamp > cursor && nowMs - it.timestamp >= CRAVING_VICTORY_WINDOW_MS
-        }
-        if (confirmable.isEmpty()) return CravingVictories(0, cursor)
-        var victories = 0
-        var newCursor = cursor
-        for (craving in confirmable) {
-            val windowEnd = craving.timestamp + CRAVING_VICTORY_WINDOW_MS
-            val smokedWithin = sessions.any { s ->
-                val realSmokeTime = s.timestamp - s.substance.exposureMs
-                realSmokeTime in craving.timestamp..windowEnd
-            }
-            if (!smokedWithin) victories++
-            if (craving.timestamp > newCursor) newCursor = craving.timestamp
-        }
-        return CravingVictories(victories, newCursor)
     }
 
     /**
@@ -1102,10 +985,10 @@ object ScoreCalculator {
 
     /**
      * Sunday-recap-shaped rollup of the last 7 days. Pulls together every
-     * existing signal — reduction, resistance, milestones crossed, clean
-     * days, longest stretch — into one summary the user can read in 10
-     * seconds and recognize themselves in. Designed to be both honest (no
-     * cherry-picking) and motivating (deltas framed positively when warranted).
+     * existing signal — reduction, milestones crossed, clean days, longest
+     * stretch — into one summary the user can read in 10 seconds and
+     * recognize themselves in. Designed to be both honest (no cherry-picking)
+     * and motivating (deltas framed positively when warranted).
      */
     data class WeeklyDigest(
         val nowMs: Long,
@@ -1114,7 +997,6 @@ object ScoreCalculator {
         val smokesPriorWeek: Double,
         /** Signed change as a percentage. Positive = reduced. Null when prior is zero and current is non-zero (no meaningful denominator). */
         val smokeChangePercent: Double?,
-        val resistance: ResistanceStats,
         /** Milestones whose crossing timestamp falls within the last 7 days and where the user has not slipped back below since. */
         val milestonesReachedThisWeek: List<HealthMilestone>,
         /** Days in the last 7 with zero logged sessions. */
@@ -1125,7 +1007,6 @@ object ScoreCalculator {
 
     fun calculateWeeklyDigest(
         sessions: List<SmokingSession>,
-        cravings: List<Craving>,
         primarySubstance: Substance,
         nowMs: Long = System.currentTimeMillis(),
     ): WeeklyDigest {
@@ -1148,8 +1029,6 @@ object ScoreCalculator {
             smokesPrior < 0.01 -> null
             else -> ((smokesPrior - smokesThis) / smokesPrior) * 100.0
         }
-
-        val resistance = calculateResistanceStats(cravings, sessions, nowMs, lookbackDays = 7)
 
         // Milestones crossed this week: hours-mark whose anniversary falls in
         // [weekStart, nowMs] AND user hasn't slipped past it since (i.e., the
@@ -1210,7 +1089,6 @@ object ScoreCalculator {
             smokesThisWeek = smokesThis,
             smokesPriorWeek = smokesPrior,
             smokeChangePercent = smokeChange,
-            resistance = resistance,
             milestonesReachedThisWeek = crossings,
             cleanDaysThisWeek = cleanDays,
             longestStretchMs = longestStretch,

@@ -1,6 +1,5 @@
 package com.smokless.smokeless.util
 
-import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import com.smokless.smokeless.data.entity.Substance
 import org.junit.Assert.*
@@ -21,7 +20,6 @@ class WeeklyDigestTest {
         val now = System.currentTimeMillis()
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = emptyList(),
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -29,7 +27,6 @@ class WeeklyDigestTest {
         assertEquals(0.0, d.smokesPriorWeek, 0.001)
         assertEquals(0.0, d.smokeChangePercent ?: -1.0, 0.001)
         assertEquals(7, d.cleanDaysThisWeek)
-        assertEquals(0, d.resistance.resistedCount)
         assertTrue(d.milestonesReachedThisWeek.isEmpty())
     }
 
@@ -43,7 +40,6 @@ class WeeklyDigestTest {
         for (i in 0 until 10) sessions += SmokingSession(now - 8 * day - i * hour)
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -59,7 +55,6 @@ class WeeklyDigestTest {
         val sessions = listOf(SmokingSession(now - 1 * day))
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -76,7 +71,6 @@ class WeeklyDigestTest {
         )
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -88,7 +82,6 @@ class WeeklyDigestTest {
         val now = System.currentTimeMillis()
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = emptyList(),
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -105,7 +98,6 @@ class WeeklyDigestTest {
         )
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -123,7 +115,6 @@ class WeeklyDigestTest {
         val sessions = listOf(SmokingSession(lastSmoke, Substance.TOBACCO))
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
@@ -141,28 +132,9 @@ class WeeklyDigestTest {
         val sessions = listOf(SmokingSession(now - 80 * hour, Substance.CANNABIS))
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )
         assertTrue(d.milestonesReachedThisWeek.isEmpty())
-    }
-
-    @Test
-    fun `resistance block reflects in-window cravings and smokes`() {
-        val now = System.currentTimeMillis()
-        val cravings = listOf(
-            Craving(now - 2 * hour),
-            Craving(now - 3 * hour),
-        )
-        val sessions = listOf(SmokingSession(now - 1 * day))
-        val d = ScoreCalculator.calculateWeeklyDigest(
-            sessions = sessions,
-            cravings = cravings,
-            primarySubstance = Substance.TOBACCO,
-            nowMs = now,
-        )
-        assertEquals(2, d.resistance.resistedCount)
-        assertEquals(1, d.resistance.smokedCount)
     }
 }

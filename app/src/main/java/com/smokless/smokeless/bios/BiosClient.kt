@@ -115,9 +115,6 @@ class BiosClient(private val context: Context) {
     fun pushSmokingEvent(timestamp: Long, substance: Substance) =
         push(useMetricFor(substance), timestamp)
 
-    fun pushCravingEvent(timestamp: Long, substance: Substance = Substance.TOBACCO) =
-        push(cravingMetricFor(substance), timestamp)
-
     /**
      * Replays existing history into Bios. Called from the "Sync history" button —
      * idempotency is Bios's concern (per Smokeless docs/ROADMAP §1.3); if the user
@@ -128,9 +125,8 @@ class BiosClient(private val context: Context) {
      */
     fun backfill(
         smokingEvents: List<Pair<Long, Substance>>,
-        cravingTimestamps: List<Long>,
     ): BackfillResult {
-        val total = smokingEvents.size + cravingTimestamps.size
+        val total = smokingEvents.size
         if (!isEnabled || !isAvailable) {
             return BackfillResult(pushed = 0, failed = 0, total = total)
         }
@@ -138,9 +134,6 @@ class BiosClient(private val context: Context) {
         var failed = 0
         for ((ts, substance) in smokingEvents) {
             if (push(useMetricFor(substance), ts)) pushed++ else failed++
-        }
-        for (ts in cravingTimestamps) {
-            if (push(METRIC_TOBACCO_CRAVING, ts)) pushed++ else failed++
         }
         return BackfillResult(pushed = pushed, failed = failed, total = total)
     }
@@ -219,9 +212,7 @@ class BiosClient(private val context: Context) {
         const val BIOS_EXTRA_NAVIGATE_TO_COMPANIONS = "navigate_to_companions"
 
         const val METRIC_TOBACCO_USE = "tobacco_use"
-        const val METRIC_TOBACCO_CRAVING = "tobacco_craving"
         const val METRIC_CANNABIS_USE = "cannabis_use"
-        const val METRIC_CANNABIS_CRAVING = "cannabis_craving"
         const val METRIC_SLEEP_DURATION = "sleep_duration"
 
         private val BASE_URI: Uri = Uri.parse("content://com.bios.app.health")
@@ -230,11 +221,6 @@ class BiosClient(private val context: Context) {
         private fun useMetricFor(substance: Substance): String = when (substance) {
             Substance.TOBACCO -> METRIC_TOBACCO_USE
             Substance.CANNABIS -> METRIC_CANNABIS_USE
-        }
-
-        private fun cravingMetricFor(substance: Substance): String = when (substance) {
-            Substance.TOBACCO -> METRIC_TOBACCO_CRAVING
-            Substance.CANNABIS -> METRIC_CANNABIS_CRAVING
         }
     }
 }

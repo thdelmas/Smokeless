@@ -1,6 +1,5 @@
 package com.smokless.smokeless.util
 
-import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import com.smokless.smokeless.data.entity.Substance
 import org.junit.Assert.*
@@ -81,7 +80,6 @@ class QuantityWeightedStatsTest {
         )
         val d = ScoreCalculator.calculateWeeklyDigest(
             sessions = sessions,
-            cravings = emptyList<Craving>(),
             primarySubstance = Substance.TOBACCO,
             nowMs = now,
         )

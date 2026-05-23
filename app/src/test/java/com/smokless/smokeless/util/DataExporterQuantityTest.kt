@@ -1,8 +1,6 @@
 package com.smokless.smokeless.util
 
-import com.smokless.smokeless.data.dao.CravingDao
 import com.smokless.smokeless.data.dao.SmokingSessionDao
-import com.smokless.smokeless.data.entity.Craving
 import com.smokless.smokeless.data.entity.SmokingSession
 import com.smokless.smokeless.data.entity.Substance
 import org.junit.Assert.*
@@ -35,17 +33,6 @@ class DataExporterQuantityTest {
         override fun deleteAll() { rows.clear() }
     }
 
-    private class FakeCravingDao : CravingDao {
-        val rows = mutableListOf<Craving>()
-        override fun insert(craving: Craving): Long { rows += craving; return rows.size.toLong() }
-        override fun getAllCravings(): List<Craving> = rows.toList()
-        override fun getCravingsSince(startTime: Long) = rows.filter { it.timestamp >= startTime }
-        override fun getTotalCount(): Int = rows.size
-        override fun getCountSince(startTime: Long): Int =
-            rows.count { it.timestamp >= startTime }
-        override fun deleteAll() { rows.clear() }
-    }
-
     private fun stream(text: String): InputStream = ByteArrayInputStream(text.toByteArray())
 
     // --- JSON ---
@@ -57,13 +44,11 @@ class DataExporterQuantityTest {
               "smoking_sessions": [
                 {"timestamp": 1000, "substance": "TOBACCO", "quantity": 0.5},
                 {"timestamp": 2000, "substance": "CANNABIS", "quantity": 1.5}
-              ],
-              "cravings_resisted": []
+              ]
             }
         """.trimIndent()
         val sessions = FakeSessionDao()
-        val cravings = FakeCravingDao()
-        DataExporter.importFromJSON(stream(json), sessions, cravings)
+        DataExporter.importFromJSON(stream(json), sessions)
         assertEquals(2, sessions.rows.size)
         assertEquals(0.5, sessions.rows[0].quantity, 0.001)
         assertEquals(1.5, sessions.rows[1].quantity, 0.001)
@@ -76,14 +61,30 @@ class DataExporterQuantityTest {
             {
               "smoking_sessions": [
                 {"timestamp": 1000, "substance": "TOBACCO"}
-              ],
-              "cravings_resisted": []
+              ]
             }
         """.trimIndent()
         val sessions = FakeSessionDao()
-        val cravings = FakeCravingDao()
-        DataExporter.importFromJSON(stream(json), sessions, cravings)
+        DataExporter.importFromJSON(stream(json), sessions)
         assertEquals(1.0, sessions.rows[0].quantity, 0.001)
+    }
+
+    @Test
+    fun `JSON import silently ignores legacy cravings_resisted array`() {
+        val json = """
+            {
+              "smoking_sessions": [
+                {"timestamp": 1000, "substance": "TOBACCO", "quantity": 1.0}
+              ],
+              "cravings_resisted": [
+                {"id": 1, "timestamp": 500}
+              ]
+            }
+        """.trimIndent()
+        val sessions = FakeSessionDao()
+        val imported = DataExporter.importFromJSON(stream(json), sessions)
+        assertEquals(1, imported)
+        assertEquals(1, sessions.rows.size)
     }
 
     // --- CSV ---
@@ -94,8 +95,7 @@ class DataExporterQuantityTest {
             "Smoked,1000,\"2026-05-20 09:00:00\",TOBACCO,0.25\n" +
             "Smoked,2000,\"2026-05-20 10:00:00\",CANNABIS,1.5\n"
         val sessions = FakeSessionDao()
-        val cravings = FakeCravingDao()
-        DataExporter.importFromCSV(stream(csv), sessions, cravings)
+        DataExporter.importFromCSV(stream(csv), sessions)
         assertEquals(2, sessions.rows.size)
         assertEquals(0.25, sessions.rows[0].quantity, 0.001)
         assertEquals(Substance.TOBACCO, sessions.rows[0].substance)
@@ -109,8 +109,7 @@ class DataExporterQuantityTest {
         val csv = "Type,Timestamp,Date\n" +
             "Smoked,1000,\"2026-05-20 09:00:00\"\n"
         val sessions = FakeSessionDao()
-        val cravings = FakeCravingDao()
-        DataExporter.importFromCSV(stream(csv), sessions, cravings)
+        DataExporter.importFromCSV(stream(csv), sessions)
         assertEquals(1, sessions.rows.size)
         assertEquals(1.0, sessions.rows[0].quantity, 0.001)
         assertEquals(Substance.DEFAULT, sessions.rows[0].substance)
@@ -121,8 +120,18 @@ class DataExporterQuantityTest {
         val csv = "Type,Timestamp,Date,Substance,Quantity\n" +
             "Smoked,1000,\"date\",TOBACCO,not-a-number\n"
         val sessions = FakeSessionDao()
-        val cravings = FakeCravingDao()
-        DataExporter.importFromCSV(stream(csv), sessions, cravings)
+        DataExporter.importFromCSV(stream(csv), sessions)
         assertEquals(1.0, sessions.rows[0].quantity, 0.001)
+    }
+
+    @Test
+    fun `CSV import silently skips legacy Resisted rows`() {
+        val csv = "Type,Timestamp,Date,Substance,Quantity\n" +
+            "Smoked,1000,\"2026-05-20 09:00:00\",TOBACCO,1.0\n" +
+            "Resisted,1500,\"2026-05-20 09:30:00\",,\n"
+        val sessions = FakeSessionDao()
+        val imported = DataExporter.importFromCSV(stream(csv), sessions)
+        assertEquals(1, imported)
+        assertEquals(1, sessions.rows.size)
     }
 }

@@ -256,7 +256,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Log a smoke or resistance to begin"
+                        android:text="Log a smoke to begin"
                         android:textColor="@color/text_tertiary"
                         android:textSize="11sp"
                         android:fontFamily="sans-serif"
