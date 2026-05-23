@@ -722,11 +722,18 @@ object ScoreCalculator {
         }
         val typicalByNow = baselineDailyAvg * effectiveFraction
 
+        // Threshold band around typical-by-now: ±25% of typical, with an
+        // absolute floor of ½ a cigarette-equivalent. The floor matters for
+        // late-stage reduction users (baseline 2–3/day) where a strict ±25%
+        // band is narrower than a single dose, so one extra drag would
+        // otherwise flip the verdict to BEHIND. At higher baselines the
+        // percentage dominates and behavior is unchanged.
+        val band = max(typicalByNow * 0.25, 0.5)
         val state = when {
             baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
-            actualToday <= typicalByNow * 0.75 -> PaceState.AHEAD
-            actualToday <= typicalByNow * 1.25 -> PaceState.ON_PACE
-            else -> PaceState.BEHIND
+            actualToday <= typicalByNow - band -> PaceState.AHEAD
+            actualToday > typicalByNow + band -> PaceState.BEHIND
+            else -> PaceState.ON_PACE
         }
         return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor, rhythmCdf)
     }

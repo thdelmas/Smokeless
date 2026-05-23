@@ -232,6 +232,37 @@ class ScoreCalculatorTest {
     }
 
     @Test
+    fun `calculateTodayPace stays ON_PACE at low baselines instead of flipping to BEHIND for one extra dose`() {
+        // Light user: baseline 3 cig/day, spread across morning/midday/evening
+        // so the rhythm CDF at hour 08 lands at ~1/3 → typical-by-now ≈ 1.0.
+        // Under a strict ±25% band, 1.5 today would be BEHIND (1.5 > 1.25).
+        // With the 0.5-dose floor it stays ON_PACE so one unusually intense
+        // morning drag doesn't read as falling off the wagon.
+        val midnight = paceNow(hourOfDay = 0)
+        val now = paceNow(hourOfDay = 8)
+        val day = 24L * 3_600_000
+        val hour = 3_600_000L
+
+        // 5 prior days × 3 events at 04:00, 12:00, 20:00 → 15 events spread
+        // evenly across the day so the CDF approximates linear.
+        val priors = (1..5).flatMap { d ->
+            listOf(4, 12, 20).map { h ->
+                SmokingSession(midnight - d * day + h * hour)
+                    .apply { id = (d * 100 + h).toLong() }
+            }
+        }
+        // Today: 1 full + 1 half = 1.5 dose.
+        val today = listOf(
+            SmokingSession(now - 30 * 60_000L, quantity = 1.0).apply { id = 9001 },
+            SmokingSession(now - 10 * 60_000L, quantity = 0.5).apply { id = 9002 },
+        )
+
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.ON_PACE, pace.state)
+        assertEquals(1.5, pace.actualToday, 1e-9)
+    }
+
+    @Test
     fun `calculateTodayPace AHEAD when same-count today swaps full smokes for drags`() {
         // Reduction thesis: replacing 5 full smokes with 5 drags is 75%
         // reduction in exposure. Event count alone would call this "matching
