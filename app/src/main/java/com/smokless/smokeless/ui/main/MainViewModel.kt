@@ -150,6 +150,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var paceActualToday = 0.0
     private var paceStartOfToday = 0L
     private var paceHasBaseline = false
+    // Snapshot of the empirical rhythm CDF so the per-second tick can
+    // re-evaluate typical-by-now without re-walking sessions every tick.
+    // Empty when prior data was too sparse to build a stable estimate —
+    // the tick falls back to linear scaling in that case.
+    private var paceRhythmCdf: List<Double> = emptyList()
 
     // Per-substance last-smoke timestamps snapshotted on refresh. The decay
     // ticker re-evaluates each second from these without touching the DB.
@@ -293,12 +298,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Re-evaluate today-pace verdict from the cached baseline. The day's
         // expected count grows with elapsed time, so this can flip
-        // BEHIND → ON_PACE → AHEAD without a DB hit.
+        // BEHIND → ON_PACE → AHEAD without a DB hit. typicalByNow tracks the
+        // rhythm CDF when one was snapshotted (so morning-heavy users see
+        // the bulk of typical-by-now early), else linear day-fraction.
         if (paceHasBaseline && paceStartOfToday > 0L) {
             val nowMs = System.currentTimeMillis()
-            val dayMs = java.util.concurrent.TimeUnit.DAYS.toMillis(1)
-            val dayFraction = ((nowMs - paceStartOfToday).toDouble() / dayMs).coerceIn(0.0, 1.0)
-            val typicalByNow = paceBaselineDailyAvg * dayFraction
+            val hourMs = java.util.concurrent.TimeUnit.HOURS.toMillis(1).toDouble()
+            val elapsedHours = (nowMs - paceStartOfToday).toDouble() / hourMs
+            val effectiveFraction = if (paceRhythmCdf.isNotEmpty()) {
+                ScoreCalculator.applyRhythmCdf(paceRhythmCdf, elapsedHours.coerceAtMost(24.0))
+            } else {
+                (elapsedHours / 24.0).coerceIn(0.0, 1.0)
+            }
+            val typicalByNow = paceBaselineDailyAvg * effectiveFraction
             val state = when {
                 paceBaselineDailyAvg < 0.5 ->
                     if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
@@ -309,7 +321,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _todayPace.postValue(
                 ScoreCalculator.TodayPace(
-                    state, paceActualToday, typicalByNow, paceBaselineDailyAvg, paceStartOfToday
+                    state, paceActualToday, typicalByNow, paceBaselineDailyAvg,
+                    paceStartOfToday, paceRhythmCdf
                 )
             )
         }
@@ -437,6 +450,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         paceActualToday = pace.actualToday
         paceHasBaseline = pace.state != ScoreCalculator.PaceState.CALIBRATING
         paceStartOfToday = pace.dayStartMs
+        paceRhythmCdf = pace.rhythmCdf
 
         // Pedagogical "today vs before" panel inputs.
         _perSubstancePace.postValue(

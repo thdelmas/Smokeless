@@ -583,7 +583,74 @@ object ScoreCalculator {
          * against the same anchor without re-querying the DB.
          */
         val dayStartMs: Long = 0L,
+        /**
+         * Empirical rhythm CDF: flat list of alternating (offsetHours,
+         * cumulativeFraction) pairs, sorted by offset. Encodes the share of
+         * typical-day dose that the user has consumed by each successive
+         * hour-since-wake in the prior window. Empty when the prior pool was
+         * too sparse and the linear projection was used instead. Per-second
+         * UI ticks pass this back to [applyRhythmCdf] so they don't re-walk
+         * the session list every second.
+         */
+        val rhythmCdf: List<Double> = emptyList(),
     )
+
+    /**
+     * Lookup helper for the rhythm CDF stored in [TodayPace.rhythmCdf]. Walks
+     * the (offset, cumulative-fraction) pairs and returns the cumulative
+     * fraction at the largest offset ≤ [elapsedHours], or 0 if elapsed is
+     * before the first event. An empty CDF means "fall back to linear" — the
+     * caller should use [elapsedHours]/24 instead.
+     */
+    fun applyRhythmCdf(cdf: List<Double>, elapsedHours: Double): Double {
+        if (cdf.isEmpty()) return 0.0
+        var frac = 0.0
+        var i = 0
+        while (i < cdf.size) {
+            if (cdf[i] > elapsedHours) break
+            frac = cdf[i + 1]
+            i += 2
+        }
+        return frac
+    }
+
+    /** Clock hour-of-day in [0, 24), e.g. 8.5 for 08:30 — local timezone. */
+    private fun hourOfDay(timestampMs: Long): Double {
+        val c = Calendar.getInstance().apply { timeInMillis = timestampMs }
+        return c.get(Calendar.HOUR_OF_DAY) + c.get(Calendar.MINUTE) / 60.0
+    }
+
+    /**
+     * Build an empirical rhythm CDF from the prior-window sessions, expressed
+     * as offsets from the caller's wake-hour-of-day. An event at clock hour
+     * `h` becomes offset `(h - wakeHour + 24) mod 24` — so events past wake
+     * are early in the awake stretch and pre-wake events sit at the tail
+     * (interpreted as "still up from the previous awake stretch").
+     *
+     * Returns a flat list of pairs (offset, cumulativeFraction) sorted by
+     * offset. Empty if prior data is too sparse for a stable estimate — the
+     * caller should fall back to a linear projection.
+     */
+    private fun buildRhythmCdf(
+        priorSessions: List<SmokingSession>,
+        wakeAnchorMs: Long,
+    ): List<Double> {
+        if (priorSessions.size < 14) return emptyList()
+        val totalDose = priorSessions.sumOf { it.quantity }
+        if (totalDose <= 0.0) return emptyList()
+        val wakeHour = hourOfDay(wakeAnchorMs)
+        val pairs = priorSessions
+            .map { (hourOfDay(it.timestamp) - wakeHour + 24.0) % 24.0 to it.quantity }
+            .sortedBy { it.first }
+        val out = ArrayList<Double>(pairs.size * 2)
+        var cum = 0.0
+        for ((offset, dose) in pairs) {
+            cum += dose
+            out.add(offset)
+            out.add(cum / totalDose)
+        }
+        return out
+    }
 
     /**
      * Compute today's pace against a rolling 14-day baseline, time-of-day
@@ -635,13 +702,25 @@ object ScoreCalculator {
         if (priorDays < 3) return TodayPace(PaceState.CALIBRATING, actualToday, 0.0, 0.0, todayAnchor)
 
         val priorStart = midnight - priorDays * day
-        val priorDose = allSessions
-            .filter { it.timestamp in priorStart until midnight }
-            .sumOf { it.quantity }
+        val priorSessions = allSessions.filter { it.timestamp in priorStart until midnight }
+        val priorDose = priorSessions.sumOf { it.quantity }
         val baselineDailyAvg = priorDose / priorDays
 
-        val dayFraction = ((nowMs - todayAnchor).toDouble() / day).coerceIn(0.0, 1.0)
-        val typicalByNow = baselineDailyAvg * dayFraction
+        // Rhythm-aware projection: empirical CDF of typical-day dose by
+        // hour-since-wake. Falls back to linear when prior data is sparse
+        // (< 14 events) so a calibrating user keeps the simpler behaviour.
+        // Morning-heavy and evening-heavy smokers see verdicts that respect
+        // their actual pattern, not a uniform-day assumption.
+        val hourMs = TimeUnit.HOURS.toMillis(1).toDouble()
+        val elapsedHours = (nowMs - todayAnchor).toDouble() / hourMs
+        val dayFractionLinear = (elapsedHours / 24.0).coerceIn(0.0, 1.0)
+        val rhythmCdf = buildRhythmCdf(priorSessions, todayAnchor)
+        val effectiveFraction = if (rhythmCdf.isNotEmpty()) {
+            applyRhythmCdf(rhythmCdf, elapsedHours.coerceAtMost(24.0))
+        } else {
+            dayFractionLinear
+        }
+        val typicalByNow = baselineDailyAvg * effectiveFraction
 
         val state = when {
             baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
@@ -649,7 +728,7 @@ object ScoreCalculator {
             actualToday <= typicalByNow * 1.25 -> PaceState.ON_PACE
             else -> PaceState.BEHIND
         }
-        return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor)
+        return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor, rhythmCdf)
     }
 
     data class CravingVictories(
