@@ -24,6 +24,8 @@ data class SubstanceCopy(
 ) {
     fun unitFor(count: Long): String = if (count == 1L) unit else units
     fun unitFor(count: Int): String = unitFor(count.toLong())
+    /** Singular only for exactly 1.0; fractional doses use the plural form. */
+    fun unitFor(count: Double): String = if (count == 1.0) unit else units
 
     companion object {
         val TOBACCO = SubstanceCopy(
