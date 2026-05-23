@@ -1176,6 +1176,9 @@ class MainActivity : AppCompatActivity() {
     private fun updateTodayPace(pace: com.smokless.smokeless.util.ScoreCalculator.TodayPace) {
         val typicalRounded = kotlin.math.round(pace.typicalByNow).toInt()
         val unit = copy.unitFor(pace.actualToday.toLong())
+        // Signed delta vs typical-by-now: positive = smoked more than usual
+        // (bad), negative = ahead of usual (good), zero = matching pace.
+        val delta = pace.actualToday - typicalRounded
         val (text, colorRes) = when (pace.state) {
             com.smokless.smokeless.util.ScoreCalculator.PaceState.CALIBRATING ->
                 "Keep logging — your pace verdict shows up after 3 days" to R.color.text_secondary
@@ -1192,6 +1195,28 @@ class MainActivity : AppCompatActivity() {
         }
         binding.textTodayPace.text = text
         binding.textTodayPace.setTextColor(ContextCompat.getColor(this, colorRes))
+
+        // Delta badge headline — hidden while calibrating (no baseline yet)
+        // and during clean-baseline states (the copy already says what's
+        // happening, and a "0" badge would be visually noisy).
+        val showBadge = when (pace.state) {
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.CALIBRATING,
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_TODAY,
+            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_BREAK -> false
+            else -> true
+        }
+        if (showBadge) {
+            val badge = when {
+                delta > 0 -> "+$delta"
+                delta < 0 -> "$delta" // negative sign already included
+                else -> "±0"
+            }
+            binding.textTodayPaceDelta.text = badge
+            binding.textTodayPaceDelta.setTextColor(ContextCompat.getColor(this, colorRes))
+            binding.textTodayPaceDelta.visibility = android.view.View.VISIBLE
+        } else {
+            binding.textTodayPaceDelta.visibility = android.view.View.GONE
+        }
     }
 
     private fun updateReductionTrend(stats: com.smokless.smokeless.util.ScoreCalculator.ReductionStats) {
