@@ -804,7 +804,13 @@ class MainActivity : AppCompatActivity() {
             binding.sectionRecords.textMoneySaved.text = formatted
         }
 
-        viewModel.todayPace.observe(this) { pace -> updateTodayPace(pace) }
+        // perSubstancePace drives the hero verdict block: one chip per
+        // substance the user logs (just one for single-substance users,
+        // stacked rows for tobacco + cannabis dogfooders). The combined
+        // todayPace LiveData stays computed in the ViewModel but no longer
+        // surfaces — pooling unlike substances into one verdict was
+        // misleading for multi-substance users.
+        viewModel.perSubstancePace.observe(this) { entries -> updateHeroPace(entries) }
 
         viewModel.newCravingVictories.observe(this) { count ->
             if (count > 0) {
@@ -814,8 +820,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.reductionStats.observe(this) { stats -> updateReductionTrend(stats) }
-
-        viewModel.perSubstancePace.observe(this) { entries -> updatePerSubstancePace(entries) }
         viewModel.firstSmokeOfDay.observe(this) { fs -> updateFirstSmokeOfDay(fs) }
         viewModel.substanceLevels.observe(this) { levels -> updateSubstanceLevels(levels) }
         viewModel.triggerWindows.observe(this) { windows -> updateTriggerWindows(windows) }
@@ -1025,51 +1029,88 @@ class MainActivity : AppCompatActivity() {
         Substance.CANNABIS -> if (dose == 1.0) "session" else "sessions"
     }
 
-    private fun updatePerSubstancePace(entries: List<ScoreCalculator.SubstancePace>) {
-        val group = binding.sectionProgression.root.findViewById<android.widget.LinearLayout>(
-            R.id.groupPerSubstancePace
-        )
-        val empty = binding.sectionProgression.root.findViewById<android.widget.TextView>(
-            R.id.textPerSubstanceEmpty
-        )
-        group.removeAllViews()
+    /**
+     * Hero pace block: one chip per substance the user logs (just one row
+     * for single-substance users; tobacco + cannabis users see them
+     * stacked, each with its own delta badge so the headline doesn't pool
+     * unlike substances into a misleading single verdict).
+     */
+    private fun updateHeroPace(entries: List<ScoreCalculator.SubstancePace>) {
+        val container = binding.containerTodayPace
+        container.removeAllViews()
         if (entries.isEmpty()) {
-            empty.visibility = View.VISIBLE
+            val chip = layoutInflater.inflate(
+                R.layout.item_hero_pace_chip, container, false
+            )
+            val copy = chip.findViewById<android.widget.TextView>(R.id.textHeroPaceCopy)
+            copy.text = "Keep logging — your pace verdict shows up after 3 days"
+            container.addView(chip)
             return
         }
-        empty.visibility = View.GONE
-        val inflater = layoutInflater
-        for (entry in entries) {
-            val row = inflater.inflate(R.layout.item_per_substance_pace, group, false)
-            val label = row.findViewById<android.widget.TextView>(R.id.textSubstanceLabel)
-            val value = row.findViewById<android.widget.TextView>(R.id.textSubstanceValue)
-            val verdict = row.findViewById<android.widget.TextView>(R.id.textSubstanceVerdict)
+        val showSubstanceLabel = entries.size > 1
+        val doseFormat = DecimalFormat("0.##")
+        val rowGap = (8 * resources.displayMetrics.density).toInt()
+        entries.forEachIndexed { index, entry ->
+            val chip = layoutInflater.inflate(
+                R.layout.item_hero_pace_chip, container, false
+            )
+            val label = chip.findViewById<android.widget.TextView>(R.id.textHeroPaceSubstanceLabel)
+            val deltaView = chip.findViewById<android.widget.TextView>(R.id.textHeroPaceDelta)
+            val copy = chip.findViewById<android.widget.TextView>(R.id.textHeroPaceCopy)
 
-            label.text = substanceLabel(entry.substance)
-            val actualUnit = substanceUnit(entry.substance, entry.pace.actualToday)
-            val doseFormat = DecimalFormat("0.##")
-            val actualStr = doseFormat.format(entry.pace.actualToday)
-            val typicalStr = doseFormat.format(entry.pace.typicalByNow)
-            value.text = "$actualStr $actualUnit today · usually $typicalStr by now"
-
-            val (verdictText, colorRes) = when (entry.pace.state) {
-                ScoreCalculator.PaceState.CALIBRATING ->
-                    "Calibrating" to R.color.text_tertiary
-                ScoreCalculator.PaceState.AHEAD ->
-                    "Ahead of pace" to R.color.status_champion
-                ScoreCalculator.PaceState.ON_PACE ->
-                    "On pace" to R.color.accent_amber
-                ScoreCalculator.PaceState.BEHIND ->
-                    "Behind pace" to R.color.status_reset
-                ScoreCalculator.PaceState.CLEAN_TODAY ->
-                    "Clean today" to R.color.status_champion
-                ScoreCalculator.PaceState.CLEAN_BREAK ->
-                    "Break in a clean run" to R.color.accent_amber
+            if (showSubstanceLabel) {
+                label.text = substanceLabel(entry.substance).uppercase()
+                label.visibility = View.VISIBLE
             }
-            verdict.text = verdictText
-            verdict.setTextColor(ContextCompat.getColor(this, colorRes))
 
-            group.addView(row)
+            val pace = entry.pace
+            val unit = substanceUnit(entry.substance, pace.actualToday)
+            val actualStr = doseFormat.format(pace.actualToday)
+            val typicalStr = doseFormat.format(pace.typicalByNow)
+            val (text, colorRes) = when (pace.state) {
+                ScoreCalculator.PaceState.CALIBRATING ->
+                    "Keep logging — verdict shows up after 3 days" to R.color.text_secondary
+                ScoreCalculator.PaceState.AHEAD ->
+                    "Ahead of pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_champion
+                ScoreCalculator.PaceState.ON_PACE ->
+                    "On pace — $actualStr $unit today, usually $typicalStr by now" to R.color.accent_amber
+                ScoreCalculator.PaceState.BEHIND ->
+                    "Behind pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_reset
+                ScoreCalculator.PaceState.CLEAN_TODAY ->
+                    "Matching your clean baseline — 0 today" to R.color.status_champion
+                ScoreCalculator.PaceState.CLEAN_BREAK ->
+                    "$actualStr $unit today — you've been clean lately, gentle reset" to R.color.accent_amber
+            }
+            copy.text = text
+            copy.setTextColor(ContextCompat.getColor(this, colorRes))
+
+            val showBadge = when (pace.state) {
+                ScoreCalculator.PaceState.CALIBRATING,
+                ScoreCalculator.PaceState.CLEAN_TODAY,
+                ScoreCalculator.PaceState.CLEAN_BREAK -> false
+                else -> true
+            }
+            if (showBadge) {
+                val delta = pace.actualToday - pace.typicalByNow
+                val absStr = doseFormat.format(kotlin.math.abs(delta))
+                // ¼-cig deadband on the displayed delta — avoids "+0.1"
+                // jitter while the verdict reads ON_PACE.
+                val badge = when {
+                    kotlin.math.abs(delta) < 0.25 -> "±0"
+                    delta > 0 -> "+$absStr"
+                    else -> "−$absStr"
+                }
+                deltaView.text = badge
+                deltaView.setTextColor(ContextCompat.getColor(this, colorRes))
+                deltaView.visibility = View.VISIBLE
+            }
+
+            if (index > 0) {
+                val lp = chip.layoutParams as android.widget.LinearLayout.LayoutParams
+                lp.topMargin = rowGap
+                chip.layoutParams = lp
+            }
+            container.addView(chip)
         }
     }
 
@@ -1172,60 +1213,6 @@ class MainActivity : AppCompatActivity() {
             value.setTextColor(ContextCompat.getColor(this, colorRes))
 
             group.addView(row)
-        }
-    }
-
-    private fun updateTodayPace(pace: com.smokless.smokeless.util.ScoreCalculator.TodayPace) {
-        // Dose-weighted — fractions are normal (a "drag" logs 0.25). The 0.##
-        // formatter drops trailing zeros, so whole-cigarette doses still
-        // render cleanly ("5" rather than "5.00").
-        val doseFormat = DecimalFormat("0.##")
-        val actualStr = doseFormat.format(pace.actualToday)
-        val typicalStr = doseFormat.format(pace.typicalByNow)
-        val unit = copy.unitFor(pace.actualToday)
-        // Signed dose-delta vs typical-by-now: positive = smoked more than
-        // usual (bad), negative = ahead of usual (good), zero = matching pace.
-        val delta = pace.actualToday - pace.typicalByNow
-        val (text, colorRes) = when (pace.state) {
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.CALIBRATING ->
-                "Keep logging — your pace verdict shows up after 3 days" to R.color.text_secondary
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.AHEAD ->
-                "Ahead of pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_champion
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.ON_PACE ->
-                "On pace — $actualStr $unit today, usually $typicalStr by now" to R.color.accent_amber
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.BEHIND ->
-                "Behind pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_reset
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_TODAY ->
-                "Matching your clean baseline — 0 today" to R.color.status_champion
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_BREAK ->
-                "$actualStr $unit today — you've been clean lately, gentle reset" to R.color.accent_amber
-        }
-        binding.textTodayPace.text = text
-        binding.textTodayPace.setTextColor(ContextCompat.getColor(this, colorRes))
-
-        // Delta badge headline — hidden while calibrating (no baseline yet)
-        // and during clean-baseline states (the copy already says what's
-        // happening, and a "0" badge would be visually noisy).
-        val showBadge = when (pace.state) {
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.CALIBRATING,
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_TODAY,
-            com.smokless.smokeless.util.ScoreCalculator.PaceState.CLEAN_BREAK -> false
-            else -> true
-        }
-        if (showBadge) {
-            val absStr = doseFormat.format(kotlin.math.abs(delta))
-            val badge = when {
-                // Within ¼ cigarette of typical reads as on-pace — avoids
-                // showing "+0.1" jitter when the verdict says ON_PACE.
-                kotlin.math.abs(delta) < 0.25 -> "±0"
-                delta > 0 -> "+$absStr"
-                else -> "−$absStr"
-            }
-            binding.textTodayPaceDelta.text = badge
-            binding.textTodayPaceDelta.setTextColor(ContextCompat.getColor(this, colorRes))
-            binding.textTodayPaceDelta.visibility = android.view.View.VISIBLE
-        } else {
-            binding.textTodayPaceDelta.visibility = android.view.View.GONE
         }
     }
 
