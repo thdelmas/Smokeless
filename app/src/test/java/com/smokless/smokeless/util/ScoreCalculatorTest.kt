@@ -135,14 +135,24 @@ class ScoreCalculatorTest {
 
     @Test
     fun `calculateTodayPace BEHIND when today smoked above 125 percent of typical-by-now`() {
-        val now = paceNow(hourOfDay = 12) // 12/24 = 0.5
+        // 7 prior days × 10 events evenly spread across 24h → baseline 10
+        // and an approximately linear rhythm CDF. At noon, ~60% of typical
+        // dose has happened → typical-by-now ≈ 6. Today: 8 dose → above the
+        // 125% threshold → BEHIND.
+        val midnight = paceNow(hourOfDay = 0)
+        val now = paceNow(hourOfDay = 12)
         val day = 24L * 3_600_000
-        // 7 prior days, 10/day → baseline 10. At noon typical ≈ 5.
-        // Today: 8 → 8/5 = 1.6, above 125% → BEHIND.
+        val hour = 3_600_000L
         val priors = (1..7).flatMap { d ->
-            List(10) { SmokingSession(now - d * day - it * 60_000L).apply { id = (d * 100 + it).toLong() } }
+            (0..9).map { i ->
+                val hourOffset = i * 2.4 // 0, 2.4, 4.8, ..., 21.6
+                SmokingSession(midnight - d * day + (hourOffset * hour).toLong())
+                    .apply { id = (d * 100 + i).toLong() }
+            }
         }
-        val today = List(8) { SmokingSession(now - it * 60_000L - 3_600_000).apply { id = (2000 + it).toLong() } }
+        val today = List(8) {
+            SmokingSession(now - it * 60_000L - 3_600_000).apply { id = (2000 + it).toLong() }
+        }
         val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
         assertEquals(ScoreCalculator.PaceState.BEHIND, pace.state)
     }
@@ -182,14 +192,16 @@ class ScoreCalculatorTest {
         val now = midnight + hour // 01:00 today
         val wake = midnight - day + 7 * hour // yesterday 07:00 (18h before now)
 
-        // 14 prior days, 10 events each at 06:00 — placed before the 07:00
-        // wake anchor so they're clearly pre-wake "prior days" and don't
-        // bleed into the wake-anchored "today" window. trackedDays resolves
-        // to priorDays=13, so d=14 events fall just outside the window:
-        // d=1..13 = 130 events / 13 days = baseline 10/day.
-        val priors = (1..14).flatMap { d ->
-            List(10) { i ->
-                SmokingSession(midnight - d * day + 6 * hour + i * 60_000L)
+        // Prior days 2..14 with 8 events each at 12:00. d=1 (yesterday) is
+        // intentionally skipped so the wake-anchored "today" window — which
+        // starts at yesterday 07:00 and runs to now — only contains the
+        // sinceWake events, not noon-of-yesterday. d=14 falls just outside
+        // the priorDays=13 cutoff; d=2..13 contributes 12 × 8 = 96 events.
+        // Plus the 7 pre-midnight sinceWake events that the calendar-midnight
+        // prior bucket also picks up → baseline ≈ 7.9/day.
+        val priors = (2..14).flatMap { d ->
+            List(8) { i ->
+                SmokingSession(midnight - d * day + 12 * hour + i * 60_000L)
                     .apply { id = (d * 1000 + i).toLong() }
             }
         }
@@ -201,15 +213,19 @@ class ScoreCalculatorTest {
         } + SmokingSession(now - 30 * 60_000L).apply { id = 99_000L } // 00:30 today
 
         val withoutAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now)
-        // actualToday = the single 00:30 event (dose 1.0). typicalByNow ≈
-        // 10 * (1h/24h) = 0.42. 1 > 0.42 * 1.25 → BEHIND. Misleading — the
-        // user is actually on track.
+        // actualToday = the single 00:30 event (dose 1.0). No prior events
+        // ever land in the 00:00–01:00 hour-of-day bucket, so the rhythm
+        // CDF at elapsed=1h is 0 → typicalByNow = 0 → any smoke flags as
+        // BEHIND. Misleading: the user is actually on track for an 18h
+        // awake stretch.
         assertEquals(ScoreCalculator.PaceState.BEHIND, withoutAnchor.state)
         assertEquals(1.0, withoutAnchor.actualToday, 1e-9)
 
         val withAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now, dayStartMs = wake)
-        // actualToday = 8 events × dose 1.0 = 8.0 (whole awake window).
-        // typicalByNow = 10 * (18h/24h) = 7.5. 8/7.5 ≈ 1.07, within ±25% → ON_PACE.
+        // actualToday = 8 events × dose 1.0 = 8.0 (whole awake window). The
+        // rhythm CDF saturates to 1.0 by elapsed=18h (no events sit past
+        // offset 18 in this dataset), so typicalByNow ≈ baseline ≈ 7.9.
+        // 8 vs 7.9 → within ±25% → ON_PACE.
         assertEquals(ScoreCalculator.PaceState.ON_PACE, withAnchor.state)
         assertEquals(8.0, withAnchor.actualToday, 1e-9)
         assertEquals(wake, withAnchor.dayStartMs)
@@ -241,6 +257,39 @@ class ScoreCalculatorTest {
         val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
         assertEquals(ScoreCalculator.PaceState.AHEAD, pace.state)
         assertEquals(1.25, pace.actualToday, 1e-9)
+    }
+
+    @Test
+    fun `calculateTodayPace AHEAD by 11am for a morning-heavy smoker who only did half their typical morning`() {
+        // Morning-heavy pattern: 10 smokes/day all between 06:00 and 10:30.
+        // Linear projection would say typical-by-11am = 10 * 11/24 ≈ 4.6 →
+        // 5 smokes today reads as ON_PACE. Rhythm-aware sees that ~all
+        // smoking normally finishes by 10:30 → typical-by-11am ≈ 10 →
+        // 5 today reads as AHEAD, which is the honest verdict.
+        val midnight = paceNow(hourOfDay = 0)
+        val now = paceNow(hourOfDay = 11)
+        val day = 24L * 3_600_000
+        val hour = 3_600_000L
+
+        // 14 days × 10 events at 06:00, 06:30, ..., 10:30.
+        val morningHalfHours = (0..9).map { 6.0 + it * 0.5 } // 6.0..10.5
+        val priors = (1..14).flatMap { d ->
+            morningHalfHours.mapIndexed { i, h ->
+                SmokingSession(midnight - d * day + (h * hour).toLong())
+                    .apply { id = (d * 100 + i).toLong() }
+            }
+        }
+        // Today: 5 morning smokes at 06:00, 06:30, 07:00, 07:30, 08:00.
+        val today = (0..4).map { i ->
+            SmokingSession(midnight + ((6.0 + i * 0.5) * hour).toLong())
+                .apply { id = (90_000 + i).toLong() }
+        }
+
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.AHEAD, pace.state)
+        assertEquals(5.0, pace.actualToday, 1e-9)
+        // Rhythm CDF should have been built (≥ 14 prior events).
+        assertTrue(pace.rhythmCdf.isNotEmpty())
     }
 
     /** Returns a deterministic "now" at a fixed hour of day, avoiding clock flakiness. */
