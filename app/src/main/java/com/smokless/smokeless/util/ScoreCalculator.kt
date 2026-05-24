@@ -645,24 +645,17 @@ object ScoreCalculator {
         }
         val typicalByNow = baselineDailyAvg * effectiveFraction
 
-        // Threshold band around typical-by-now: ±25% of typical, with an
-        // absolute floor of ½ a cigarette-equivalent. The floor matters for
-        // late-stage reduction users (baseline 2–3/day) where a strict ±25%
-        // band is narrower than a single dose, so one extra drag would
-        // otherwise flip the verdict to BEHIND. At higher baselines the
-        // percentage dominates and behavior is unchanged.
+        // Asymmetric verdict around typical-by-now. The reduction thesis is
+        // "smoke strictly less than your typical day", so any excess above
+        // typical-by-now means the projected end-of-day total exceeds the
+        // baseline — that's BEHIND, no tolerance. The ±25% / 0.5-dose band
+        // only applies on the AHEAD side, where it sets the threshold for
+        // "meaningfully below typical" vs. "barely below typical".
         val band = max(typicalByNow * 0.25, 0.5)
-        // Strict-inferiority gate: the reduction thesis is "smoke less than
-        // your typical day". Once today's dose meets or exceeds the daily
-        // baseline, the verdict can't honestly be ON_PACE or AHEAD — even if
-        // the ±band around typical-by-now would still admit it (which happens
-        // late in the day when typicalByNow ≈ baselineDailyAvg and the 0.5/
-        // 25% band leaks above baseline).
         val state = when {
             baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
-            actualToday >= baselineDailyAvg -> PaceState.BEHIND
             actualToday <= typicalByNow - band -> PaceState.AHEAD
-            actualToday > typicalByNow + band -> PaceState.BEHIND
+            actualToday > typicalByNow -> PaceState.BEHIND
             else -> PaceState.ON_PACE
         }
         return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor, rhythmCdf)

@@ -258,16 +258,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // late-stage reduction users don't see whiplash from a single
             // extra drag. Keep in sync if the calculator changes.
             val band = max(typicalByNow * 0.25, 0.5)
-            // Strict-inferiority gate: meeting or exceeding the daily baseline
-            // can't read as ON_PACE or AHEAD, even if the ±band would still
-            // admit it late in the day. Mirrors ScoreCalculator.calculateTodayPace.
+            // Asymmetric verdict — mirrors ScoreCalculator.calculateTodayPace.
+            // Any excess above typical-by-now is BEHIND (no tolerance); the
+            // band only widens the AHEAD threshold below.
             val state = when {
                 paceBaselineDailyAvg < 0.5 ->
                     if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
                     else ScoreCalculator.PaceState.CLEAN_BREAK
-                paceActualToday >= paceBaselineDailyAvg -> ScoreCalculator.PaceState.BEHIND
                 paceActualToday <= typicalByNow - band -> ScoreCalculator.PaceState.AHEAD
-                paceActualToday > typicalByNow + band -> ScoreCalculator.PaceState.BEHIND
+                paceActualToday > typicalByNow -> ScoreCalculator.PaceState.BEHIND
                 else -> ScoreCalculator.PaceState.ON_PACE
             }
             _todayPace.postValue(
