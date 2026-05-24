@@ -257,10 +257,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // ±25% of typical with an absolute floor of ½ cig-equiv, so
             // late-stage reduction users don't see whiplash from a single
             // extra drag. Keep in sync if the calculator changes.
-            val band = max(typicalByNow * 0.25, 0.5)
+            val band = max(typicalByNow * 0.25, 1.0)
             // Asymmetric verdict — mirrors ScoreCalculator.calculateTodayPace.
             // Any excess above typical-by-now is BEHIND (no tolerance); the
-            // band only widens the AHEAD threshold below.
+            // 1.0-dose floor on the AHEAD side requires a full-dose gap below
+            // typical before claiming "ahead of pace".
             val state = when {
                 paceBaselineDailyAvg < 0.5 ->
                     if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
