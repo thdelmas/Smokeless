@@ -648,10 +648,11 @@ object ScoreCalculator {
         // Asymmetric verdict around typical-by-now. The reduction thesis is
         // "smoke strictly less than your typical day", so any excess above
         // typical-by-now means the projected end-of-day total exceeds the
-        // baseline — that's BEHIND, no tolerance. The ±25% / 0.5-dose band
-        // only applies on the AHEAD side, where it sets the threshold for
-        // "meaningfully below typical" vs. "barely below typical".
-        val band = max(typicalByNow * 0.25, 0.5)
+        // baseline — that's BEHIND, no tolerance. The 25% / 1.0-dose band
+        // only applies on the AHEAD side: claiming "ahead of pace" needs a
+        // gap of at least one full dose below typical, otherwise 0 today
+        // vs. 0.93 typical-by-now would read AHEAD when it's really ON_PACE.
+        val band = max(typicalByNow * 0.25, 1.0)
         val state = when {
             baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
             actualToday <= typicalByNow - band -> PaceState.AHEAD

@@ -202,6 +202,34 @@ class ScoreCalculatorTest {
     }
 
     @Test
+    fun `calculateTodayPace ON_PACE not AHEAD when zero today but typicalByNow under one full dose`() {
+        // Reported bug: 0 today vs typicalByNow 0.93 was reading AHEAD
+        // because the band floored at 0.5 → AHEAD threshold = 0.43 → 0 ≤ 0.43.
+        // Floor is now 1.0, so AHEAD requires a full-dose gap below typical.
+        // With typicalByNow < 1, AHEAD threshold falls below zero, so even a
+        // clean day reads ON_PACE rather than over-claiming.
+        val now = paceNow(hourOfDay = 14)
+        val day = 24L * 3_600_000
+        val hour = 3_600_000L
+        val midnight = paceNow(hourOfDay = 0)
+
+        // 7 prior days × 1 session/day at 12:00 → baseline 1.0. Rhythm CDF
+        // at hour 14 saturates to ~1.0 (events all by noon), so
+        // typicalByNow ≈ 0.93 once smoothing is applied. Today: 0 sessions.
+        val priors = (1..7).flatMap { d ->
+            listOf(12.0).map { h ->
+                SmokingSession(midnight - d * day + (h * hour).toLong(), quantity = 1.0)
+                    .apply { id = (d * 100).toLong() }
+            }
+        }
+
+        val pace = ScoreCalculator.calculateTodayPace(priors, now)
+        assertEquals(ScoreCalculator.PaceState.ON_PACE, pace.state)
+        assertEquals(0.0, pace.actualToday, 1e-9)
+        assertTrue("typicalByNow should be < 1", pace.typicalByNow < 1.0)
+    }
+
+    @Test
     fun `calculateTodayPace BEHIND when actualToday exceeds typicalByNow even by less than the band`() {
         // Reported bug: cannabis user at 1 session vs typical-by-now 0.62
         // (delta +0.38) was reading ON_PACE because the ±0.5 band floor
