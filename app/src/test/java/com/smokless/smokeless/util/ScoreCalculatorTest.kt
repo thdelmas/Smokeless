@@ -202,66 +202,36 @@ class ScoreCalculatorTest {
     }
 
     @Test
-    fun `calculateTodayPace stays ON_PACE at low baselines instead of flipping to BEHIND for one extra dose`() {
-        // Light user: baseline 3 cig/day, spread across morning/midday/evening
-        // so the rhythm CDF at hour 08 lands at ~1/3 → typical-by-now ≈ 1.0.
-        // Under a strict ±25% band, 1.5 today would be BEHIND (1.5 > 1.25).
-        // With the 0.5-dose floor it stays ON_PACE so one unusually intense
-        // morning drag doesn't read as falling off the wagon.
-        val midnight = paceNow(hourOfDay = 0)
-        val now = paceNow(hourOfDay = 8)
+    fun `calculateTodayPace BEHIND when actualToday exceeds typicalByNow even by less than the band`() {
+        // Reported bug: cannabis user at 1 session vs typical-by-now 0.62
+        // (delta +0.38) was reading ON_PACE because the ±0.5 band floor
+        // absorbed the excess. The reduction thesis is "smoke strictly less
+        // than your typical day" — any actualToday above typicalByNow means
+        // you're projected to exceed baseline → BEHIND, no tolerance.
+        val now = paceNow(hourOfDay = 14) // mid-afternoon, effectiveFraction ≈ 0.58
         val day = 24L * 3_600_000
         val hour = 3_600_000L
+        val midnight = paceNow(hourOfDay = 0)
 
-        // 5 prior days × 3 events at 04:00, 12:00, 20:00 → 15 events spread
-        // evenly across the day so the CDF approximates linear.
-        val priors = (1..5).flatMap { d ->
-            listOf(4, 12, 20).map { h ->
-                SmokingSession(midnight - d * day + h * hour)
-                    .apply { id = (d * 100 + h).toLong() }
+        // 7 prior days × 1.07 sessions/day → baseline ≈ 1.07. Sessions placed
+        // at 14:00 (most days) plus a few at other hours so the rhythm CDF
+        // at hour 14 lands around 0.58 → typicalByNow ≈ 0.62.
+        val priors = (1..7).flatMap { d ->
+            val hours = if (d % 3 == 0) listOf(14.0, 20.0) else listOf(14.0)
+            hours.mapIndexed { i, h ->
+                SmokingSession(midnight - d * day + (h * hour).toLong(), quantity = 1.0)
+                    .apply { id = (d * 100 + i).toLong() }
             }
         }
-        // Today: 1 full + 1 half = 1.5 dose.
+        // Today: a single session — slightly above typicalByNow.
         val today = listOf(
             SmokingSession(now - 30 * 60_000L, quantity = 1.0).apply { id = 9001 },
-            SmokingSession(now - 10 * 60_000L, quantity = 0.5).apply { id = 9002 },
-        )
-
-        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
-        assertEquals(ScoreCalculator.PaceState.ON_PACE, pace.state)
-        assertEquals(1.5, pace.actualToday, 1e-9)
-    }
-
-    @Test
-    fun `calculateTodayPace BEHIND when actualToday exceeds baseline even by less than the band`() {
-        // Reported bug: late in the day, typicalByNow ≈ baselineDailyAvg and
-        // the ±band (max 25%, floor 0.5) leaks above the daily average — so
-        // a user at +0.6 above their baseline used to read ON_PACE. The
-        // reduction thesis requires strict inferiority to today's average:
-        // matching or exceeding baseline is BEHIND.
-        val now = paceNow(hourOfDay = 23) // end of day → effectiveFraction ≈ 1
-        val day = 24L * 3_600_000
-
-        // 7 prior days of 3 evenly-spread events → baseline 3/day.
-        val priors = (1..7).flatMap { d ->
-            listOf(4, 12, 20).map { h ->
-                SmokingSession(now - d * day - (now % day) + h * 3_600_000L)
-                    .apply { id = (d * 100 + h).toLong() }
-            }
-        }
-        // Today: 3.6 dose (baseline + 0.6). With band = max(3.0*0.25, 0.5) =
-        // 0.75, the upper ON_PACE bound would be 3.75 → 3.6 used to read
-        // ON_PACE. Strict-inferiority gate now flips it to BEHIND.
-        val today = listOf(
-            SmokingSession(now - 6 * 3_600_000L, quantity = 1.0).apply { id = 9001 },
-            SmokingSession(now - 4 * 3_600_000L, quantity = 1.0).apply { id = 9002 },
-            SmokingSession(now - 2 * 3_600_000L, quantity = 1.0).apply { id = 9003 },
-            SmokingSession(now - 30 * 60_000L, quantity = 0.6).apply { id = 9004 },
         )
 
         val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
         assertEquals(ScoreCalculator.PaceState.BEHIND, pace.state)
-        assertEquals(3.6, pace.actualToday, 1e-9)
+        assertEquals(1.0, pace.actualToday, 1e-9)
+        assertTrue("actualToday should exceed typicalByNow", pace.actualToday > pace.typicalByNow)
     }
 
     @Test
