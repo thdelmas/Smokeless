@@ -165,8 +165,8 @@ class ScoreCalculatorTest {
         // starts at yesterday 07:00 and runs to now — only contains the
         // sinceWake events, not noon-of-yesterday. d=14 falls just outside
         // the priorDays=13 cutoff; d=2..13 contributes 12 × 8 = 96 events.
-        // Plus the 7 pre-midnight sinceWake events that the calendar-midnight
-        // prior bucket also picks up → baseline ≈ 7.9/day.
+        // Plus the 6 pre-midnight sinceWake events that the calendar-midnight
+        // prior bucket also picks up → baseline ≈ 7.85/day.
         val priors = (2..14).flatMap { d ->
             List(8) { i ->
                 SmokingSession(midnight - d * day + 12 * hour + i * 60_000L)
@@ -174,8 +174,10 @@ class ScoreCalculatorTest {
             }
         }
 
-        // 7 smokes during yesterday's awake hours + 1 post-midnight smoke.
-        val sinceWake = (0..6).map { i ->
+        // 6 smokes during yesterday's awake hours + 1 post-midnight smoke.
+        // Kept below baseline so the strict-inferiority gate doesn't fire —
+        // this test is about the wake-anchor contrast, not the BEHIND gate.
+        val sinceWake = (0..5).map { i ->
             SmokingSession(wake + i * 2 * hour + 30 * 60_000L)
                 .apply { id = (90_000 + i).toLong() }
         } + SmokingSession(now - 30 * 60_000L).apply { id = 99_000L } // 00:30 today
@@ -190,12 +192,12 @@ class ScoreCalculatorTest {
         assertEquals(1.0, withoutAnchor.actualToday, 1e-9)
 
         val withAnchor = ScoreCalculator.calculateTodayPace(priors + sinceWake, now, dayStartMs = wake)
-        // actualToday = 8 events × dose 1.0 = 8.0 (whole awake window). The
+        // actualToday = 7 events × dose 1.0 = 7.0 (whole awake window). The
         // rhythm CDF saturates to 1.0 by elapsed=18h (no events sit past
-        // offset 18 in this dataset), so typicalByNow ≈ baseline ≈ 7.9.
-        // 8 vs 7.9 → within ±25% → ON_PACE.
+        // offset 18 in this dataset), so typicalByNow ≈ baseline ≈ 7.85.
+        // 7 < 7.85 (strict inferiority holds), within ±25% band → ON_PACE.
         assertEquals(ScoreCalculator.PaceState.ON_PACE, withAnchor.state)
-        assertEquals(8.0, withAnchor.actualToday, 1e-9)
+        assertEquals(7.0, withAnchor.actualToday, 1e-9)
         assertEquals(wake, withAnchor.dayStartMs)
     }
 
@@ -228,6 +230,38 @@ class ScoreCalculatorTest {
         val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
         assertEquals(ScoreCalculator.PaceState.ON_PACE, pace.state)
         assertEquals(1.5, pace.actualToday, 1e-9)
+    }
+
+    @Test
+    fun `calculateTodayPace BEHIND when actualToday exceeds baseline even by less than the band`() {
+        // Reported bug: late in the day, typicalByNow ≈ baselineDailyAvg and
+        // the ±band (max 25%, floor 0.5) leaks above the daily average — so
+        // a user at +0.6 above their baseline used to read ON_PACE. The
+        // reduction thesis requires strict inferiority to today's average:
+        // matching or exceeding baseline is BEHIND.
+        val now = paceNow(hourOfDay = 23) // end of day → effectiveFraction ≈ 1
+        val day = 24L * 3_600_000
+
+        // 7 prior days of 3 evenly-spread events → baseline 3/day.
+        val priors = (1..7).flatMap { d ->
+            listOf(4, 12, 20).map { h ->
+                SmokingSession(now - d * day - (now % day) + h * 3_600_000L)
+                    .apply { id = (d * 100 + h).toLong() }
+            }
+        }
+        // Today: 3.6 dose (baseline + 0.6). With band = max(3.0*0.25, 0.5) =
+        // 0.75, the upper ON_PACE bound would be 3.75 → 3.6 used to read
+        // ON_PACE. Strict-inferiority gate now flips it to BEHIND.
+        val today = listOf(
+            SmokingSession(now - 6 * 3_600_000L, quantity = 1.0).apply { id = 9001 },
+            SmokingSession(now - 4 * 3_600_000L, quantity = 1.0).apply { id = 9002 },
+            SmokingSession(now - 2 * 3_600_000L, quantity = 1.0).apply { id = 9003 },
+            SmokingSession(now - 30 * 60_000L, quantity = 0.6).apply { id = 9004 },
+        )
+
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.BEHIND, pace.state)
+        assertEquals(3.6, pace.actualToday, 1e-9)
     }
 
     @Test
