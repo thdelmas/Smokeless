@@ -83,6 +83,9 @@ dependencies {
 
     // SwipeRefreshLayout
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+
+    // ViewPager2 — drives the weekly self-eval one-question-per-slide carousel.
+    implementation 'androidx.viewpager2:viewpager2:1.1.0'
     
     // Testing
     testImplementation 'junit:junit:4.13.2'
