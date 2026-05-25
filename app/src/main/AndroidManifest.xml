@@ -48,6 +48,10 @@
             android:label="Achievements"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".StatsActivity"
+            android:label="Stats"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".HealthTimelineActivity"
             android:label="Healing timeline"
             android:parentActivityName=".MainActivity" />

@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="20dp"
-                android:paddingBottom="260dp">
+                android:paddingBottom="180dp">
 
                 <include android:id="@+id/sectionRecoveryHero" layout="@layout/section_recovery_hero" />
 
@@ -79,13 +79,13 @@
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- Floating: today's-pace band + FABs (above the stats sheet) -->
+    <!-- Floating: today's-pace band + FABs -->
     <LinearLayout
         android:id="@+id/floatingActions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="68dp"
+        android:layout_marginBottom="24dp"
         android:orientation="vertical"
         android:gravity="center"
         android:paddingHorizontal="20dp">
@@ -129,75 +129,5 @@
         </LinearLayout>
 
     </LinearLayout>
-
-    <!-- Stats bottom sheet — drag up for charts, records, period stats -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/statsSheet"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/surface_card"
-        android:clipToPadding="false"
-        app:behavior_hideable="false"
-        app:behavior_peekHeight="56dp"
-        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <!-- Drag handle + label (this is the peek) -->
-            <LinearLayout
-                android:id="@+id/statsSheetHandle"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <View
-                    android:layout_width="40dp"
-                    android:layout_height="4dp"
-                    android:background="@color/divider" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="Stats ▴"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.1"
-                    android:fontFamily="sans-serif-medium" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="20dp"
-                android:paddingBottom="40dp">
-
-                <include android:id="@+id/sectionQuickStats" layout="@layout/section_quick_stats" />
-
-                <include android:id="@+id/sectionReductionTrend" layout="@layout/section_reduction_trend" />
-
-                <include android:id="@+id/sectionStatistics" layout="@layout/section_statistics" />
-
-                <include android:id="@+id/sectionSelfEvalStats" layout="@layout/section_self_eval_stats" />
-
-                <include android:id="@+id/sectionCharts" layout="@layout/section_charts" />
-
-                <include android:id="@+id/sectionRecords" layout="@layout/section_records" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-    </androidx.core.widget.NestedScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
