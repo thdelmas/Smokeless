@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/textPageTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="-0.02"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/textPageHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text=""
+            android:textColor="@color/accent_primary"
+            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.12"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/textPageBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text=""
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.45" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:padding="20dp"
+            android:background="@drawable/bg_stat_chip"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textPageValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="5"
+                android:textColor="@color/accent_primary"
+                android:textSize="64sp"
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false"
+                android:letterSpacing="-0.04" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderPage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:valueFrom="0"
+                android:valueTo="10"
+                android:value="5"
+                android:stepSize="1"
+                app:thumbColor="@color/accent_primary"
+                app:trackColorActive="@color/accent_primary"
+                app:trackColorInactive="@color/progress_track"
+                app:tickColor="@color/text_tertiary"
+                app:tickVisible="false"
+                app:labelBehavior="gone" />
+
+            <TextView
+                android:id="@+id/textPageSavedIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:text="Saved ✓"
+                android:textColor="@color/accent_primary"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium"
+                android:visibility="invisible" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/textPagePrior"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text=""
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp"
+            android:lineSpacingMultiplier="1.4"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
