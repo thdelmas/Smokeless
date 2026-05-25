@@ -113,7 +113,18 @@ class BiosClient(private val context: Context) {
     }
 
     fun pushSmokingEvent(timestamp: Long, substance: Substance) =
-        push(useMetricFor(substance), timestamp)
+        push(useMetricFor(substance), value = 1.0, timestamp = timestamp)
+
+    /**
+     * Pushes a 0–10 owner-rated self-evaluation score (cessation recovery
+     * scales — see [SELF_RATING_KEYS]) to Bios. Same fail-mode semantics as
+     * [pushSmokingEvent]: silent on `isAvailable=false` / `isEnabled=false`,
+     * silent on [SecurityException], outcome recorded via [LastPushOutcome].
+     *
+     * Callers must clamp [value] to [0, 10]; this method does not.
+     */
+    fun pushSelfRating(metricKey: String, value: Double, timestamp: Long): Boolean =
+        push(metricKey, value, timestamp)
 
     /**
      * Replays existing history into Bios. Called from the "Sync history" button —
@@ -133,17 +144,17 @@ class BiosClient(private val context: Context) {
         var pushed = 0
         var failed = 0
         for ((ts, substance) in smokingEvents) {
-            if (push(useMetricFor(substance), ts)) pushed++ else failed++
+            if (push(useMetricFor(substance), value = 1.0, timestamp = ts)) pushed++ else failed++
         }
         return BackfillResult(pushed = pushed, failed = failed, total = total)
     }
 
-    private fun push(metricType: String, timestamp: Long): Boolean {
+    private fun push(metricType: String, value: Double, timestamp: Long): Boolean {
         if (!isEnabled) return false
         if (!isAvailable) return false
         val uri = COMPANION_URI.buildUpon().appendPath(metricType).build()
         val values = ContentValues().apply {
-            put("value", 1.0)
+            put("value", value)
             put("timestamp", timestamp)
         }
         return try {
@@ -214,6 +225,26 @@ class BiosClient(private val context: Context) {
         const val METRIC_TOBACCO_USE = "tobacco_use"
         const val METRIC_CANNABIS_USE = "cannabis_use"
         const val METRIC_SLEEP_DURATION = "sleep_duration"
+
+        // Cessation-recovery self-rating keys — owner-rated 0–10 scales added in
+        // Bios #323. Smokeless captures the cessation-specialty subset (sensory
+        // / respiratory + smoker-identity); mood/energy/focus stay with W2F.
+        const val METRIC_SMELL_SELF_RATING = "smell_self_rating"
+        const val METRIC_TASTE_SELF_RATING = "taste_self_rating"
+        const val METRIC_COUGH_FREQUENCY_SELF_RATING = "cough_frequency_self_rating"
+        const val METRIC_SPUTUM_SELF_RATING = "sputum_self_rating"
+        const val METRIC_BREATH_EASE_SELF_RATING = "breath_ease_self_rating"
+        const val METRIC_SMOKER_IDENTITY_SELF_RATING = "smoker_identity_self_rating"
+
+        /** The 6 keys the weekly self-eval prompt sheet writes to Bios. */
+        val SELF_RATING_KEYS: List<String> = listOf(
+            METRIC_SMELL_SELF_RATING,
+            METRIC_TASTE_SELF_RATING,
+            METRIC_COUGH_FREQUENCY_SELF_RATING,
+            METRIC_SPUTUM_SELF_RATING,
+            METRIC_BREATH_EASE_SELF_RATING,
+            METRIC_SMOKER_IDENTITY_SELF_RATING,
+        )
 
         private val BASE_URI: Uri = Uri.parse("content://com.bios.app.health")
         private val COMPANION_URI: Uri = BASE_URI.buildUpon().appendPath("companion").build()

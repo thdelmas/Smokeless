@@ -65,6 +65,26 @@ class WeeklyDigestReceiver : BroadcastReceiver() {
             alarmManager.cancel(pi)
         }
 
+        /**
+         * Schedule a one-shot follow-up fire of the digest receiver after
+         * [delayMs]. Used by the self-eval "Remind me later" path so the
+         * Sunday-evening nudge re-fires the next day instead of slipping
+         * a full week. Clears [KEY_LAST_FIRED_WEEK] so [evaluate] won't
+         * short-circuit on the same ISO week.
+         */
+        fun snooze(context: Context, delayMs: Long) {
+            if (!isEnabled(context)) return
+            val pi = pendingIntent(context) ?: return
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit().remove(KEY_LAST_FIRED_WEEK).apply()
+            alarmManager.set(
+                AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + delayMs,
+                pi,
+            )
+        }
+
         private fun nextSundayEvening(now: Long = System.currentTimeMillis()): Long {
             val cal = Calendar.getInstance().apply {
                 timeInMillis = now
