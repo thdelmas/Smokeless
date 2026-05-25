@@ -1236,6 +1236,71 @@ class MainActivity : AppCompatActivity() {
         // Idempotent — schedules only when the alarm hasn't been set yet.
         com.smokless.smokeless.util.TriggerWindowReceiver.schedule(this)
         com.smokless.smokeless.util.WeeklyDigestReceiver.schedule(this)
+        updateSelfEvalStats()
+    }
+
+    /**
+     * Renders the "Subjective Scales" stats card — latest weekly value per
+     * metric plus the delta against the prior entry. Period-agnostic (the
+     * scales are captured weekly, so the period-chip framing doesn't apply).
+     * Tap the CTA → opens the carousel to update this week's check-in.
+     */
+    private fun updateSelfEvalStats() {
+        val sectionRoot = binding.sectionSelfEvalStats.root
+        val rowsGroup = sectionRoot.findViewById<android.widget.LinearLayout>(R.id.groupSelfEvalStatRows)
+        val empty = sectionRoot.findViewById<android.widget.TextView>(R.id.textSelfEvalStatsEmpty)
+        val openBtn = sectionRoot.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSelfEvalStatsOpen)
+        val store = com.smokless.smokeless.util.WeeklySelfEvalStore(applicationContext)
+        val inflater = layoutInflater
+        val numFmt = DecimalFormat("0.#")
+
+        rowsGroup.removeAllViews()
+        var anyRendered = false
+        for ((key, label) in SELF_EVAL_DIGEST_LABELS) {
+            val recent = store.recent(key, limit = 4)
+            if (recent.isEmpty()) continue
+            anyRendered = true
+
+            val row = inflater.inflate(R.layout.item_self_eval_stat_row, rowsGroup, false)
+            val labelView = row.findViewById<android.widget.TextView>(R.id.textStatRowLabel)
+            val sparklineView = row.findViewById<android.widget.TextView>(R.id.textStatRowSparkline)
+            val valueView = row.findViewById<android.widget.TextView>(R.id.textStatRowValue)
+            val deltaView = row.findViewById<android.widget.TextView>(R.id.textStatRowDelta)
+
+            labelView.text = label
+            val latest = recent.first()
+            valueView.text = numFmt.format(latest.value)
+
+            if (recent.size >= 2) {
+                val prior = recent[1]
+                val delta = latest.value - prior.value
+                val absStr = numFmt.format(kotlin.math.abs(delta))
+                // Direction-only badge — "no judgment" per the cessation
+                // manifesto. Polarities differ across these scales (↓ cough
+                // is desirable, ↓ smell isn't), so the owner reads the
+                // direction; the app doesn't moralise.
+                val badge = when {
+                    kotlin.math.abs(delta) < 0.5 -> "→ steady"
+                    delta > 0 -> "↑ +$absStr"
+                    else -> "↓ −$absStr"
+                }
+                deltaView.text = badge
+                deltaView.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                deltaView.visibility = View.VISIBLE
+            } else {
+                deltaView.visibility = View.GONE
+            }
+
+            // Oldest → newest sparkline so the trend reads left-to-right.
+            val ordered = recent.reversed()
+            sparklineView.text = ordered.joinToString(" → ") { numFmt.format(it.value) }
+
+            rowsGroup.addView(row)
+        }
+        empty.visibility = if (anyRendered) View.GONE else View.VISIBLE
+        openBtn.setOnClickListener {
+            startActivity(Intent(this, WeeklySelfEvalActivity::class.java))
+        }
     }
 
     override fun onPause() {

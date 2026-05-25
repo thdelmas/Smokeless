@@ -188,6 +188,8 @@
 
                 <include android:id="@+id/sectionStatistics" layout="@layout/section_statistics" />
 
+                <include android:id="@+id/sectionSelfEvalStats" layout="@layout/section_self_eval_stats" />
+
                 <include android:id="@+id/sectionCharts" layout="@layout/section_charts" />
 
                 <include android:id="@+id/sectionRecords" layout="@layout/section_records" />
