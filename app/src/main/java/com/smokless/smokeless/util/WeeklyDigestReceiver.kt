@@ -139,14 +139,16 @@ class WeeklyDigestReceiver : BroadcastReceiver() {
 
         val db = AppDatabase.getInstance(context)
         val sessions = db.smokingSessionDao().getAllSessions()
+        // Require at least one historical session before ever firing — covers
+        // the "installed once, never logged" edge case. After that the nudge
+        // keeps firing weekly forever (including post-quit), because the
+        // self-eval check-in is most useful when sensory/respiratory recovery
+        // is compounding.
         if (sessions.isEmpty()) return
 
-        // Don't nudge users who haven't logged in a long time — the recap
-        // would mostly be stale zeros, and the unsolicited ping feels worse
-        // than skipping it.
         val mostRecent = sessions.maxOf { it.timestamp }
         val day = TimeUnit.DAYS.toMillis(1)
-        if (now - mostRecent > 14 * day) return
+        val daysSinceLastSmoke = (now - mostRecent) / day
 
         val primary = SubstanceCopy.primarySubstance(sessions)
         val digest = ScoreCalculator.calculateWeeklyDigest(
@@ -157,6 +159,11 @@ class WeeklyDigestReceiver : BroadcastReceiver() {
         val copy = SubstanceCopy.forSubstance(primary)
 
         prefs.edit().putString(KEY_LAST_FIRED_WEEK, weekKey).apply()
-        NotificationHelper.showWeeklyDigestNotification(context, digest, copy)
+        NotificationHelper.showWeeklyDigestNotification(
+            context = context,
+            digest = digest,
+            copy = copy,
+            daysSinceLastSmoke = daysSinceLastSmoke,
+        )
     }
 }
