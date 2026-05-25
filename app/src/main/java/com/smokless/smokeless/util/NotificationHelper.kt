@@ -63,6 +63,7 @@ object NotificationHelper {
         context: Context,
         digest: ScoreCalculator.WeeklyDigest,
         copy: SubstanceCopy,
+        daysSinceLastSmoke: Long = 0L,
     ) {
         createTriggerChannel(context)
 
@@ -84,6 +85,12 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
+        // Past 14 days of zero smoking, the recap "0 cigs · 7/7 clean" repeats
+        // every Sunday and decays into noise — but the cessation-recovery
+        // self-eval (smell / taste / breath) only gets more useful with time.
+        // So switch the notification headline to lead with the check-in.
+        val checkInOnly = daysSinceLastSmoke >= 14
+
         val unit = if (kotlin.math.abs(digest.smokesThisWeek - 1.0) < 0.01)
             copy.unit else copy.units
         val displayCount = formatWeeklyCount(digest.smokesThisWeek)
@@ -96,18 +103,30 @@ object NotificationHelper {
             change <= -5 -> " (↑ ${(-change).toInt()}% vs last week)"
             else -> ""
         }
-        val title = "🌿 Your week in review"
-        val short = "$displayCount $unit · ${digest.cleanDaysThisWeek}/7 clean$changeLine"
+        val title: String
+        val short: String
         val longLines = mutableListOf<String>()
-        longLines += "$displayCount $unit this week$changeLine."
-        if (digest.cleanDaysThisWeek > 0) {
-            longLines += "${digest.cleanDaysThisWeek}/7 clean days."
+        if (checkInOnly) {
+            title = "📝 Weekly check-in"
+            short = "Smell, taste, breath — how's this week?"
+            longLines += "Tap to log this week's self-eval."
+            if (digest.cleanDaysThisWeek == 7) {
+                val weeks = daysSinceLastSmoke / 7
+                if (weeks >= 1) longLines += "${weeks} week${if (weeks == 1L) "" else "s"} smoke-free — recovery's compounding."
+            }
+        } else {
+            title = "🌿 Your week in review"
+            short = "$displayCount $unit · ${digest.cleanDaysThisWeek}/7 clean$changeLine"
+            longLines += "$displayCount $unit this week$changeLine."
+            if (digest.cleanDaysThisWeek > 0) {
+                longLines += "${digest.cleanDaysThisWeek}/7 clean days."
+            }
+            if (digest.milestonesReachedThisWeek.isNotEmpty()) {
+                val list = digest.milestonesReachedThisWeek.joinToString(" · ") { "${it.icon} ${it.title}" }
+                longLines += "Milestones crossed: $list."
+            }
+            longLines += "Tap to see the full recap."
         }
-        if (digest.milestonesReachedThisWeek.isNotEmpty()) {
-            val list = digest.milestonesReachedThisWeek.joinToString(" · ") { "${it.icon} ${it.title}" }
-            longLines += "Milestones crossed: $list."
-        }
-        longLines += "Tap to see the full recap."
 
         val notification = NotificationCompat.Builder(context, TRIGGER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_check)
