@@ -46,6 +46,15 @@ class MainActivity : AppCompatActivity() {
 
     private val refreshHandler = Handler(Looper.getMainLooper())
 
+    private val SELF_EVAL_DIGEST_LABELS: List<Pair<String, String>> = listOf(
+        com.smokless.smokeless.bios.BiosClient.METRIC_SMELL_SELF_RATING to "Smell",
+        com.smokless.smokeless.bios.BiosClient.METRIC_TASTE_SELF_RATING to "Taste",
+        com.smokless.smokeless.bios.BiosClient.METRIC_COUGH_FREQUENCY_SELF_RATING to "Cough",
+        com.smokless.smokeless.bios.BiosClient.METRIC_SPUTUM_SELF_RATING to "Sputum",
+        com.smokless.smokeless.bios.BiosClient.METRIC_BREATH_EASE_SELF_RATING to "Breath",
+        com.smokless.smokeless.bios.BiosClient.METRIC_SMOKER_IDENTITY_SELF_RATING to "Identity",
+    )
+
     private var currentPeriod = "month"
     private var copy: SubstanceCopy = SubstanceCopy.TOBACCO
 
@@ -802,6 +811,43 @@ class MainActivity : AppCompatActivity() {
         } else {
             milestonesText.text = crossed.joinToString(" · ") { "${it.icon} ${it.title}" }
             milestonesGroup.visibility = View.VISIBLE
+        }
+
+        renderSelfEvalTrend(sectionRoot)
+    }
+
+    /**
+     * Prior 4 weekly self-eval ratings per metric — trend only, no judgment.
+     * Renders straight from the local mirror ([WeeklySelfEvalStore]) so the
+     * trend is visible even when Bios isn't installed / approved.
+     */
+    private fun renderSelfEvalTrend(sectionRoot: View) {
+        val rowsGroup = sectionRoot.findViewById<android.widget.LinearLayout>(R.id.groupDigestSelfEvalRows)
+        val empty = sectionRoot.findViewById<android.widget.TextView>(R.id.textDigestSelfEvalEmpty)
+        val openBtn = sectionRoot.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnDigestOpenSelfEval)
+        val store = com.smokless.smokeless.util.WeeklySelfEvalStore(applicationContext)
+
+        rowsGroup.removeAllViews()
+        var anyRendered = false
+        val numFmt = DecimalFormat("0.#")
+        for ((key, label) in SELF_EVAL_DIGEST_LABELS) {
+            val recent = store.recent(key, limit = 4)
+            if (recent.isEmpty()) continue
+            anyRendered = true
+            val row = android.widget.TextView(this).apply {
+                val ordered = recent.reversed() // oldest → newest
+                val nums = ordered.joinToString(" → ") { numFmt.format(it.value) }
+                text = "$label  $nums"
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+                textSize = 13f
+                setPadding(0, (4 * resources.displayMetrics.density).toInt(), 0, 0)
+            }
+            rowsGroup.addView(row)
+        }
+        empty.visibility = if (anyRendered) View.GONE else View.VISIBLE
+
+        openBtn.setOnClickListener {
+            startActivity(Intent(this, WeeklySelfEvalActivity::class.java))
         }
     }
 

@@ -66,8 +66,18 @@ object NotificationHelper {
     ) {
         createTriggerChannel(context)
 
-        val intent = Intent(context, MainActivity::class.java).apply {
+        // Tap → self-eval prompt; the digest recap is one back-press behind.
+        // The self-eval activity short-circuits to no write if the user
+        // hits Skip, matching the "no zero-fill" acceptance criterion.
+        val intent = Intent(
+            context,
+            com.smokless.smokeless.WeeklySelfEvalActivity::class.java,
+        ).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra(
+                com.smokless.smokeless.WeeklySelfEvalActivity.EXTRA_FROM_DIGEST,
+                true,
+            )
         }
         val pendingIntent = PendingIntent.getActivity(
             context, 0, intent,
