@@ -158,10 +158,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private var lastTimestamp = 0L
     private var currentChartPeriod = "month"
-    // Chart bucketing — independent from currentChartPeriod which still drives
-    // the rest of the stats screen. Default "days" matches the prior month-
-    // period chart appearance (30 daily bars).
-    private var currentChartGranularity = "days"
+    // Chart range — independent from currentChartPeriod (which still drives
+    // the rest of the stats screen). Default "month" matches the prior
+    // chart appearance (30 daily bars).
+    private var currentChartRange = "month"
     private var currentGoalPeriod = "month"  // Track period for goal calculation
     private var lastNotifiedHours = 0L  // Track last milestone notification
     
@@ -362,14 +362,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Switch the x-axis bucketing on the chart. Pulls all sessions (the chart
-     * defines its own range per granularity) and recalculates.
+     * Switch the chart's time range. Pulls all sessions (the chart picks
+     * its own bucket size per range) and recalculates.
      */
-    fun setChartGranularity(granularity: String) {
-        currentChartGranularity = granularity
+    fun setChartRange(range: String) {
+        currentChartRange = range
         AppDatabase.databaseExecutor.execute {
             val sessions = repository.getAllSessionsSync()
-            calculateChartDataByGranularity(sessions, granularity)
+            calculateChartDataByRange(sessions, range)
         }
     }
     
@@ -451,10 +451,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _weekScores.postValue(calculateScopeScores(repository.getSessionsForScope("week"), "week", copy))
         _dayScores.postValue(calculateScopeScores(repository.getSessionsForScope("day"), "day", copy))
         
-        // Calculate chart data — bucketed by the chart's own granularity,
+        // Calculate chart data — chart has its own range selector,
         // independent of currentChartPeriod (which drives the rest of the
         // stats screen, not the chart).
-        calculateChartDataByGranularity(allSessions, currentChartGranularity)
+        calculateChartDataByRange(allSessions, currentChartRange)
         
         // Calculate money saved for current period
         val moneySessions = repository.getSessionsForScope(currentGoalPeriod)
@@ -760,23 +760,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Chart-only path: bucket by granularity (days/weeks/months/years) and
-     * pack the result into ChartData. Decoupled from currentChartPeriod —
-     * the chart picks its own range based on grain.
+     * Chart-only path: window the data by user-selected range (week/month/year)
+     * and bucket it accordingly. Decoupled from currentChartPeriod.
      */
-    private fun calculateChartDataByGranularity(
+    private fun calculateChartDataByRange(
         sessions: List<com.smokless.smokeless.data.entity.SmokingSession>,
-        granularity: String,
+        range: String,
     ) {
-        val countsMap = ScoreCalculator.getCountsByGranularity(sessions, granularity)
+        val countsMap = ScoreCalculator.getCountsByRange(sessions, range)
         val tobaccoSessions = sessions.filter {
             it.substance == com.smokless.smokeless.data.entity.Substance.TOBACCO
         }
         val cannabisSessions = sessions.filter {
             it.substance == com.smokless.smokeless.data.entity.Substance.CANNABIS
         }
-        val tobaccoMap = ScoreCalculator.getCountsByGranularity(tobaccoSessions, granularity)
-        val cannabisMap = ScoreCalculator.getCountsByGranularity(cannabisSessions, granularity)
+        val tobaccoMap = ScoreCalculator.getCountsByRange(tobaccoSessions, range)
+        val cannabisMap = ScoreCalculator.getCountsByRange(cannabisSessions, range)
 
         val dailyCounts = countsMap.values.toList()
         val keys = countsMap.keys.toList()
@@ -788,8 +787,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val labels = generateGranularityLabels(keys, granularity)
-        val windowSize = getMovingAverageWindowForGrain(granularity, dailyCounts.size)
+        val labels = generateRangeLabels(keys, range)
+        val windowSize = getMovingAverageWindowForRange(range, dailyCounts.size)
         val movingAverage = calculateMovingAverage(dailyCounts, windowSize)
         val avgDailyCount = dailyCounts.average()
         val bestDay = dailyCounts.filter { it > 0 }.minOrNull() ?: 0
@@ -812,32 +811,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ))
     }
 
-    private fun generateGranularityLabels(keys: List<String>, granularity: String): List<String> {
-        return when (granularity.lowercase()) {
-            "weeks" -> {
-                val out = SimpleDateFormat("MMM d", Locale.getDefault())
-                val cal = Calendar.getInstance().apply {
-                    firstDayOfWeek = Calendar.MONDAY
-                    minimalDaysInFirstWeek = 4
-                }
-                keys.map { key ->
-                    // "yyyy-Www" → format the Monday of that ISO week as "MMM d".
-                    val parts = key.split("-W")
-                    if (parts.size != 2) return@map key
-                    val year = parts[0].toIntOrNull() ?: return@map key
-                    val week = parts[1].toIntOrNull() ?: return@map key
-                    cal.clear()
-                    cal.firstDayOfWeek = Calendar.MONDAY
-                    cal.minimalDaysInFirstWeek = 4
-                    cal.set(Calendar.YEAR, year)
-                    cal.set(Calendar.WEEK_OF_YEAR, week)
-                    cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                    out.format(cal.time)
-                }
-            }
-            "months" -> {
+    private fun generateRangeLabels(keys: List<String>, range: String): List<String> {
+        return when (range.lowercase()) {
+            "year" -> {
+                // keys are "yyyy-MM" — render as "MMM"
                 val parser = SimpleDateFormat("yyyy-MM", Locale.getDefault())
-                val out = SimpleDateFormat("MMM yy", Locale.getDefault())
+                val out = SimpleDateFormat("MMM", Locale.getDefault())
                 keys.map { key ->
                     try {
                         parser.parse(key)?.let { out.format(it) } ?: key
@@ -846,8 +825,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             }
-            "years" -> keys
             else -> {
+                // keys are "yyyy-MM-dd"
                 val parser = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val out = SimpleDateFormat("MMM d", Locale.getDefault())
                 keys.map { key ->
@@ -861,12 +840,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun getMovingAverageWindowForGrain(granularity: String, dataSize: Int): Int {
-        val base = when (granularity.lowercase()) {
-            "weeks" -> 4
-            "months" -> 3
-            "years" -> 2
-            else -> 7  // days
+    private fun getMovingAverageWindowForRange(range: String, dataSize: Int): Int {
+        val base = when (range.lowercase()) {
+            "year" -> 3  // 3-month window
+            "week" -> 3  // 3-day window
+            else -> 7    // 7-day window (month range)
         }
         return kotlin.math.min(base, kotlin.math.max(1, dataSize / 3))
     }

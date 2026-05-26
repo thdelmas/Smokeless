@@ -48,7 +48,7 @@ class StatsActivity : AppCompatActivity() {
     )
 
     private var currentPeriod = "month"
-    private var currentChartGranularity = "days"
+    private var currentChartRange = "month"
     private var copy: SubstanceCopy = SubstanceCopy.TOBACCO
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,7 +60,7 @@ class StatsActivity : AppCompatActivity() {
 
         setupStatsRecycler()
         setupChipGroup()
-        setupChartGranularityChips()
+        setupChartRangeChips()
         setupCharts()
         setupCollapsibleSections()
         observeViewModel()
@@ -132,34 +132,31 @@ class StatsActivity : AppCompatActivity() {
         binding.sectionStatistics.chipMonth.isChecked = true
     }
 
-    private fun setupChartGranularityChips() {
-        binding.sectionCharts.chipGroupChartGranularity.setOnCheckedStateChangeListener { _, checkedIds ->
+    private fun setupChartRangeChips() {
+        binding.sectionCharts.chipGroupChartRange.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
-            currentChartGranularity = when (checkedIds[0]) {
-                R.id.chipGrainWeeks -> "weeks"
-                R.id.chipGrainMonths -> "months"
-                R.id.chipGrainYears -> "years"
-                else -> "days"
+            currentChartRange = when (checkedIds[0]) {
+                R.id.chipRangeWeek -> "week"
+                R.id.chipRangeYear -> "year"
+                else -> "month"
             }
             updateChartLabels()
-            viewModel.setChartGranularity(currentChartGranularity)
+            viewModel.setChartRange(currentChartRange)
         }
-        binding.sectionCharts.chipGrainDays.isChecked = true
+        binding.sectionCharts.chipRangeMonth.isChecked = true
         updateChartLabels()
     }
 
     private fun updateChartLabels() {
-        binding.sectionCharts.textTrendChartTitle.text = when (currentChartGranularity) {
-            "weeks" -> "Weekly Trend"
-            "months" -> "Monthly Trend"
-            "years" -> "Yearly Trend"
-            else -> "Daily Trend"
+        binding.sectionCharts.textTrendChartTitle.text = when (currentChartRange) {
+            "week" -> "Trend — last week"
+            "year" -> "Trend — last year"
+            else -> "Trend — last month"
         }
-        binding.sectionCharts.textBarChartTitle.text = when (currentChartGranularity) {
-            "weeks" -> "Weekly Count"
-            "months" -> "Monthly Count"
-            "years" -> "Yearly Count"
-            else -> "Daily Count"
+        binding.sectionCharts.textBarChartTitle.text = when (currentChartRange) {
+            "week" -> "Last 7 days"
+            "year" -> "Last 12 months"
+            else -> "Last 30 days"
         }
     }
 
@@ -374,10 +371,8 @@ class StatsActivity : AppCompatActivity() {
             binding.sectionCharts.emptyStateBar.visibility = View.VISIBLE
         }
 
-        val avgUnit = when (currentChartGranularity) {
-            "weeks" -> "/wk"
-            "months" -> "/mo"
-            "years" -> "/yr"
+        val avgUnit = when (currentChartRange) {
+            "year" -> "/mo"
             else -> "/day"
         }
         binding.sectionCharts.textBarChartAvg.text =

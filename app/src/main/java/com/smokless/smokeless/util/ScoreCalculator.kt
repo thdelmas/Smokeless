@@ -200,50 +200,39 @@ object ScoreCalculator {
     }
 
     /**
-     * Chart bucketing by arbitrary granularity. Used by the stats screen's
-     * chart granularity selector. Each bucket key matches the format we'd
-     * expect for that grain so [generateChartLabels] can format them.
+     * Chart bucketing by time range. Each range picks the bucket size that
+     * gives a readable bar count:
      *
-     *  - "days"   → last 30 daily buckets, keys "yyyy-MM-dd"
-     *  - "weeks"  → last 12 ISO-week buckets, keys "yyyy-Www"
-     *  - "months" → last 12 calendar-month buckets, keys "yyyy-MM"
-     *  - "years"  → all years from earliest session to now, keys "yyyy"
+     *  - "week"  → last 7 daily buckets, keys "yyyy-MM-dd"
+     *  - "month" → last 30 daily buckets, keys "yyyy-MM-dd"
+     *  - "year"  → last 12 monthly buckets, keys "yyyy-MM"
      *
      * Zero-fills empty buckets so the chart shows continuity.
      */
-    fun getCountsByGranularity(
+    fun getCountsByRange(
         sessions: List<SmokingSession>,
-        granularity: String,
-    ): LinkedHashMap<String, Int> = when (granularity.lowercase()) {
-        "weeks" -> getWeeklyCounts(sessions, weeksBack = 12)
-        "months" -> getMonthlyCounts(sessions, monthsBack = 12)
-        "years" -> getYearlyCounts(sessions)
-        else -> getDailyCountsForScope(sessions, "month")
+        range: String,
+    ): LinkedHashMap<String, Int> = when (range.lowercase()) {
+        "year" -> getMonthlyCounts(sessions, monthsBack = 12)
+        "week" -> getDailyCountsBack(sessions, daysBack = 7)
+        else -> getDailyCountsBack(sessions, daysBack = 30)
     }
 
-    private fun getWeeklyCounts(
+    private fun getDailyCountsBack(
         sessions: List<SmokingSession>,
-        weeksBack: Int,
+        daysBack: Int,
     ): LinkedHashMap<String, Int> {
         val counts = LinkedHashMap<String, Int>()
-        val keyFormat = SimpleDateFormat("yyyy-'W'ww", Locale.getDefault()).apply {
-            calendar = Calendar.getInstance().apply {
-                firstDayOfWeek = Calendar.MONDAY
-                minimalDaysInFirstWeek = 4
-            }
-        }
+        val keyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val cal = Calendar.getInstance().apply {
-            firstDayOfWeek = Calendar.MONDAY
-            minimalDaysInFirstWeek = 4
-            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-            add(Calendar.WEEK_OF_YEAR, -(weeksBack - 1))
+            add(Calendar.DAY_OF_YEAR, -(daysBack - 1))
         }
         val endCal = Calendar.getInstance()
         while (!cal.after(endCal)) {
             counts[keyFormat.format(cal.time)] = 0
-            cal.add(Calendar.WEEK_OF_YEAR, 1)
+            cal.add(Calendar.DAY_OF_YEAR, 1)
         }
         for (session in sessions) {
             val key = keyFormat.format(Date(session.timestamp))
@@ -270,29 +259,6 @@ object ScoreCalculator {
         while (!cal.after(endCal)) {
             counts[keyFormat.format(cal.time)] = 0
             cal.add(Calendar.MONTH, 1)
-        }
-        for (session in sessions) {
-            val key = keyFormat.format(Date(session.timestamp))
-            if (counts.containsKey(key)) {
-                counts[key] = counts[key]!! + 1
-            }
-        }
-        return counts
-    }
-
-    private fun getYearlyCounts(sessions: List<SmokingSession>): LinkedHashMap<String, Int> {
-        val counts = LinkedHashMap<String, Int>()
-        val keyFormat = SimpleDateFormat("yyyy", Locale.getDefault())
-        if (sessions.isEmpty()) {
-            counts[keyFormat.format(Date())] = 0
-            return counts
-        }
-        val firstYear = Calendar.getInstance().apply {
-            timeInMillis = sessions.minOf { it.timestamp }
-        }.get(Calendar.YEAR)
-        val thisYear = Calendar.getInstance().get(Calendar.YEAR)
-        for (year in firstYear..thisYear) {
-            counts[year.toString()] = 0
         }
         for (session in sessions) {
             val key = keyFormat.format(Date(session.timestamp))
