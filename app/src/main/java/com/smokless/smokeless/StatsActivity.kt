@@ -48,6 +48,7 @@ class StatsActivity : AppCompatActivity() {
     )
 
     private var currentPeriod = "month"
+    private var currentChartGranularity = "days"
     private var copy: SubstanceCopy = SubstanceCopy.TOBACCO
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +60,7 @@ class StatsActivity : AppCompatActivity() {
 
         setupStatsRecycler()
         setupChipGroup()
+        setupChartGranularityChips()
         setupCharts()
         setupCollapsibleSections()
         observeViewModel()
@@ -106,9 +108,9 @@ class StatsActivity : AppCompatActivity() {
             val statsRecycler = binding.sectionStatistics.recyclerStats
             val quickStats = binding.sectionQuickStats.root
             statsRecycler.animate().alpha(0f).setDuration(150).withEndAction {
-                viewModel.setChartPeriod(currentPeriod)
+                // The chart has its own granularity selector now; period
+                // chip only drives the stats list / period highlights.
                 updateStatsForPeriod()
-                updateChartLabels()
 
                 val scores = when (currentPeriod) {
                     "day" -> viewModel.dayScores.value
@@ -130,17 +132,33 @@ class StatsActivity : AppCompatActivity() {
         binding.sectionStatistics.chipMonth.isChecked = true
     }
 
-    private fun updateChartLabels() {
-        binding.sectionCharts.textTrendChartTitle.text = when (currentPeriod) {
-            "day" -> "Hourly Trend"
-            "week" -> "Daily Trend"
-            "month" -> "7-Day Average Trend"
-            "year" -> "Monthly Trend"
-            "all" -> "Long-term Trend"
-            else -> "Trend"
+    private fun setupChartGranularityChips() {
+        binding.sectionCharts.chipGroupChartGranularity.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            currentChartGranularity = when (checkedIds[0]) {
+                R.id.chipGrainWeeks -> "weeks"
+                R.id.chipGrainMonths -> "months"
+                R.id.chipGrainYears -> "years"
+                else -> "days"
+            }
+            updateChartLabels()
+            viewModel.setChartGranularity(currentChartGranularity)
         }
-        binding.sectionCharts.textBarChartTitle.text = when (currentPeriod) {
-            "day" -> "Hourly Count"
+        binding.sectionCharts.chipGrainDays.isChecked = true
+        updateChartLabels()
+    }
+
+    private fun updateChartLabels() {
+        binding.sectionCharts.textTrendChartTitle.text = when (currentChartGranularity) {
+            "weeks" -> "Weekly Trend"
+            "months" -> "Monthly Trend"
+            "years" -> "Yearly Trend"
+            else -> "Daily Trend"
+        }
+        binding.sectionCharts.textBarChartTitle.text = when (currentChartGranularity) {
+            "weeks" -> "Weekly Count"
+            "months" -> "Monthly Count"
+            "years" -> "Yearly Count"
             else -> "Daily Count"
         }
     }
@@ -356,11 +374,14 @@ class StatsActivity : AppCompatActivity() {
             binding.sectionCharts.emptyStateBar.visibility = View.VISIBLE
         }
 
-        val avgLabel = when (currentPeriod) {
-            "day" -> "Total: ${data.dailyCounts.sum()}"
-            else -> String.format("Avg: %.1f/day", data.avgDailyCount)
+        val avgUnit = when (currentChartGranularity) {
+            "weeks" -> "/wk"
+            "months" -> "/mo"
+            "years" -> "/yr"
+            else -> "/day"
         }
-        binding.sectionCharts.textBarChartAvg.text = avgLabel
+        binding.sectionCharts.textBarChartAvg.text =
+            String.format("Avg: %.1f%s", data.avgDailyCount, avgUnit)
 
         val lineEntries = data.movingAverage.mapIndexed { index, avg ->
             Entry(index.toFloat(), avg.toFloat())

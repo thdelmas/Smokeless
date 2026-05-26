@@ -57,6 +57,73 @@
         android:orientation="vertical"
         android:visibility="gone">
 
+    <!-- Chart granularity selector — controls x-axis bucketing for both charts. -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupChartGranularity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipGrainDays"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Days"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_background_color"
+                app:chipStrokeWidth="0dp"
+                app:checkedIconVisible="false"
+                android:checked="true"
+                app:chipMinHeight="40dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipGrainWeeks"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Weeks"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_background_color"
+                app:chipStrokeWidth="0dp"
+                app:checkedIconVisible="false"
+                app:chipMinHeight="40dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipGrainMonths"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Months"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_background_color"
+                app:chipStrokeWidth="0dp"
+                app:checkedIconVisible="false"
+                app:chipMinHeight="40dp" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipGrainYears"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Years"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_background_color"
+                app:chipStrokeWidth="0dp"
+                app:checkedIconVisible="false"
+                app:chipMinHeight="40dp" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </HorizontalScrollView>
+
     <!-- Line Chart - Smoke-Free Duration Trend -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"

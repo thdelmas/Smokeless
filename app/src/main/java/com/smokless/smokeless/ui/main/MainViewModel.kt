@@ -158,6 +158,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private var lastTimestamp = 0L
     private var currentChartPeriod = "month"
+    // Chart bucketing — independent from currentChartPeriod which still drives
+    // the rest of the stats screen. Default "days" matches the prior month-
+    // period chart appearance (30 daily bars).
+    private var currentChartGranularity = "days"
     private var currentGoalPeriod = "month"  // Track period for goal calculation
     private var lastNotifiedHours = 0L  // Track last milestone notification
     
@@ -356,6 +360,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             calculateChartData(sessions, period)
         }
     }
+
+    /**
+     * Switch the x-axis bucketing on the chart. Pulls all sessions (the chart
+     * defines its own range per granularity) and recalculates.
+     */
+    fun setChartGranularity(granularity: String) {
+        currentChartGranularity = granularity
+        AppDatabase.databaseExecutor.execute {
+            val sessions = repository.getAllSessionsSync()
+            calculateChartDataByGranularity(sessions, granularity)
+        }
+    }
     
     /**
      * Set the goal period - updates goal and progress calculation
@@ -435,9 +451,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _weekScores.postValue(calculateScopeScores(repository.getSessionsForScope("week"), "week", copy))
         _dayScores.postValue(calculateScopeScores(repository.getSessionsForScope("day"), "day", copy))
         
-        // Calculate chart data
-        val chartSessions = repository.getSessionsForScope(currentChartPeriod)
-        calculateChartData(chartSessions, currentChartPeriod)
+        // Calculate chart data — bucketed by the chart's own granularity,
+        // independent of currentChartPeriod (which drives the rest of the
+        // stats screen, not the chart).
+        calculateChartDataByGranularity(allSessions, currentChartGranularity)
         
         // Calculate money saved for current period
         val moneySessions = repository.getSessionsForScope(currentGoalPeriod)
@@ -741,7 +758,119 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             trendPercentage = trendPercentage
         ))
     }
-    
+
+    /**
+     * Chart-only path: bucket by granularity (days/weeks/months/years) and
+     * pack the result into ChartData. Decoupled from currentChartPeriod —
+     * the chart picks its own range based on grain.
+     */
+    private fun calculateChartDataByGranularity(
+        sessions: List<com.smokless.smokeless.data.entity.SmokingSession>,
+        granularity: String,
+    ) {
+        val countsMap = ScoreCalculator.getCountsByGranularity(sessions, granularity)
+        val tobaccoSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.TOBACCO
+        }
+        val cannabisSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.CANNABIS
+        }
+        val tobaccoMap = ScoreCalculator.getCountsByGranularity(tobaccoSessions, granularity)
+        val cannabisMap = ScoreCalculator.getCountsByGranularity(cannabisSessions, granularity)
+
+        val dailyCounts = countsMap.values.toList()
+        val keys = countsMap.keys.toList()
+        val tobaccoCounts = keys.map { tobaccoMap[it] ?: 0 }
+        val cannabisCounts = keys.map { cannabisMap[it] ?: 0 }
+
+        if (dailyCounts.isEmpty()) {
+            _chartData.postValue(null)
+            return
+        }
+
+        val labels = generateGranularityLabels(keys, granularity)
+        val windowSize = getMovingAverageWindowForGrain(granularity, dailyCounts.size)
+        val movingAverage = calculateMovingAverage(dailyCounts, windowSize)
+        val avgDailyCount = dailyCounts.average()
+        val bestDay = dailyCounts.filter { it > 0 }.minOrNull() ?: 0
+        val worstDay = dailyCounts.maxOrNull() ?: 0
+        val cleanDays = dailyCounts.count { it == 0 }
+        val (isImproving, trendPercentage) = calculateTrendImproved(dailyCounts)
+
+        _chartData.postValue(ChartData(
+            dailyCounts = dailyCounts,
+            tobaccoCounts = tobaccoCounts,
+            cannabisCounts = cannabisCounts,
+            labels = labels,
+            movingAverage = movingAverage,
+            avgDailyCount = avgDailyCount,
+            isImproving = isImproving,
+            bestDay = bestDay,
+            worstDay = worstDay,
+            cleanDays = cleanDays,
+            trendPercentage = trendPercentage,
+        ))
+    }
+
+    private fun generateGranularityLabels(keys: List<String>, granularity: String): List<String> {
+        return when (granularity.lowercase()) {
+            "weeks" -> {
+                val out = SimpleDateFormat("MMM d", Locale.getDefault())
+                val cal = Calendar.getInstance().apply {
+                    firstDayOfWeek = Calendar.MONDAY
+                    minimalDaysInFirstWeek = 4
+                }
+                keys.map { key ->
+                    // "yyyy-Www" → format the Monday of that ISO week as "MMM d".
+                    val parts = key.split("-W")
+                    if (parts.size != 2) return@map key
+                    val year = parts[0].toIntOrNull() ?: return@map key
+                    val week = parts[1].toIntOrNull() ?: return@map key
+                    cal.clear()
+                    cal.firstDayOfWeek = Calendar.MONDAY
+                    cal.minimalDaysInFirstWeek = 4
+                    cal.set(Calendar.YEAR, year)
+                    cal.set(Calendar.WEEK_OF_YEAR, week)
+                    cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                    out.format(cal.time)
+                }
+            }
+            "months" -> {
+                val parser = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+                val out = SimpleDateFormat("MMM yy", Locale.getDefault())
+                keys.map { key ->
+                    try {
+                        parser.parse(key)?.let { out.format(it) } ?: key
+                    } catch (e: Exception) {
+                        key
+                    }
+                }
+            }
+            "years" -> keys
+            else -> {
+                val parser = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val out = SimpleDateFormat("MMM d", Locale.getDefault())
+                keys.map { key ->
+                    try {
+                        parser.parse(key)?.let { out.format(it) } ?: key
+                    } catch (e: Exception) {
+                        key
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getMovingAverageWindowForGrain(granularity: String, dataSize: Int): Int {
+        val base = when (granularity.lowercase()) {
+            "weeks" -> 4
+            "months" -> 3
+            "years" -> 2
+            else -> 7  // days
+        }
+        return kotlin.math.min(base, kotlin.math.max(1, dataSize / 3))
+    }
+
     /**
      * Get adaptive moving average window size based on period
      */
