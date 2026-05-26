@@ -210,7 +210,14 @@ class StatsActivity : AppCompatActivity() {
         barChart.setScaleEnabled(false)
         barChart.setPinchZoom(false)
         barChart.setDrawGridBackground(false)
-        barChart.legend.isEnabled = false
+        barChart.legend.apply {
+            isEnabled = true
+            textColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
+            textSize = 10f
+            form = com.github.mikephil.charting.components.Legend.LegendForm.SQUARE
+            formSize = 8f
+            xEntrySpace = 12f
+        }
         barChart.extraBottomOffset = 8f
         barChart.setFitBars(true)
         barChart.setNoDataText("Start tracking to see your patterns here")
@@ -291,14 +298,23 @@ class StatsActivity : AppCompatActivity() {
         val dataMaxValue = kotlin.math.max(maxCount.toFloat(), maxAverage.toFloat())
         val chartMaxValue = kotlin.math.max(dataMaxValue * 1.2f, 5f)
 
-        val barEntries = data.dailyCounts.mapIndexed { index, count ->
-            BarEntry(index.toFloat(), count.toFloat())
+        // Stacked bar: tobacco (orange) sits below cannabis (dark green) so the
+        // owner can read both the total height (overall load) and the slice
+        // proportions (which substance dominated the day).
+        val barEntries = data.dailyCounts.mapIndexed { index, _ ->
+            val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
+            val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
+            BarEntry(index.toFloat(), floatArrayOf(tobacco, cannabis))
         }
         if (barEntries.isNotEmpty()) {
             binding.sectionCharts.barChart.visibility = View.VISIBLE
             binding.sectionCharts.emptyStateBar.visibility = View.GONE
-            val barDataSet = BarDataSet(barEntries, "Cigarettes").apply {
-                color = ContextCompat.getColor(this@StatsActivity, R.color.accent_amber)
+            val barDataSet = BarDataSet(barEntries, "Sessions").apply {
+                setColors(
+                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
+                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
+                )
+                stackLabels = arrayOf("Tobacco", "Cannabis")
                 setDrawValues(true)
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f

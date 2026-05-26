@@ -679,9 +679,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             ScoreCalculator.getDailyCountsForScope(sessions, period)
         }
-        
+
+        // Per-substance series — same bucket keys as countsMap, so the stacked
+        // bar can align tobacco + cannabis slices index-for-index.
+        val tobaccoSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.TOBACCO
+        }
+        val cannabisSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.CANNABIS
+        }
+        val tobaccoMap = if (period == "day") {
+            ScoreCalculator.getHourlyCountsForToday(tobaccoSessions)
+        } else {
+            ScoreCalculator.getDailyCountsForScope(tobaccoSessions, period)
+        }
+        val cannabisMap = if (period == "day") {
+            ScoreCalculator.getHourlyCountsForToday(cannabisSessions)
+        } else {
+            ScoreCalculator.getDailyCountsForScope(cannabisSessions, period)
+        }
+
         val dailyCounts = countsMap.values.toList()
         val dateKeys = countsMap.keys.toList()
+        val tobaccoCounts = dateKeys.map { tobaccoMap[it] ?: 0 }
+        val cannabisCounts = dateKeys.map { cannabisMap[it] ?: 0 }
         
         // Skip if no data at all
         if (dailyCounts.isEmpty()) {
@@ -708,6 +729,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         _chartData.postValue(ChartData(
             dailyCounts = dailyCounts,
+            tobaccoCounts = tobaccoCounts,
+            cannabisCounts = cannabisCounts,
             labels = labels,
             movingAverage = movingAverage,
             avgDailyCount = avgDailyCount,

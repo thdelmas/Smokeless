@@ -71,6 +71,10 @@
     <!-- Card accent borders -->
     <color name="card_border_glow">#1500E5A0</color>
     <color name="card_border_dim">#10FFFFFF</color>
+
+    <!-- Chart substance palette - distinguishes tobacco vs cannabis in stacked series -->
+    <color name="chart_substance_tobacco">#F97316</color>
+    <color name="chart_substance_cannabis">#2E7D32</color>
     
     <!-- Legacy aliases -->
     <color name="green">#00E5A0</color>
