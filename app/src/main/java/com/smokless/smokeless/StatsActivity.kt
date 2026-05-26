@@ -317,9 +317,31 @@ class StatsActivity : AppCompatActivity() {
                 setDrawValues(true)
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f
+                // Only label the bar's total. The renderer calls
+                // getBarStackedLabel once per stack segment in array order;
+                // we emit the total only on the topmost non-zero segment so
+                // the bar carries a single number, never a per-slice
+                // breakdown.
                 valueFormatter = object : ValueFormatter() {
-                    override fun getFormattedValue(value: Float): String {
-                        return if (value > 0) value.toInt().toString() else ""
+                    private var lastEntry: BarEntry? = null
+                    private var segmentsSeen = 0
+
+                    override fun getBarStackedLabel(value: Float, stackedEntry: BarEntry?): String {
+                        val entry = stackedEntry ?: return ""
+                        val vals = entry.yVals
+                            ?: return if (entry.y > 0f) entry.y.toInt().toString() else ""
+
+                        if (entry !== lastEntry) {
+                            lastEntry = entry
+                            segmentsSeen = 0
+                        }
+                        val idx = segmentsSeen
+                        segmentsSeen++
+
+                        val topIdx = vals.indices.lastOrNull { vals[it] > 0f } ?: return ""
+                        if (idx != topIdx) return ""
+                        val total = entry.y.toInt()
+                        return if (total > 0) total.toString() else ""
                     }
                 }
             }
