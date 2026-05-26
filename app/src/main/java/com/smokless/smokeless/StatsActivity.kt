@@ -48,6 +48,7 @@ class StatsActivity : AppCompatActivity() {
     )
 
     private var currentPeriod = "month"
+    private var currentChartRange = "month"
     private var copy: SubstanceCopy = SubstanceCopy.TOBACCO
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +60,7 @@ class StatsActivity : AppCompatActivity() {
 
         setupStatsRecycler()
         setupChipGroup()
+        setupChartRangeChips()
         setupCharts()
         setupCollapsibleSections()
         observeViewModel()
@@ -106,9 +108,9 @@ class StatsActivity : AppCompatActivity() {
             val statsRecycler = binding.sectionStatistics.recyclerStats
             val quickStats = binding.sectionQuickStats.root
             statsRecycler.animate().alpha(0f).setDuration(150).withEndAction {
-                viewModel.setChartPeriod(currentPeriod)
+                // The chart has its own granularity selector now; period
+                // chip only drives the stats list / period highlights.
                 updateStatsForPeriod()
-                updateChartLabels()
 
                 val scores = when (currentPeriod) {
                     "day" -> viewModel.dayScores.value
@@ -130,18 +132,31 @@ class StatsActivity : AppCompatActivity() {
         binding.sectionStatistics.chipMonth.isChecked = true
     }
 
-    private fun updateChartLabels() {
-        binding.sectionCharts.textTrendChartTitle.text = when (currentPeriod) {
-            "day" -> "Hourly Trend"
-            "week" -> "Daily Trend"
-            "month" -> "7-Day Average Trend"
-            "year" -> "Monthly Trend"
-            "all" -> "Long-term Trend"
-            else -> "Trend"
+    private fun setupChartRangeChips() {
+        binding.sectionCharts.chipGroupChartRange.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            currentChartRange = when (checkedIds[0]) {
+                R.id.chipRangeWeek -> "week"
+                R.id.chipRangeYear -> "year"
+                else -> "month"
+            }
+            updateChartLabels()
+            viewModel.setChartRange(currentChartRange)
         }
-        binding.sectionCharts.textBarChartTitle.text = when (currentPeriod) {
-            "day" -> "Hourly Count"
-            else -> "Daily Count"
+        binding.sectionCharts.chipRangeMonth.isChecked = true
+        updateChartLabels()
+    }
+
+    private fun updateChartLabels() {
+        binding.sectionCharts.textTrendChartTitle.text = when (currentChartRange) {
+            "week" -> "Trend — last week"
+            "year" -> "Trend — last year"
+            else -> "Trend — last month"
+        }
+        binding.sectionCharts.textBarChartTitle.text = when (currentChartRange) {
+            "week" -> "Last 7 days"
+            "year" -> "Last 12 months"
+            else -> "Last 30 days"
         }
     }
 
@@ -210,7 +225,14 @@ class StatsActivity : AppCompatActivity() {
         barChart.setScaleEnabled(false)
         barChart.setPinchZoom(false)
         barChart.setDrawGridBackground(false)
-        barChart.legend.isEnabled = false
+        barChart.legend.apply {
+            isEnabled = true
+            textColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
+            textSize = 10f
+            form = com.github.mikephil.charting.components.Legend.LegendForm.SQUARE
+            formSize = 8f
+            xEntrySpace = 12f
+        }
         barChart.extraBottomOffset = 8f
         barChart.setFitBars(true)
         barChart.setNoDataText("Start tracking to see your patterns here")
@@ -291,20 +313,50 @@ class StatsActivity : AppCompatActivity() {
         val dataMaxValue = kotlin.math.max(maxCount.toFloat(), maxAverage.toFloat())
         val chartMaxValue = kotlin.math.max(dataMaxValue * 1.2f, 5f)
 
-        val barEntries = data.dailyCounts.mapIndexed { index, count ->
-            BarEntry(index.toFloat(), count.toFloat())
+        // Stacked bar: cannabis (dark green) sits at the base, tobacco (orange)
+        // on top — tobacco is the headline substance, so it reads first.
+        val barEntries = data.dailyCounts.mapIndexed { index, _ ->
+            val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
+            val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
+            BarEntry(index.toFloat(), floatArrayOf(cannabis, tobacco))
         }
         if (barEntries.isNotEmpty()) {
             binding.sectionCharts.barChart.visibility = View.VISIBLE
             binding.sectionCharts.emptyStateBar.visibility = View.GONE
-            val barDataSet = BarDataSet(barEntries, "Cigarettes").apply {
-                color = ContextCompat.getColor(this@StatsActivity, R.color.accent_amber)
+            val barDataSet = BarDataSet(barEntries, "Sessions").apply {
+                setColors(
+                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
+                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
+                )
+                stackLabels = arrayOf("Cannabis", "Tobacco")
                 setDrawValues(true)
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f
+                // Only label the bar's total. The renderer calls
+                // getBarStackedLabel once per stack segment in array order;
+                // we emit the total only on the topmost non-zero segment so
+                // the bar carries a single number, never a per-slice
+                // breakdown.
                 valueFormatter = object : ValueFormatter() {
-                    override fun getFormattedValue(value: Float): String {
-                        return if (value > 0) value.toInt().toString() else ""
+                    private var lastEntry: BarEntry? = null
+                    private var segmentsSeen = 0
+
+                    override fun getBarStackedLabel(value: Float, stackedEntry: BarEntry?): String {
+                        val entry = stackedEntry ?: return ""
+                        val vals = entry.yVals
+                            ?: return if (entry.y > 0f) entry.y.toInt().toString() else ""
+
+                        if (entry !== lastEntry) {
+                            lastEntry = entry
+                            segmentsSeen = 0
+                        }
+                        val idx = segmentsSeen
+                        segmentsSeen++
+
+                        val topIdx = vals.indices.lastOrNull { vals[it] > 0f } ?: return ""
+                        if (idx != topIdx) return ""
+                        val total = entry.y.toInt()
+                        return if (total > 0) total.toString() else ""
                     }
                 }
             }
@@ -319,11 +371,12 @@ class StatsActivity : AppCompatActivity() {
             binding.sectionCharts.emptyStateBar.visibility = View.VISIBLE
         }
 
-        val avgLabel = when (currentPeriod) {
-            "day" -> "Total: ${data.dailyCounts.sum()}"
-            else -> String.format("Avg: %.1f/day", data.avgDailyCount)
+        val avgUnit = when (currentChartRange) {
+            "year" -> "/mo"
+            else -> "/day"
         }
-        binding.sectionCharts.textBarChartAvg.text = avgLabel
+        binding.sectionCharts.textBarChartAvg.text =
+            String.format("Avg: %.1f%s", data.avgDailyCount, avgUnit)
 
         val lineEntries = data.movingAverage.mapIndexed { index, avg ->
             Entry(index.toFloat(), avg.toFloat())

@@ -158,6 +158,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private var lastTimestamp = 0L
     private var currentChartPeriod = "month"
+    // Chart range — independent from currentChartPeriod (which still drives
+    // the rest of the stats screen). Default "month" matches the prior
+    // chart appearance (30 daily bars).
+    private var currentChartRange = "month"
     private var currentGoalPeriod = "month"  // Track period for goal calculation
     private var lastNotifiedHours = 0L  // Track last milestone notification
     
@@ -356,6 +360,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             calculateChartData(sessions, period)
         }
     }
+
+    /**
+     * Switch the chart's time range. Pulls all sessions (the chart picks
+     * its own bucket size per range) and recalculates.
+     */
+    fun setChartRange(range: String) {
+        currentChartRange = range
+        AppDatabase.databaseExecutor.execute {
+            val sessions = repository.getAllSessionsSync()
+            calculateChartDataByRange(sessions, range)
+        }
+    }
     
     /**
      * Set the goal period - updates goal and progress calculation
@@ -435,9 +451,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _weekScores.postValue(calculateScopeScores(repository.getSessionsForScope("week"), "week", copy))
         _dayScores.postValue(calculateScopeScores(repository.getSessionsForScope("day"), "day", copy))
         
-        // Calculate chart data
-        val chartSessions = repository.getSessionsForScope(currentChartPeriod)
-        calculateChartData(chartSessions, currentChartPeriod)
+        // Calculate chart data — chart has its own range selector,
+        // independent of currentChartPeriod (which drives the rest of the
+        // stats screen, not the chart).
+        calculateChartDataByRange(allSessions, currentChartRange)
         
         // Calculate money saved for current period
         val moneySessions = repository.getSessionsForScope(currentGoalPeriod)
@@ -679,9 +696,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             ScoreCalculator.getDailyCountsForScope(sessions, period)
         }
-        
+
+        // Per-substance series — same bucket keys as countsMap, so the stacked
+        // bar can align tobacco + cannabis slices index-for-index.
+        val tobaccoSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.TOBACCO
+        }
+        val cannabisSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.CANNABIS
+        }
+        val tobaccoMap = if (period == "day") {
+            ScoreCalculator.getHourlyCountsForToday(tobaccoSessions)
+        } else {
+            ScoreCalculator.getDailyCountsForScope(tobaccoSessions, period)
+        }
+        val cannabisMap = if (period == "day") {
+            ScoreCalculator.getHourlyCountsForToday(cannabisSessions)
+        } else {
+            ScoreCalculator.getDailyCountsForScope(cannabisSessions, period)
+        }
+
         val dailyCounts = countsMap.values.toList()
         val dateKeys = countsMap.keys.toList()
+        val tobaccoCounts = dateKeys.map { tobaccoMap[it] ?: 0 }
+        val cannabisCounts = dateKeys.map { cannabisMap[it] ?: 0 }
         
         // Skip if no data at all
         if (dailyCounts.isEmpty()) {
@@ -708,6 +746,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         _chartData.postValue(ChartData(
             dailyCounts = dailyCounts,
+            tobaccoCounts = tobaccoCounts,
+            cannabisCounts = cannabisCounts,
             labels = labels,
             movingAverage = movingAverage,
             avgDailyCount = avgDailyCount,
@@ -718,7 +758,97 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             trendPercentage = trendPercentage
         ))
     }
-    
+
+    /**
+     * Chart-only path: window the data by user-selected range (week/month/year)
+     * and bucket it accordingly. Decoupled from currentChartPeriod.
+     */
+    private fun calculateChartDataByRange(
+        sessions: List<com.smokless.smokeless.data.entity.SmokingSession>,
+        range: String,
+    ) {
+        val countsMap = ScoreCalculator.getCountsByRange(sessions, range)
+        val tobaccoSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.TOBACCO
+        }
+        val cannabisSessions = sessions.filter {
+            it.substance == com.smokless.smokeless.data.entity.Substance.CANNABIS
+        }
+        val tobaccoMap = ScoreCalculator.getCountsByRange(tobaccoSessions, range)
+        val cannabisMap = ScoreCalculator.getCountsByRange(cannabisSessions, range)
+
+        val dailyCounts = countsMap.values.toList()
+        val keys = countsMap.keys.toList()
+        val tobaccoCounts = keys.map { tobaccoMap[it] ?: 0 }
+        val cannabisCounts = keys.map { cannabisMap[it] ?: 0 }
+
+        if (dailyCounts.isEmpty()) {
+            _chartData.postValue(null)
+            return
+        }
+
+        val labels = generateRangeLabels(keys, range)
+        val windowSize = getMovingAverageWindowForRange(range, dailyCounts.size)
+        val movingAverage = calculateMovingAverage(dailyCounts, windowSize)
+        val avgDailyCount = dailyCounts.average()
+        val bestDay = dailyCounts.filter { it > 0 }.minOrNull() ?: 0
+        val worstDay = dailyCounts.maxOrNull() ?: 0
+        val cleanDays = dailyCounts.count { it == 0 }
+        val (isImproving, trendPercentage) = calculateTrendImproved(dailyCounts)
+
+        _chartData.postValue(ChartData(
+            dailyCounts = dailyCounts,
+            tobaccoCounts = tobaccoCounts,
+            cannabisCounts = cannabisCounts,
+            labels = labels,
+            movingAverage = movingAverage,
+            avgDailyCount = avgDailyCount,
+            isImproving = isImproving,
+            bestDay = bestDay,
+            worstDay = worstDay,
+            cleanDays = cleanDays,
+            trendPercentage = trendPercentage,
+        ))
+    }
+
+    private fun generateRangeLabels(keys: List<String>, range: String): List<String> {
+        return when (range.lowercase()) {
+            "year" -> {
+                // keys are "yyyy-MM" — render as "MMM"
+                val parser = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+                val out = SimpleDateFormat("MMM", Locale.getDefault())
+                keys.map { key ->
+                    try {
+                        parser.parse(key)?.let { out.format(it) } ?: key
+                    } catch (e: Exception) {
+                        key
+                    }
+                }
+            }
+            else -> {
+                // keys are "yyyy-MM-dd"
+                val parser = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val out = SimpleDateFormat("MMM d", Locale.getDefault())
+                keys.map { key ->
+                    try {
+                        parser.parse(key)?.let { out.format(it) } ?: key
+                    } catch (e: Exception) {
+                        key
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getMovingAverageWindowForRange(range: String, dataSize: Int): Int {
+        val base = when (range.lowercase()) {
+            "year" -> 3  // 3-month window
+            "week" -> 3  // 3-day window
+            else -> 7    // 7-day window (month range)
+        }
+        return kotlin.math.min(base, kotlin.math.max(1, dataSize / 3))
+    }
+
     /**
      * Get adaptive moving average window size based on period
      */

@@ -198,7 +198,77 @@ object ScoreCalculator {
         
         return dailyCounts
     }
-    
+
+    /**
+     * Chart bucketing by time range. Each range picks the bucket size that
+     * gives a readable bar count:
+     *
+     *  - "week"  → last 7 daily buckets, keys "yyyy-MM-dd"
+     *  - "month" → last 30 daily buckets, keys "yyyy-MM-dd"
+     *  - "year"  → last 12 monthly buckets, keys "yyyy-MM"
+     *
+     * Zero-fills empty buckets so the chart shows continuity.
+     */
+    fun getCountsByRange(
+        sessions: List<SmokingSession>,
+        range: String,
+    ): LinkedHashMap<String, Int> = when (range.lowercase()) {
+        "year" -> getMonthlyCounts(sessions, monthsBack = 12)
+        "week" -> getDailyCountsBack(sessions, daysBack = 7)
+        else -> getDailyCountsBack(sessions, daysBack = 30)
+    }
+
+    private fun getDailyCountsBack(
+        sessions: List<SmokingSession>,
+        daysBack: Int,
+    ): LinkedHashMap<String, Int> {
+        val counts = LinkedHashMap<String, Int>()
+        val keyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, -(daysBack - 1))
+        }
+        val endCal = Calendar.getInstance()
+        while (!cal.after(endCal)) {
+            counts[keyFormat.format(cal.time)] = 0
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        for (session in sessions) {
+            val key = keyFormat.format(Date(session.timestamp))
+            if (counts.containsKey(key)) {
+                counts[key] = counts[key]!! + 1
+            }
+        }
+        return counts
+    }
+
+    private fun getMonthlyCounts(
+        sessions: List<SmokingSession>,
+        monthsBack: Int,
+    ): LinkedHashMap<String, Int> {
+        val counts = LinkedHashMap<String, Int>()
+        val keyFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            add(Calendar.MONTH, -(monthsBack - 1))
+        }
+        val endCal = Calendar.getInstance()
+        while (!cal.after(endCal)) {
+            counts[keyFormat.format(cal.time)] = 0
+            cal.add(Calendar.MONTH, 1)
+        }
+        for (session in sessions) {
+            val key = keyFormat.format(Date(session.timestamp))
+            if (counts.containsKey(key)) {
+                counts[key] = counts[key]!! + 1
+            }
+        }
+        return counts
+    }
+
     /**
      * Calculate current streak of clean days (from today backwards)
      */

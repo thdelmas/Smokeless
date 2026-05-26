@@ -11,7 +11,9 @@ package com.smokless.smokeless.ui.main
  * - Optimized label generation to prevent chart overcrowding
  */
 data class ChartData(
-    val dailyCounts: List<Int>,          // Cigarettes per day/hour (includes 0 counts)
+    val dailyCounts: List<Int>,          // Total sessions per day/hour (includes 0 counts)
+    val tobaccoCounts: List<Int>,        // Tobacco-only sessions per bucket, aligned with dailyCounts
+    val cannabisCounts: List<Int>,       // Cannabis-only sessions per bucket, aligned with dailyCounts
     val labels: List<String>,            // Date/time labels for x-axis
     val movingAverage: List<Double>,     // Adaptive moving average for trend line
     val avgDailyCount: Double,           // Overall average for the period
