@@ -298,23 +298,22 @@ class StatsActivity : AppCompatActivity() {
         val dataMaxValue = kotlin.math.max(maxCount.toFloat(), maxAverage.toFloat())
         val chartMaxValue = kotlin.math.max(dataMaxValue * 1.2f, 5f)
 
-        // Stacked bar: tobacco (orange) sits below cannabis (dark green) so the
-        // owner can read both the total height (overall load) and the slice
-        // proportions (which substance dominated the day).
+        // Stacked bar: cannabis (dark green) sits at the base, tobacco (orange)
+        // on top — tobacco is the headline substance, so it reads first.
         val barEntries = data.dailyCounts.mapIndexed { index, _ ->
             val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
             val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
-            BarEntry(index.toFloat(), floatArrayOf(tobacco, cannabis))
+            BarEntry(index.toFloat(), floatArrayOf(cannabis, tobacco))
         }
         if (barEntries.isNotEmpty()) {
             binding.sectionCharts.barChart.visibility = View.VISIBLE
             binding.sectionCharts.emptyStateBar.visibility = View.GONE
             val barDataSet = BarDataSet(barEntries, "Sessions").apply {
                 setColors(
-                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
                     ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
+                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
                 )
-                stackLabels = arrayOf("Tobacco", "Cannabis")
+                stackLabels = arrayOf("Cannabis", "Tobacco")
                 setDrawValues(true)
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f
