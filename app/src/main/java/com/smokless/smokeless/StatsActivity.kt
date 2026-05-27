@@ -313,33 +313,56 @@ class StatsActivity : AppCompatActivity() {
         val dataMaxValue = kotlin.math.max(maxCount.toFloat(), maxAverage.toFloat())
         val chartMaxValue = kotlin.math.max(dataMaxValue * 1.2f, 5f)
 
-        // Stacked bar: cannabis (dark green) sits at the base, tobacco (orange)
-        // on top — tobacco is the headline substance, so it reads first.
-        val barEntries = data.dailyCounts.mapIndexed { index, _ ->
-            val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
-            val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
-            BarEntry(index.toFloat(), floatArrayOf(cannabis, tobacco))
+        val stackBySubstance = getSharedPreferences("SmokelessPrefs", MODE_PRIVATE)
+            .getBoolean(
+                com.smokless.smokeless.ui.settings.SettingsViewModel.KEY_STACK_CHART_BY_SUBSTANCE,
+                true,
+            )
+
+        val barEntries = if (stackBySubstance) {
+            // Stacked bar: cannabis (dark green) sits at the base, tobacco
+            // (orange) on top — tobacco is the headline substance, so it
+            // reads first.
+            data.dailyCounts.mapIndexed { index, _ ->
+                val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
+                val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
+                BarEntry(index.toFloat(), floatArrayOf(cannabis, tobacco))
+            }
+        } else {
+            data.dailyCounts.mapIndexed { index, total ->
+                BarEntry(index.toFloat(), total.toFloat())
+            }
         }
         if (barEntries.isNotEmpty()) {
             binding.sectionCharts.barChart.visibility = View.VISIBLE
             binding.sectionCharts.emptyStateBar.visibility = View.GONE
+            binding.sectionCharts.barChart.legend.isEnabled = stackBySubstance
             val barDataSet = BarDataSet(barEntries, "Sessions").apply {
-                setColors(
-                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
-                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
-                )
-                stackLabels = arrayOf("Cannabis", "Tobacco")
+                if (stackBySubstance) {
+                    setColors(
+                        ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
+                        ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
+                    )
+                    stackLabels = arrayOf("Cannabis", "Tobacco")
+                } else {
+                    color = ContextCompat.getColor(this@StatsActivity, R.color.accent_primary)
+                }
                 setDrawValues(true)
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f
-                // Only label the bar's total. The renderer calls
-                // getBarStackedLabel once per stack segment in array order;
-                // we emit the total only on the topmost non-zero segment so
-                // the bar carries a single number, never a per-slice
-                // breakdown.
+                // Only label the bar's total. For stacked bars the renderer
+                // calls getBarStackedLabel once per segment in array order;
+                // emit the total only on the topmost non-zero segment so the
+                // bar carries a single number, never a per-slice breakdown.
+                // Aggregated bars fall back to the plain getBarLabel path.
                 valueFormatter = object : ValueFormatter() {
                     private var lastEntry: BarEntry? = null
                     private var segmentsSeen = 0
+
+                    override fun getBarLabel(barEntry: BarEntry?): String {
+                        val entry = barEntry ?: return ""
+                        return if (entry.y > 0f) entry.y.toInt().toString() else ""
+                    }
 
                     override fun getBarStackedLabel(value: Float, stackedEntry: BarEntry?): String {
                         val entry = stackedEntry ?: return ""
