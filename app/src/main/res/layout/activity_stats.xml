@@ -47,6 +47,8 @@
 
             <include android:id="@+id/sectionSelfEvalStats" layout="@layout/section_self_eval_stats" />
 
+            <include android:id="@+id/sectionBaselines" layout="@layout/section_baselines" />
+
             <include android:id="@+id/sectionCharts" layout="@layout/section_charts" />
 
             <include android:id="@+id/sectionRecords" layout="@layout/section_records" />

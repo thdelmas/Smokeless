@@ -564,7 +564,53 @@ class StatsActivity : AppCompatActivity() {
         }
 
         viewModel.reductionStats.observe(this) { stats -> updateReductionTrend(stats) }
+
+        viewModel.scopedBaselines.observe(this) { baselines -> updateBaselines(baselines) }
     }
+
+    private fun updateBaselines(baselines: List<com.smokless.smokeless.util.ScoreCalculator.ScopedBaseline>) {
+        val rowsGroup = binding.sectionBaselines.groupBaselineRows
+        val empty = binding.sectionBaselines.textBaselinesEmpty
+        rowsGroup.removeAllViews()
+
+        if (baselines.isEmpty()) {
+            empty.visibility = View.VISIBLE
+            return
+        }
+        empty.visibility = View.GONE
+
+        val numFmt = DecimalFormat("0.#")
+        val showLabel = baselines.size > 1
+        baselines.forEachIndexed { index, b ->
+            val row = layoutInflater.inflate(R.layout.item_baseline_stat_row, rowsGroup, false)
+            val labelView = row.findViewById<android.widget.TextView>(R.id.textBaselineRowLabel)
+            val dayView = row.findViewById<android.widget.TextView>(R.id.textBaselineDayValue)
+            val weekView = row.findViewById<android.widget.TextView>(R.id.textBaselineWeekValue)
+            val monthView = row.findViewById<android.widget.TextView>(R.id.textBaselineMonthValue)
+
+            if (showLabel) {
+                labelView.text = substanceLabel(b.substance)
+            } else {
+                labelView.visibility = View.GONE
+            }
+            dayView.text = numFmt.format(b.perDay)
+            weekView.text = numFmt.format(b.perWeek)
+            monthView.text = numFmt.format(b.perMonth)
+
+            if (index > 0) {
+                val lp = row.layoutParams as android.widget.LinearLayout.LayoutParams
+                lp.topMargin = (4 * resources.displayMetrics.density).toInt()
+                row.layoutParams = lp
+            }
+            rowsGroup.addView(row)
+        }
+    }
+
+    private fun substanceLabel(substance: com.smokless.smokeless.data.entity.Substance): String =
+        when (substance) {
+            com.smokless.smokeless.data.entity.Substance.TOBACCO -> "🚬 Tobacco"
+            com.smokless.smokeless.data.entity.Substance.CANNABIS -> "🌿 Cannabis"
+        }
 
     private fun updateReductionTrend(stats: com.smokless.smokeless.util.ScoreCalculator.ReductionStats) {
         val avgFormat = DecimalFormat("0.#")

@@ -87,11 +87,12 @@ class ScoreCalculatorTest {
     }
 
     @Test
-    fun `calculateTodayPace AHEAD when today smoked below 75 percent of typical-by-now`() {
+    fun `calculateTodayPace AHEAD when today is a full dose below typical-by-now`() {
         val now = paceNow(hourOfDay = 18) // 18/24 = 0.75 of day elapsed
         val day = 24L * 3_600_000
         // 7 prior days, ~10 sessions/day → baseline 10. At 18:00 typical ≈ 7.5.
-        // Today: 4 sessions → 4 / 7.5 = 0.53, below 75% → AHEAD.
+        // Today: 4 dose ≤ 7.5 − 1 = 6.5 → a full-dose margin → AHEAD (taking
+        // one more now would still leave you under typical).
         val priors = (1..7).flatMap { d ->
             List(10) { SmokingSession(now - d * day - it * 60_000L).apply { id = (d * 100 + it).toLong() } }
         }
@@ -102,11 +103,29 @@ class ScoreCalculatorTest {
     }
 
     @Test
-    fun `calculateTodayPace BEHIND when today smoked above 125 percent of typical-by-now`() {
+    fun `calculateTodayPace ON_PACE when better than typical but without a full-dose margin`() {
+        val now = paceNow(hourOfDay = 18) // 0.75 of day elapsed (linear fraction)
+        val day = 24L * 3_600_000
+        // 4 prior days × 3/day = 12 prior events (< 14 → linear projection,
+        // no rhythm CDF). baseline = 12/4 = 3, typical-by-now = 3 × 0.75 = 2.25.
+        // Today: 2 dose → 2 < 2.25 (better than usual) but 2 > 2.25 − 1 = 1.25,
+        // so no full-dose margin: one more now (→ 3 ≥ 2.25) would tip it BEHIND.
+        val priors = (1..4).flatMap { d ->
+            List(3) { SmokingSession(now - d * day - it * 60_000L).apply { id = (d * 100 + it).toLong() } }
+        }
+        val today = List(2) { SmokingSession(now - it * 60_000L - 7_200_000).apply { id = (1000 + it).toLong() } }
+        val pace = ScoreCalculator.calculateTodayPace(priors + today, now)
+        assertEquals(ScoreCalculator.PaceState.ON_PACE, pace.state)
+        assertTrue("actualToday should be below typicalByNow", pace.actualToday < pace.typicalByNow)
+        assertTrue("but within one full dose", pace.actualToday > pace.typicalByNow - 1.0)
+    }
+
+    @Test
+    fun `calculateTodayPace BEHIND when today is above typical-by-now`() {
         // 7 prior days × 10 events evenly spread across 24h → baseline 10
         // and an approximately linear rhythm CDF. At noon, ~60% of typical
-        // dose has happened → typical-by-now ≈ 6. Today: 8 dose → above the
-        // 125% threshold → BEHIND.
+        // dose has happened → typical-by-now ≈ 6. Today: 8 dose ≥ typical →
+        // not better than usual → BEHIND.
         val midnight = paceNow(hourOfDay = 0)
         val now = paceNow(hourOfDay = 12)
         val day = 24L * 3_600_000
@@ -195,7 +214,8 @@ class ScoreCalculatorTest {
         // actualToday = 7 events × dose 1.0 = 7.0 (whole awake window). The
         // rhythm CDF saturates to 1.0 by elapsed=18h (no events sit past
         // offset 18 in this dataset), so typicalByNow ≈ baseline ≈ 7.85.
-        // 7 < 7.85 (strict inferiority holds), within ±25% band → ON_PACE.
+        // 7 < 7.85 (better than usual) but 7 > 7.85 − 1 = 6.85 (no full-dose
+        // margin) → ON_PACE.
         assertEquals(ScoreCalculator.PaceState.ON_PACE, withAnchor.state)
         assertEquals(7.0, withAnchor.actualToday, 1e-9)
         assertEquals(wake, withAnchor.dayStartMs)
@@ -203,11 +223,10 @@ class ScoreCalculatorTest {
 
     @Test
     fun `calculateTodayPace ON_PACE not AHEAD when zero today but typicalByNow under one full dose`() {
-        // Reported bug: 0 today vs typicalByNow 0.93 was reading AHEAD
-        // because the band floored at 0.5 → AHEAD threshold = 0.43 → 0 ≤ 0.43.
-        // Floor is now 1.0, so AHEAD requires a full-dose gap below typical.
-        // With typicalByNow < 1, AHEAD threshold falls below zero, so even a
-        // clean day reads ON_PACE rather than over-claiming.
+        // Reported bug: 0 today vs typicalByNow 0.93 was reading AHEAD.
+        // AHEAD requires a full-dose gap below typical (actual ≤ typical − 1).
+        // With typicalByNow < 1, that threshold falls below zero, so even a
+        // clean day reads ON_PACE rather than over-claiming a margin.
         val now = paceNow(hourOfDay = 14)
         val day = 24L * 3_600_000
         val hour = 3_600_000L
@@ -230,12 +249,11 @@ class ScoreCalculatorTest {
     }
 
     @Test
-    fun `calculateTodayPace BEHIND when actualToday exceeds typicalByNow even by less than the band`() {
+    fun `calculateTodayPace BEHIND when actualToday exceeds typicalByNow even slightly`() {
         // Reported bug: cannabis user at 1 session vs typical-by-now 0.62
-        // (delta +0.38) was reading ON_PACE because the ±0.5 band floor
-        // absorbed the excess. The reduction thesis is "smoke strictly less
-        // than your typical day" — any actualToday above typicalByNow means
-        // you're projected to exceed baseline → BEHIND, no tolerance.
+        // (delta +0.38) was reading ON_PACE. The reduction thesis is "smoke
+        // strictly less than your typical day" — any actualToday at or above
+        // typicalByNow means you're not better than usual → BEHIND, no tolerance.
         val now = paceNow(hourOfDay = 14) // mid-afternoon, effectiveFraction ≈ 0.58
         val day = 24L * 3_600_000
         val hour = 3_600_000L
@@ -278,8 +296,8 @@ class ScoreCalculatorTest {
                     .apply { id = (d * 1000 + it).toLong() }
             }
         }
-        // Today: 5 drags (quantity 0.25 each) → dose 1.25, well below the
-        // 0.75 × 7.5 = 5.625 cutoff → AHEAD.
+        // Today: 5 drags (quantity 0.25 each) → dose 1.25, a full dose below
+        // the 7.5 typical-by-now (≤ 6.5) → AHEAD.
         val today = List(5) {
             SmokingSession(now - it * 60_000L - 7_200_000, quantity = 0.25)
                 .apply { id = (90_000 + it).toLong() }
@@ -321,6 +339,50 @@ class ScoreCalculatorTest {
         assertEquals(5.0, pace.actualToday, 1e-9)
         // Rhythm CDF should have been built (≥ 14 prior events).
         assertTrue(pace.rhythmCdf.isNotEmpty())
+    }
+
+    @Test
+    fun `calculateScopedBaselines gives independent per-scope rolling averages`() {
+        val now = paceNow(hourOfDay = 12)
+        val day = 24L * 3_600_000
+        // 40 days of steady 2 sessions/day. Day scope (30d window) → 2/day;
+        // week scope (40d span, 40/7 weeks) → 14/week; month scope (40d span,
+        // 40/30 months) → 60/month. Each is its own average, not a scaling.
+        val sessions = (0..39).flatMap { d ->
+            List(2) { i ->
+                // (i + 1) offset keeps every session strictly inside its day,
+                // so none lands exactly on a window-start boundary.
+                SmokingSession(now - d * day - (i + 1) * 3_600_000L)
+                    .apply { id = (d * 10 + i).toLong() }
+            }
+        }
+        val baselines = ScoreCalculator.calculateScopedBaselines(sessions, now)
+        assertEquals(1, baselines.size)
+        val b = baselines.first()
+        assertEquals(Substance.TOBACCO, b.substance)
+        assertEquals(2.0, b.perDay, 1e-6)
+        assertEquals(14.0, b.perWeek, 1e-6)
+        assertEquals(60.0, b.perMonth, 1e-6)
+    }
+
+    @Test
+    fun `calculateScopedBaselines separates substances`() {
+        val now = paceNow(hourOfDay = 12)
+        val day = 24L * 3_600_000
+        // 30 days: 2 tobacco/day, 1 cannabis/day.
+        val sessions = (0..29).flatMap { d ->
+            listOf(
+                SmokingSession(now - d * day, Substance.TOBACCO).apply { id = (d * 10).toLong() },
+                SmokingSession(now - d * day - 60_000L, Substance.TOBACCO).apply { id = (d * 10 + 1).toLong() },
+                SmokingSession(now - d * day - 120_000L, Substance.CANNABIS).apply { id = (d * 10 + 2).toLong() },
+            )
+        }
+        val baselines = ScoreCalculator.calculateScopedBaselines(sessions, now)
+        assertEquals(2, baselines.size)
+        val tobacco = baselines.first { it.substance == Substance.TOBACCO }
+        val cannabis = baselines.first { it.substance == Substance.CANNABIS }
+        assertEquals(2.0, tobacco.perDay, 1e-6)
+        assertEquals(1.0, cannabis.perDay, 1e-6)
     }
 
     /** Returns a deterministic "now" at a fixed hour of day, avoiding clock flakiness. */
