@@ -18,6 +18,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_PACK_PRICE = "packPrice"
         private const val KEY_CIGS_PER_PACK = "cigsPerPack"
         private const val KEY_CURRENCY = "currency"
+        const val KEY_STACK_CHART_BY_SUBSTANCE = "stackChartBySubstance"
         
         const val DEFAULT_PACK_PRICE = 10.0f
         const val DEFAULT_CIGS_PER_PACK = 20
@@ -55,6 +56,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _currency = MutableLiveData<String>()
     val currency: LiveData<String> = _currency
 
+    private val _stackChartBySubstance = MutableLiveData<Boolean>()
+    val stackChartBySubstance: LiveData<Boolean> = _stackChartBySubstance
+
     private val _biosEnabled = MutableLiveData<Boolean>()
     val biosEnabled: LiveData<Boolean> = _biosEnabled
 
@@ -80,6 +84,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _packPrice.value = price
         _cigsPerPack.value = cigsCount
         _currency.value = currencySymbol
+        _stackChartBySubstance.value = prefs.getBoolean(KEY_STACK_CHART_BY_SUBSTANCE, true)
         _biosEnabled.value = biosClient.isEnabled
         _biosStatus.value = biosClient.status()
         _biosLastPushOutcome.value = biosClient.lastPushOutcome
@@ -142,6 +147,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setCurrency(symbol: String) {
         prefs.edit().putString(KEY_CURRENCY, symbol).apply()
         _currency.value = symbol
+    }
+
+    fun setStackChartBySubstance(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_STACK_CHART_BY_SUBSTANCE, enabled).apply()
+        _stackChartBySubstance.value = enabled
     }
     
     fun getCostPerCigarette(): Float {

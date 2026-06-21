@@ -715,18 +715,19 @@ object ScoreCalculator {
         }
         val typicalByNow = baselineDailyAvg * effectiveFraction
 
-        // Asymmetric verdict around typical-by-now. The reduction thesis is
-        // "smoke strictly less than your typical day", so any excess above
-        // typical-by-now means the projected end-of-day total exceeds the
-        // baseline — that's BEHIND, no tolerance. The 25% / 1.0-dose band
-        // only applies on the AHEAD side: claiming "ahead of pace" needs a
-        // gap of at least one full dose below typical, otherwise 0 today
-        // vs. 0.93 typical-by-now would read AHEAD when it's really ON_PACE.
-        val band = max(typicalByNow * 0.25, 1.0)
+        // Verdict around typical-by-now, framed by a one-full-dose margin:
+        //  - BEHIND (red): not better than usual — at or above typical-by-now.
+        //  - AHEAD (green): better than usual with headroom — a full dose
+        //    below typical, so taking one more right now would still leave you
+        //    at/under typical.
+        //  - ON_PACE (yellow): better than usual but no margin — under typical,
+        //    yet one more dose would tip you to/over it (would turn red).
+        // The reduction thesis is "smoke strictly less than your typical day";
+        // equality with typical-by-now is therefore not a win, so it reads RED.
         val state = when {
             baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
-            actualToday <= typicalByNow - band -> PaceState.AHEAD
-            actualToday > typicalByNow -> PaceState.BEHIND
+            actualToday >= typicalByNow -> PaceState.BEHIND
+            actualToday <= typicalByNow - 1.0 -> PaceState.AHEAD
             else -> PaceState.ON_PACE
         }
         return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor, rhythmCdf)
@@ -848,6 +849,59 @@ object ScoreCalculator {
         return substances.map { sub ->
             val subset = allSessions.filter { it.substance == sub }
             SubstancePace(sub, calculateTodayPace(subset, nowMs, dayStartMs))
+        }
+    }
+
+    /**
+     * Per-substance baseline consumption at three time scopes. Each scope is
+     * its own rolling average — not a scaling of the daily figure — so a user
+     * whose use is trending sees genuinely different day/week/month reference
+     * levels.
+     *
+     *   day   → last 30 days
+     *   week  → last 12 weeks (84 days)
+     *   month → last 6 months (≈182 days)
+     *
+     * Each window is clamped to the user's tracked span; the baseline is the
+     * dose summed across the window divided by the number of periods it spans.
+     * Dose-weighted (sum of [SmokingSession.quantity]), matching the pace
+     * verdict's "replacing full smokes with drags counts as progress" thesis.
+     */
+    data class ScopedBaseline(
+        val substance: Substance,
+        val perDay: Double,
+        val perWeek: Double,
+        val perMonth: Double,
+    )
+
+    fun calculateScopedBaselines(
+        allSessions: List<SmokingSession>,
+        nowMs: Long = System.currentTimeMillis(),
+    ): List<ScopedBaseline> {
+        if (allSessions.isEmpty()) return emptyList()
+        val day = TimeUnit.DAYS.toMillis(1)
+        val firstSession = allSessions.minOf { it.timestamp }
+        val trackedDays = ((nowMs - firstSession) / day).toInt() + 1
+
+        fun baselineFor(subset: List<SmokingSession>, windowDays: Int, periodDays: Int): Double {
+            val spanDays = trackedDays.coerceAtMost(windowDays)
+            if (spanDays <= 0) return 0.0
+            val windowStart = nowMs - spanDays.toLong() * day
+            val dose = subset.filter { it.timestamp >= windowStart }.sumOf { it.quantity }
+            val periods = spanDays.toDouble() / periodDays
+            return if (periods > 0) dose / periods else 0.0
+        }
+
+        val substances = allSessions.map { it.substance }.toSet().sortedBy { it.ordinal }
+        return substances.mapNotNull { sub ->
+            val subset = allSessions.filter { it.substance == sub }
+            if (subset.isEmpty()) return@mapNotNull null
+            ScopedBaseline(
+                substance = sub,
+                perDay = baselineFor(subset, windowDays = 30, periodDays = 1),
+                perWeek = baselineFor(subset, windowDays = 84, periodDays = 7),
+                perMonth = baselineFor(subset, windowDays = 182, periodDays = 30),
+            )
         }
     }
 

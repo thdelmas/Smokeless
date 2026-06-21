@@ -313,33 +313,56 @@ class StatsActivity : AppCompatActivity() {
         val dataMaxValue = kotlin.math.max(maxCount.toFloat(), maxAverage.toFloat())
         val chartMaxValue = kotlin.math.max(dataMaxValue * 1.2f, 5f)
 
-        // Stacked bar: cannabis (dark green) sits at the base, tobacco (orange)
-        // on top — tobacco is the headline substance, so it reads first.
-        val barEntries = data.dailyCounts.mapIndexed { index, _ ->
-            val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
-            val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
-            BarEntry(index.toFloat(), floatArrayOf(cannabis, tobacco))
+        val stackBySubstance = getSharedPreferences("SmokelessPrefs", MODE_PRIVATE)
+            .getBoolean(
+                com.smokless.smokeless.ui.settings.SettingsViewModel.KEY_STACK_CHART_BY_SUBSTANCE,
+                true,
+            )
+
+        val barEntries = if (stackBySubstance) {
+            // Stacked bar: cannabis (dark green) sits at the base, tobacco
+            // (orange) on top — tobacco is the headline substance, so it
+            // reads first.
+            data.dailyCounts.mapIndexed { index, _ ->
+                val tobacco = data.tobaccoCounts.getOrNull(index)?.toFloat() ?: 0f
+                val cannabis = data.cannabisCounts.getOrNull(index)?.toFloat() ?: 0f
+                BarEntry(index.toFloat(), floatArrayOf(cannabis, tobacco))
+            }
+        } else {
+            data.dailyCounts.mapIndexed { index, total ->
+                BarEntry(index.toFloat(), total.toFloat())
+            }
         }
         if (barEntries.isNotEmpty()) {
             binding.sectionCharts.barChart.visibility = View.VISIBLE
             binding.sectionCharts.emptyStateBar.visibility = View.GONE
+            binding.sectionCharts.barChart.legend.isEnabled = stackBySubstance
             val barDataSet = BarDataSet(barEntries, "Sessions").apply {
-                setColors(
-                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
-                    ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
-                )
-                stackLabels = arrayOf("Cannabis", "Tobacco")
+                if (stackBySubstance) {
+                    setColors(
+                        ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_cannabis),
+                        ContextCompat.getColor(this@StatsActivity, R.color.chart_substance_tobacco),
+                    )
+                    stackLabels = arrayOf("Cannabis", "Tobacco")
+                } else {
+                    color = ContextCompat.getColor(this@StatsActivity, R.color.accent_primary)
+                }
                 setDrawValues(true)
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f
-                // Only label the bar's total. The renderer calls
-                // getBarStackedLabel once per stack segment in array order;
-                // we emit the total only on the topmost non-zero segment so
-                // the bar carries a single number, never a per-slice
-                // breakdown.
+                // Only label the bar's total. For stacked bars the renderer
+                // calls getBarStackedLabel once per segment in array order;
+                // emit the total only on the topmost non-zero segment so the
+                // bar carries a single number, never a per-slice breakdown.
+                // Aggregated bars fall back to the plain getBarLabel path.
                 valueFormatter = object : ValueFormatter() {
                     private var lastEntry: BarEntry? = null
                     private var segmentsSeen = 0
+
+                    override fun getBarLabel(barEntry: BarEntry?): String {
+                        val entry = barEntry ?: return ""
+                        return if (entry.y > 0f) entry.y.toInt().toString() else ""
+                    }
 
                     override fun getBarStackedLabel(value: Float, stackedEntry: BarEntry?): String {
                         val entry = stackedEntry ?: return ""
@@ -541,7 +564,53 @@ class StatsActivity : AppCompatActivity() {
         }
 
         viewModel.reductionStats.observe(this) { stats -> updateReductionTrend(stats) }
+
+        viewModel.scopedBaselines.observe(this) { baselines -> updateBaselines(baselines) }
     }
+
+    private fun updateBaselines(baselines: List<com.smokless.smokeless.util.ScoreCalculator.ScopedBaseline>) {
+        val rowsGroup = binding.sectionBaselines.groupBaselineRows
+        val empty = binding.sectionBaselines.textBaselinesEmpty
+        rowsGroup.removeAllViews()
+
+        if (baselines.isEmpty()) {
+            empty.visibility = View.VISIBLE
+            return
+        }
+        empty.visibility = View.GONE
+
+        val numFmt = DecimalFormat("0.#")
+        val showLabel = baselines.size > 1
+        baselines.forEachIndexed { index, b ->
+            val row = layoutInflater.inflate(R.layout.item_baseline_stat_row, rowsGroup, false)
+            val labelView = row.findViewById<android.widget.TextView>(R.id.textBaselineRowLabel)
+            val dayView = row.findViewById<android.widget.TextView>(R.id.textBaselineDayValue)
+            val weekView = row.findViewById<android.widget.TextView>(R.id.textBaselineWeekValue)
+            val monthView = row.findViewById<android.widget.TextView>(R.id.textBaselineMonthValue)
+
+            if (showLabel) {
+                labelView.text = substanceLabel(b.substance)
+            } else {
+                labelView.visibility = View.GONE
+            }
+            dayView.text = numFmt.format(b.perDay)
+            weekView.text = numFmt.format(b.perWeek)
+            monthView.text = numFmt.format(b.perMonth)
+
+            if (index > 0) {
+                val lp = row.layoutParams as android.widget.LinearLayout.LayoutParams
+                lp.topMargin = (4 * resources.displayMetrics.density).toInt()
+                row.layoutParams = lp
+            }
+            rowsGroup.addView(row)
+        }
+    }
+
+    private fun substanceLabel(substance: com.smokless.smokeless.data.entity.Substance): String =
+        when (substance) {
+            com.smokless.smokeless.data.entity.Substance.TOBACCO -> "🚬 Tobacco"
+            com.smokless.smokeless.data.entity.Substance.CANNABIS -> "🌿 Cannabis"
+        }
 
     private fun updateReductionTrend(stats: com.smokless.smokeless.util.ScoreCalculator.ReductionStats) {
         val avgFormat = DecimalFormat("0.#")

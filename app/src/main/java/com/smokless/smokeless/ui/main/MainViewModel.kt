@@ -108,6 +108,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _perSubstancePace = MutableLiveData<List<ScoreCalculator.SubstancePace>>(emptyList())
     val perSubstancePace: LiveData<List<ScoreCalculator.SubstancePace>> = _perSubstancePace
 
+    private val _scopedBaselines = MutableLiveData<List<ScoreCalculator.ScopedBaseline>>(emptyList())
+    val scopedBaselines: LiveData<List<ScoreCalculator.ScopedBaseline>> = _scopedBaselines
+
     // First-smoke-of-day timing: today vs typical first-smoke hour.
     private val _firstSmokeOfDay = MutableLiveData<ScoreCalculator.FirstSmokeOfDay>()
     val firstSmokeOfDay: LiveData<ScoreCalculator.FirstSmokeOfDay> = _firstSmokeOfDay
@@ -257,21 +260,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 (elapsedHours / 24.0).coerceIn(0.0, 1.0)
             }
             val typicalByNow = paceBaselineDailyAvg * effectiveFraction
-            // Threshold logic mirrors ScoreCalculator.calculateTodayPace —
-            // ±25% of typical with an absolute floor of ½ cig-equiv, so
-            // late-stage reduction users don't see whiplash from a single
-            // extra drag. Keep in sync if the calculator changes.
-            val band = max(typicalByNow * 0.25, 1.0)
-            // Asymmetric verdict — mirrors ScoreCalculator.calculateTodayPace.
-            // Any excess above typical-by-now is BEHIND (no tolerance); the
-            // 1.0-dose floor on the AHEAD side requires a full-dose gap below
-            // typical before claiming "ahead of pace".
+            // Verdict mirrors ScoreCalculator.calculateTodayPace — keep in sync.
+            // One-full-dose margin: BEHIND at/above typical (not better than
+            // usual), AHEAD when a full dose below typical (a dose now still
+            // stays under), ON_PACE when under typical but without that margin.
             val state = when {
                 paceBaselineDailyAvg < 0.5 ->
                     if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
                     else ScoreCalculator.PaceState.CLEAN_BREAK
-                paceActualToday <= typicalByNow - band -> ScoreCalculator.PaceState.AHEAD
-                paceActualToday > typicalByNow -> ScoreCalculator.PaceState.BEHIND
+                paceActualToday >= typicalByNow -> ScoreCalculator.PaceState.BEHIND
+                paceActualToday <= typicalByNow - 1.0 -> ScoreCalculator.PaceState.AHEAD
                 else -> ScoreCalculator.PaceState.ON_PACE
             }
             _todayPace.postValue(
@@ -423,6 +421,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _perSubstancePace.postValue(
             ScoreCalculator.calculatePerSubstancePace(allSessions, dayStartMs = wakeTimeMs)
         )
+        _scopedBaselines.postValue(ScoreCalculator.calculateScopedBaselines(allSessions))
         _firstSmokeOfDay.postValue(
             ScoreCalculator.calculateFirstSmokeOfDay(allSessions, dayStartMs = wakeTimeMs)
         )

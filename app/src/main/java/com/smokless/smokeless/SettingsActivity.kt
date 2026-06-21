@@ -36,6 +36,7 @@ class SettingsActivity : AppCompatActivity() {
         setupToolbar()
         setupStrictMode()
         setupDifficultySlider()
+        setupStatsDisplay()
         setupPriceInputs()
         setupBiosIntegration()
         setupExportButtons()
@@ -148,6 +149,12 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
     
+    private fun setupStatsDisplay() {
+        binding.switchStackBySubstance.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setStackChartBySubstance(isChecked)
+        }
+    }
+
     private fun setupPriceInputs() {
         binding.editPackPrice.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -405,6 +412,12 @@ class SettingsActivity : AppCompatActivity() {
         
         viewModel.currency.observe(this) { _ ->
             updateCostPerCig()
+        }
+
+        viewModel.stackChartBySubstance.observe(this) { stacked ->
+            if (binding.switchStackBySubstance.isChecked != stacked) {
+                binding.switchStackBySubstance.isChecked = stacked
+            }
         }
 
         viewModel.biosEnabled.observe(this) { enabled ->
