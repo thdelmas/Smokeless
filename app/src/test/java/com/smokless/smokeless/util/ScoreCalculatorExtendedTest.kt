@@ -191,14 +191,21 @@ class ScoreCalculatorExtendedTest {
 
     @Test
     fun `calculateReductionStats suppresses velocity on returning-user gap`() {
-        // Real-device pattern: 17 logged days ~30-50 days ago, then 27-day silence,
-        // then 4 days of recent activity. Comparison must not fire.
+        // Real-device pattern: 17 logged days ~30-46 days ago, then a multi-week
+        // silence, then several days of recent activity. The comparison must not
+        // fire across that gap.
+        //
+        // Recent days run 0..4 (five days), all comfortably inside the 30-day
+        // window, so hasEnoughData (which needs >= 5 logged days in the last 30)
+        // doesn't ride on a session landing exactly on the 30-day boundary —
+        // calculateReductionStats re-samples `now` internally a few ms later, so
+        // a boundary-exact event would otherwise drop out of the window.
         val now = System.currentTimeMillis()
         val day = TimeUnit.DAYS.toMillis(1)
         val priorWindow = (30L..46L).flatMap { d ->
             List(4) { createSession(now - d * day - it * 60_000L) }
         }
-        val recentWindow = (0L..3L).flatMap { d ->
+        val recentWindow = (0L..4L).flatMap { d ->
             List(5) { createSession(now - d * day - it * 60_000L) }
         }
         val stats = ScoreCalculator.calculateReductionStats(priorWindow + recentWindow)
