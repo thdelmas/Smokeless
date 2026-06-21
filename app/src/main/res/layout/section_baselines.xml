@@ -24,7 +24,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Your typical pace — the reference each day's verdict is measured against"
+            android:text="Current pace vs your typical — today vs last 7 days, this week vs last 4 weeks, this month vs last 12 months"
             android:textColor="@color/text_tertiary"
             android:textSize="12sp"
             android:fontFamily="sans-serif" />

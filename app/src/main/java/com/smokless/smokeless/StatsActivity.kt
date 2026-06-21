@@ -20,6 +20,7 @@ import com.github.mikephil.charting.formatter.ValueFormatter
 import com.smokless.smokeless.databinding.ActivityStatsBinding
 import com.smokless.smokeless.ui.main.ChartData
 import com.smokless.smokeless.ui.main.MainViewModel
+import com.smokless.smokeless.util.ScoreCalculator
 import com.smokless.smokeless.ui.main.ScoreAdapter
 import com.smokless.smokeless.ui.main.ScoreData
 import com.smokless.smokeless.util.SubstanceCopy
@@ -584,18 +585,22 @@ class StatsActivity : AppCompatActivity() {
         baselines.forEachIndexed { index, b ->
             val row = layoutInflater.inflate(R.layout.item_baseline_stat_row, rowsGroup, false)
             val labelView = row.findViewById<android.widget.TextView>(R.id.textBaselineRowLabel)
-            val dayView = row.findViewById<android.widget.TextView>(R.id.textBaselineDayValue)
-            val weekView = row.findViewById<android.widget.TextView>(R.id.textBaselineWeekValue)
-            val monthView = row.findViewById<android.widget.TextView>(R.id.textBaselineMonthValue)
 
             if (showLabel) {
                 labelView.text = substanceLabel(b.substance)
             } else {
                 labelView.visibility = View.GONE
             }
-            dayView.text = numFmt.format(b.perDay)
-            weekView.text = numFmt.format(b.perWeek)
-            monthView.text = numFmt.format(b.perMonth)
+
+            bindBaselineScope(
+                row, R.id.textBaselineDayValue, R.id.textBaselineDayBaseline, b.day, numFmt
+            )
+            bindBaselineScope(
+                row, R.id.textBaselineWeekValue, R.id.textBaselineWeekBaseline, b.week, numFmt
+            )
+            bindBaselineScope(
+                row, R.id.textBaselineMonthValue, R.id.textBaselineMonthBaseline, b.month, numFmt
+            )
 
             if (index > 0) {
                 val lp = row.layoutParams as android.widget.LinearLayout.LayoutParams
@@ -604,6 +609,35 @@ class StatsActivity : AppCompatActivity() {
             }
             rowsGroup.addView(row)
         }
+    }
+
+    /** Render one scope cell: current dose (coloured by verdict) over its baseline. */
+    private fun bindBaselineScope(
+        row: View,
+        valueId: Int,
+        baselineId: Int,
+        scope: com.smokless.smokeless.util.ScoreCalculator.ScopeComparison,
+        numFmt: DecimalFormat,
+    ) {
+        val valueView = row.findViewById<android.widget.TextView>(valueId)
+        val baselineView = row.findViewById<android.widget.TextView>(baselineId)
+        valueView.text = numFmt.format(scope.current)
+        valueView.setTextColor(ContextCompat.getColor(this, paceColor(scope.state)))
+        baselineView.text = if (scope.state == ScoreCalculator.PaceState.CALIBRATING) {
+            "building…"
+        } else {
+            "vs ${numFmt.format(scope.baselinePerPeriod)}"
+        }
+    }
+
+    /** Verdict → colour, matching the hero pace chip's palette. */
+    private fun paceColor(state: ScoreCalculator.PaceState): Int = when (state) {
+        ScoreCalculator.PaceState.AHEAD,
+        ScoreCalculator.PaceState.CLEAN_TODAY -> R.color.status_champion
+        ScoreCalculator.PaceState.ON_PACE,
+        ScoreCalculator.PaceState.CLEAN_BREAK -> R.color.accent_amber
+        ScoreCalculator.PaceState.BEHIND -> R.color.status_reset
+        ScoreCalculator.PaceState.CALIBRATING -> R.color.text_secondary
     }
 
     private fun substanceLabel(substance: com.smokless.smokeless.data.entity.Substance): String =

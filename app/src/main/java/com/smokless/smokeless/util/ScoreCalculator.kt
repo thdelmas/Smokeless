@@ -715,22 +715,38 @@ object ScoreCalculator {
         }
         val typicalByNow = baselineDailyAvg * effectiveFraction
 
-        // Verdict around typical-by-now, framed by a one-full-dose margin:
-        //  - BEHIND (red): not better than usual — at or above typical-by-now.
-        //  - AHEAD (green): better than usual with headroom — a full dose
-        //    below typical, so taking one more right now would still leave you
-        //    at/under typical.
-        //  - ON_PACE (yellow): better than usual but no margin — under typical,
-        //    yet one more dose would tip you to/over it (would turn red).
-        // The reduction thesis is "smoke strictly less than your typical day";
-        // equality with typical-by-now is therefore not a win, so it reads RED.
-        val state = when {
-            baselineDailyAvg < 0.5 -> if (actualToday < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
-            actualToday >= typicalByNow -> PaceState.BEHIND
-            actualToday <= typicalByNow - 1.0 -> PaceState.AHEAD
-            else -> PaceState.ON_PACE
-        }
+        val state = paceVerdict(actualToday, typicalByNow, baselineDailyAvg)
         return TodayPace(state, actualToday, typicalByNow, baselineDailyAvg, todayAnchor, rhythmCdf)
+    }
+
+    /**
+     * Single source of truth for the pace verdict's colour thresholds, framed
+     * by a one-full-dose margin. Shared by [calculateTodayPace] and
+     * [calculateScopedBaselines] (and mirrored in MainViewModel's per-second
+     * ticker — keep all three in sync).
+     *
+     *  - BEHIND (red): not better than usual — at or above typical-by-now.
+     *  - AHEAD (green): better than usual with headroom — a full dose below
+     *    typical, so taking one more right now would still leave you at/under
+     *    typical.
+     *  - ON_PACE (yellow): better than usual but no margin — under typical, yet
+     *    one more dose would tip you to/over it (would turn red).
+     *
+     * The reduction thesis is "use strictly less than your typical period", so
+     * equality with typical-by-now is not a win and reads RED. When the
+     * baseline is effectively zero, a clean period reads CLEAN_TODAY and a
+     * fresh slip against that clean baseline reads CLEAN_BREAK.
+     *
+     * @param actual dose-weighted amount in the current period so far.
+     * @param typicalByNow baseline prorated to how far the period has elapsed.
+     * @param baselinePerPeriod the full-period baseline (used only to detect a
+     *   near-zero "clean" baseline).
+     */
+    fun paceVerdict(actual: Double, typicalByNow: Double, baselinePerPeriod: Double): PaceState = when {
+        baselinePerPeriod < 0.5 -> if (actual < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
+        actual >= typicalByNow -> PaceState.BEHIND
+        actual <= typicalByNow - 1.0 -> PaceState.AHEAD
+        else -> PaceState.ON_PACE
     }
 
     /**
@@ -853,25 +869,42 @@ object ScoreCalculator {
     }
 
     /**
-     * Per-substance baseline consumption at three time scopes. Each scope is
-     * its own rolling average — not a scaling of the daily figure — so a user
-     * whose use is trending sees genuinely different day/week/month reference
-     * levels.
+     * One scope's "current period vs typical" comparison.
      *
-     *   day   → last 30 days
-     *   week  → last 12 weeks (84 days)
-     *   month → last 6 months (≈182 days)
+     * The baseline is the trailing per-period average over completed periods
+     * (the in-progress period is excluded so a heavy start doesn't inflate its
+     * own reference), prorated to how far the current period has elapsed
+     * ([typicalByNow]). The verdict applies the shared one-full-dose margin via
+     * [paceVerdict]. Dose-weighted throughout (sum of SmokingSession.quantity).
+     */
+    data class ScopeComparison(
+        /** Dose logged in the current period so far. */
+        val current: Double,
+        /** Baseline prorated to the elapsed fraction of the current period. */
+        val typicalByNow: Double,
+        /** Full-period baseline — the trailing per-period average. */
+        val baselinePerPeriod: Double,
+        val state: PaceState,
+    )
+
+    /**
+     * Per-substance "current pace vs typical" at three calendar granularities,
+     * each comparing the in-progress period against a trailing baseline:
      *
-     * Each window is clamped to the user's tracked span; the baseline is the
-     * dose summed across the window divided by the number of periods it spans.
-     * Dose-weighted (sum of [SmokingSession.quantity]), matching the pace
-     * verdict's "replacing full smokes with drags counts as progress" thesis.
+     *   day   → today      vs the average day over the last 7 days
+     *   week  → this week  vs the average week over the last 4 weeks
+     *   month → this month vs the average month over the last 12 months
+     *
+     * Periods are calendar-anchored (midnight / start-of-week / first-of-month).
+     * Each trailing window excludes the current period and is clamped to the
+     * user's tracked span; a scope with no completed prior period reports
+     * CALIBRATING.
      */
     data class ScopedBaseline(
         val substance: Substance,
-        val perDay: Double,
-        val perWeek: Double,
-        val perMonth: Double,
+        val day: ScopeComparison,
+        val week: ScopeComparison,
+        val month: ScopeComparison,
     )
 
     fun calculateScopedBaselines(
@@ -880,16 +913,42 @@ object ScoreCalculator {
     ): List<ScopedBaseline> {
         if (allSessions.isEmpty()) return emptyList()
         val day = TimeUnit.DAYS.toMillis(1)
+        val week = 7L * day
         val firstSession = allSessions.minOf { it.timestamp }
-        val trackedDays = ((nowMs - firstSession) / day).toInt() + 1
 
-        fun baselineFor(subset: List<SmokingSession>, windowDays: Int, periodDays: Int): Double {
-            val spanDays = trackedDays.coerceAtMost(windowDays)
-            if (spanDays <= 0) return 0.0
-            val windowStart = nowMs - spanDays.toLong() * day
-            val dose = subset.filter { it.timestamp >= windowStart }.sumOf { it.quantity }
-            val periods = spanDays.toDouble() / periodDays
-            return if (periods > 0) dose / periods else 0.0
+        val dayStart = startOfDay(nowMs)
+        val weekStart = startOfWeek(nowMs)
+        val monthStart = startOfMonth(nowMs)
+        val monthLenMs = daysInMonth(nowMs).toLong() * day
+
+        // Completed prior periods available to average over, clamped to the
+        // window length. Anchor the first session to its own period start so a
+        // user who began logging partway through a day/week still counts that
+        // calendar period as completed prior history.
+        val priorDays = ((dayStart - startOfDay(firstSession)) / day).toInt().coerceIn(0, 7)
+        val priorWeeks = ((weekStart - startOfWeek(firstSession)) / week).toInt().coerceIn(0, 4)
+        val priorMonths = monthsBetween(firstSession, monthStart).coerceIn(0, 12)
+
+        val dayWindowStart = dayStart - priorDays.toLong() * day
+        val weekWindowStart = weekStart - priorWeeks.toLong() * week
+        val monthWindowStart = shiftMonths(monthStart, -priorMonths)
+
+        fun comp(
+            subset: List<SmokingSession>,
+            periodStart: Long,
+            periodLenMs: Double,
+            windowStart: Long,
+            priorPeriods: Int,
+        ): ScopeComparison {
+            val current = subset.filter { it.timestamp >= periodStart }.sumOf { it.quantity }
+            if (priorPeriods <= 0) {
+                return ScopeComparison(current, 0.0, 0.0, PaceState.CALIBRATING)
+            }
+            val windowDose = subset.filter { it.timestamp in windowStart until periodStart }.sumOf { it.quantity }
+            val baseline = windowDose / priorPeriods
+            val fraction = ((nowMs - periodStart).toDouble() / periodLenMs).coerceIn(0.0, 1.0)
+            val typicalByNow = baseline * fraction
+            return ScopeComparison(current, typicalByNow, baseline, paceVerdict(current, typicalByNow, baseline))
         }
 
         val substances = allSessions.map { it.substance }.toSet().sortedBy { it.ordinal }
@@ -898,11 +957,56 @@ object ScoreCalculator {
             if (subset.isEmpty()) return@mapNotNull null
             ScopedBaseline(
                 substance = sub,
-                perDay = baselineFor(subset, windowDays = 30, periodDays = 1),
-                perWeek = baselineFor(subset, windowDays = 84, periodDays = 7),
-                perMonth = baselineFor(subset, windowDays = 182, periodDays = 30),
+                day = comp(subset, dayStart, day.toDouble(), dayWindowStart, priorDays),
+                week = comp(subset, weekStart, week.toDouble(), weekWindowStart, priorWeeks),
+                month = comp(subset, monthStart, monthLenMs.toDouble(), monthWindowStart, priorMonths),
             )
         }
+    }
+
+    /** Calendar midnight of the day containing [ms], local time. */
+    private fun startOfDay(ms: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = ms
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    /** Start of the locale's week containing [ms], at midnight. */
+    private fun startOfWeek(ms: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = ms
+        set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        // DAY_OF_WEEK can roll forward past `ms` when firstDayOfWeek is later
+        // in the week than today; back up a week if so.
+        if (timeInMillis > ms) add(Calendar.DAY_OF_YEAR, -7)
+    }.timeInMillis
+
+    /** Midnight on the first day of the month containing [ms]. */
+    private fun startOfMonth(ms: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = ms
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    private fun daysInMonth(ms: Long): Int = Calendar.getInstance().apply {
+        timeInMillis = ms
+    }.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+    /** [ms] shifted back/forward by [months] calendar months (from its month start). */
+    private fun shiftMonths(ms: Long, months: Int): Long = Calendar.getInstance().apply {
+        timeInMillis = ms
+        add(Calendar.MONTH, months)
+    }.timeInMillis
+
+    /** Whole calendar months between [fromMs] and [toMs] (>= 0 when to ≥ from). */
+    private fun monthsBetween(fromMs: Long, toMs: Long): Int {
+        val from = Calendar.getInstance().apply { timeInMillis = fromMs }
+        val to = Calendar.getInstance().apply { timeInMillis = toMs }
+        val months = (to.get(Calendar.YEAR) - from.get(Calendar.YEAR)) * 12 +
+            (to.get(Calendar.MONTH) - from.get(Calendar.MONTH))
+        return months.coerceAtLeast(0)
     }
 
     /**

@@ -260,18 +260,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 (elapsedHours / 24.0).coerceIn(0.0, 1.0)
             }
             val typicalByNow = paceBaselineDailyAvg * effectiveFraction
-            // Verdict mirrors ScoreCalculator.calculateTodayPace — keep in sync.
-            // One-full-dose margin: BEHIND at/above typical (not better than
-            // usual), AHEAD when a full dose below typical (a dose now still
-            // stays under), ON_PACE when under typical but without that margin.
-            val state = when {
-                paceBaselineDailyAvg < 0.5 ->
-                    if (paceActualToday < 0.001) ScoreCalculator.PaceState.CLEAN_TODAY
-                    else ScoreCalculator.PaceState.CLEAN_BREAK
-                paceActualToday >= typicalByNow -> ScoreCalculator.PaceState.BEHIND
-                paceActualToday <= typicalByNow - 1.0 -> ScoreCalculator.PaceState.AHEAD
-                else -> ScoreCalculator.PaceState.ON_PACE
-            }
+            // Re-evaluate from the cached baseline using the shared verdict —
+            // single source of truth for the one-full-dose-margin thresholds.
+            val state = ScoreCalculator.paceVerdict(paceActualToday, typicalByNow, paceBaselineDailyAvg)
             _todayPace.postValue(
                 ScoreCalculator.TodayPace(
                     state, paceActualToday, typicalByNow, paceBaselineDailyAvg,

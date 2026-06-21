@@ -42,9 +42,19 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="per day"
+                android:text="today"
                 android:textColor="@color/text_tertiary"
                 android:textSize="11sp"
+                android:fontFamily="sans-serif" />
+
+            <TextView
+                android:id="@+id/textBaselineDayBaseline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="vs —"
+                android:textColor="@color/text_tertiary"
+                android:textSize="10sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
@@ -69,9 +79,19 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="per week"
+                android:text="this week"
                 android:textColor="@color/text_tertiary"
                 android:textSize="11sp"
+                android:fontFamily="sans-serif" />
+
+            <TextView
+                android:id="@+id/textBaselineWeekBaseline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="vs —"
+                android:textColor="@color/text_tertiary"
+                android:textSize="10sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
@@ -96,9 +116,19 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="per month"
+                android:text="this month"
                 android:textColor="@color/text_tertiary"
                 android:textSize="11sp"
+                android:fontFamily="sans-serif" />
+
+            <TextView
+                android:id="@+id/textBaselineMonthBaseline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="vs —"
+                android:textColor="@color/text_tertiary"
+                android:textSize="10sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
