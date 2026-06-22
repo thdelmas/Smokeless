@@ -550,6 +550,8 @@ class MainActivity : AppCompatActivity() {
                     "Keep logging — verdict shows up after 3 days" to R.color.text_secondary
                 ScoreCalculator.PaceState.AHEAD ->
                     "Ahead of pace — $actualStr $unit today, usually $typicalStr by now" to R.color.status_champion
+                ScoreCalculator.PaceState.SLIGHTLY_AHEAD ->
+                    "Slightly ahead — $actualStr $unit today, usually $typicalStr by now" to R.color.accent_blue
                 ScoreCalculator.PaceState.ON_PACE ->
                     "On pace — $actualStr $unit today, usually $typicalStr by now" to R.color.accent_amber
                 ScoreCalculator.PaceState.BEHIND ->

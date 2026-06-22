@@ -404,17 +404,22 @@ class ScoreCalculatorTest {
     }
 
     @Test
-    fun `paceVerdict applies the one-full-dose margin`() {
+    fun `paceVerdict grades the cushion into four tiers`() {
         // baseline 10/period, half the period elapsed → typical-by-now 5.0.
         val typical = 5.0
         val baseline = 10.0
         // At/above typical-by-now → BEHIND (not better than usual).
         assertEquals(ScoreCalculator.PaceState.BEHIND, ScoreCalculator.paceVerdict(5.0, typical, baseline))
         assertEquals(ScoreCalculator.PaceState.BEHIND, ScoreCalculator.paceVerdict(6.0, typical, baseline))
-        // Below typical but within one full dose → ON_PACE (no margin).
+        // Cushion ≤ 1 dose → ON_PACE: one more flips it to BEHIND.
         assertEquals(ScoreCalculator.PaceState.ON_PACE, ScoreCalculator.paceVerdict(4.5, typical, baseline))
-        // A full dose below typical → AHEAD (taking one more stays at/under).
-        assertEquals(ScoreCalculator.PaceState.AHEAD, ScoreCalculator.paceVerdict(4.0, typical, baseline))
+        assertEquals(ScoreCalculator.PaceState.ON_PACE, ScoreCalculator.paceVerdict(4.0, typical, baseline)) // cushion exactly 1
+        // Cushion in (1, 2] → SLIGHTLY_AHEAD: one more stays better, two flips.
+        assertEquals(ScoreCalculator.PaceState.SLIGHTLY_AHEAD, ScoreCalculator.paceVerdict(3.5, typical, baseline))
+        assertEquals(ScoreCalculator.PaceState.SLIGHTLY_AHEAD, ScoreCalculator.paceVerdict(3.0, typical, baseline)) // cushion exactly 2
+        // Cushion > 2 → AHEAD: even two more doses stay better than typical.
+        assertEquals(ScoreCalculator.PaceState.AHEAD, ScoreCalculator.paceVerdict(2.9, typical, baseline))
+        assertEquals(ScoreCalculator.PaceState.AHEAD, ScoreCalculator.paceVerdict(1.0, typical, baseline))
         // Near-zero baseline distinguishes a clean period from a fresh slip.
         assertEquals(ScoreCalculator.PaceState.CLEAN_TODAY, ScoreCalculator.paceVerdict(0.0, 0.0, 0.0))
         assertEquals(ScoreCalculator.PaceState.CLEAN_BREAK, ScoreCalculator.paceVerdict(1.0, 0.0, 0.0))

@@ -634,6 +634,7 @@ class StatsActivity : AppCompatActivity() {
     private fun paceColor(state: ScoreCalculator.PaceState): Int = when (state) {
         ScoreCalculator.PaceState.AHEAD,
         ScoreCalculator.PaceState.CLEAN_TODAY -> R.color.status_champion
+        ScoreCalculator.PaceState.SLIGHTLY_AHEAD -> R.color.accent_blue
         ScoreCalculator.PaceState.ON_PACE,
         ScoreCalculator.PaceState.CLEAN_BREAK -> R.color.accent_amber
         ScoreCalculator.PaceState.BEHIND -> R.color.status_reset

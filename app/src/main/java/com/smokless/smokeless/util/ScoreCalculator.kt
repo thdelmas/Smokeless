@@ -547,14 +547,23 @@ object ScoreCalculator {
         )
     }
 
-    /** "How am I doing right now" — one-glance verdict for today vs typical pace. */
+    /**
+     * "How am I doing right now" — one-glance verdict for the current period vs
+     * typical pace. The three "better than typical" tiers are graded by how big
+     * a cushion you still have, measured in whole doses you could take now and
+     * remain better than typical-by-now (see [paceVerdict]):
+     *   AHEAD          → cushion > 2 doses (green)
+     *   SLIGHTLY_AHEAD → cushion 1–2 doses (blue): one more stays better, two flips
+     *   ON_PACE        → cushion 0–1 doses (yellow): even one more flips to worse
+     */
     enum class PaceState {
-        CALIBRATING, // not enough history to compare against
-        AHEAD,       // notably below typical-by-now
-        ON_PACE,     // within ±25% of typical-by-now
-        BEHIND,      // notably above typical-by-now
-        CLEAN_TODAY, // baseline is near-zero and today is also clean
-        CLEAN_BREAK, // baseline is near-zero but smoked today
+        CALIBRATING,    // not enough history to compare against
+        AHEAD,          // more than two doses below typical-by-now
+        SLIGHTLY_AHEAD, // one-to-two-dose cushion below typical-by-now
+        ON_PACE,        // below typical-by-now but within one dose
+        BEHIND,         // at or above typical-by-now
+        CLEAN_TODAY,    // baseline is near-zero and today is also clean
+        CLEAN_BREAK,    // baseline is near-zero but smoked today
     }
 
     data class TodayPace(
@@ -725,12 +734,15 @@ object ScoreCalculator {
      * [calculateScopedBaselines] (and mirrored in MainViewModel's per-second
      * ticker — keep all three in sync).
      *
+     * Grade the cushion below typical-by-now by whole doses you could take now
+     * and stay better than typical:
      *  - BEHIND (red): not better than usual — at or above typical-by-now.
-     *  - AHEAD (green): better than usual with headroom — a full dose below
-     *    typical, so taking one more right now would still leave you at/under
-     *    typical.
-     *  - ON_PACE (yellow): better than usual but no margin — under typical, yet
-     *    one more dose would tip you to/over it (would turn red).
+     *  - ON_PACE (yellow): better, but no cushion — one more dose tips you
+     *    to/over typical (cushion ≤ 1).
+     *  - SLIGHTLY_AHEAD (blue): one more dose stays better, but two would flip
+     *    (cushion in (1, 2]).
+     *  - AHEAD (green): comfortably better — even two more doses stay better
+     *    (cushion > 2).
      *
      * The reduction thesis is "use strictly less than your typical period", so
      * equality with typical-by-now is not a win and reads RED. When the
@@ -745,8 +757,9 @@ object ScoreCalculator {
     fun paceVerdict(actual: Double, typicalByNow: Double, baselinePerPeriod: Double): PaceState = when {
         baselinePerPeriod < 0.5 -> if (actual < 0.001) PaceState.CLEAN_TODAY else PaceState.CLEAN_BREAK
         actual >= typicalByNow -> PaceState.BEHIND
-        actual <= typicalByNow - 1.0 -> PaceState.AHEAD
-        else -> PaceState.ON_PACE
+        actual >= typicalByNow - 1.0 -> PaceState.ON_PACE
+        actual >= typicalByNow - 2.0 -> PaceState.SLIGHTLY_AHEAD
+        else -> PaceState.AHEAD
     }
 
     /**
