@@ -4,16 +4,25 @@ import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.smokless.smokeless.data.entity.SmokingSession
 
 @Dao
 interface SmokingSessionDao {
-    
+
     @Insert
     fun insert(session: SmokingSession): Long
-    
+
+    /** Full-row edit (timestamp / substance / quantity). Matched by primary key. */
+    @Update
+    fun update(session: SmokingSession)
+
     @Query("SELECT * FROM smoking_sessions ORDER BY timestamp ASC")
     fun getAllSessionsLive(): LiveData<List<SmokingSession>>
+
+    /** Newest-first — backs the history/data-entries screen. */
+    @Query("SELECT * FROM smoking_sessions ORDER BY timestamp DESC")
+    fun getAllSessionsDescLive(): LiveData<List<SmokingSession>>
     
     @Query("SELECT * FROM smoking_sessions ORDER BY timestamp ASC")
     fun getAllSessions(): List<SmokingSession>

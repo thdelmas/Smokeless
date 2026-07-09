@@ -81,6 +81,10 @@ class MainActivity : AppCompatActivity() {
         }
         binding.toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.action_entries -> {
+                    startActivity(Intent(this, HistoryActivity::class.java))
+                    true
+                }
                 R.id.action_stats -> {
                     startActivity(Intent(this, StatsActivity::class.java))
                     true

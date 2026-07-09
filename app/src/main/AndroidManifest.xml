@@ -56,6 +56,10 @@
             android:label="Healing timeline"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".HistoryActivity"
+            android:label="Entries"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".OnboardingActivity"
             android:theme="@style/Base.Theme.SmokeLess" />
         <activity

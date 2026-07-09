@@ -23,6 +23,40 @@ class SmokingRepository(application: Application) {
 
     fun getAllSessions(): LiveData<List<SmokingSession>> = allSessions
 
+    /** Newest-first stream for the data-entries screen. */
+    fun getAllSessionsDesc(): LiveData<List<SmokingSession>> = smokingDao.getAllSessionsDescLive()
+
+    /**
+     * Add a session at a caller-chosen time — the manual "add entry" path.
+     * The timestamp marks the *end* of the session (same convention as live
+     * logging, which anchors on now + exposure window), so no offset is
+     * applied here. Mirrors [insert] in also forwarding the event to Bios.
+     */
+    fun addManualSession(timestamp: Long, substance: Substance, quantity: Double) {
+        AppDatabase.databaseExecutor.execute {
+            smokingDao.insert(SmokingSession(timestamp, substance, quantity))
+            biosClient.pushSmokingEvent(timestamp, substance)
+        }
+    }
+
+    /**
+     * Persist an edit to an existing session (time / substance / quantity).
+     * Local-only — Bios has no retract/amend endpoint, matching how deletes
+     * and undo already stay local.
+     */
+    fun updateSession(session: SmokingSession) {
+        AppDatabase.databaseExecutor.execute {
+            smokingDao.update(session)
+        }
+    }
+
+    /** Async delete for the data-entries screen (off the main thread). */
+    fun deleteSessionAsync(id: Long) {
+        AppDatabase.databaseExecutor.execute {
+            smokingDao.deleteById(id)
+        }
+    }
+
     fun insert(session: SmokingSession) {
         AppDatabase.databaseExecutor.execute {
             smokingDao.insert(session)
