@@ -352,13 +352,19 @@ class StatsActivity : AppCompatActivity() {
                 valueTextColor = ContextCompat.getColor(this@StatsActivity, R.color.text_secondary)
                 valueTextSize = 9f
                 // Only label the bar's total. For stacked bars the renderer
-                // calls getBarStackedLabel once per segment in array order;
-                // emit the total only on the topmost non-zero segment so the
-                // bar carries a single number, never a per-slice breakdown.
-                // Aggregated bars fall back to the plain getBarLabel path.
+                // calls getBarStackedLabel once per segment in array order,
+                // BUT it skips zero-height segments entirely: it positions
+                // their label below the axis line, which fails the viewport
+                // bounds check before the formatter is reached. So we are
+                // only ever called for non-zero segments. Count those and
+                // emit the total on the last one, so the bar carries a single
+                // number, never a per-slice breakdown. (Counting array
+                // indices instead broke tobacco-only / cannabis-only bars:
+                // the one call landed at index 0 while the code waited for
+                // the top index.) Aggregated bars fall back to getBarLabel.
                 valueFormatter = object : ValueFormatter() {
                     private var lastEntry: BarEntry? = null
-                    private var segmentsSeen = 0
+                    private var nonZeroSeen = 0
 
                     override fun getBarLabel(barEntry: BarEntry?): String {
                         val entry = barEntry ?: return ""
@@ -367,18 +373,20 @@ class StatsActivity : AppCompatActivity() {
 
                     override fun getBarStackedLabel(value: Float, stackedEntry: BarEntry?): String {
                         val entry = stackedEntry ?: return ""
-                        val vals = entry.yVals
-                            ?: return if (entry.y > 0f) entry.y.toInt().toString() else ""
+                        val vals = entry.yVals ?: return getBarLabel(entry)
+                        if (value <= 0f) return ""
 
                         if (entry !== lastEntry) {
                             lastEntry = entry
-                            segmentsSeen = 0
+                            nonZeroSeen = 0
                         }
-                        val idx = segmentsSeen
-                        segmentsSeen++
-
-                        val topIdx = vals.indices.lastOrNull { vals[it] > 0f } ?: return ""
-                        if (idx != topIdx) return ""
+                        nonZeroSeen++
+                        val nonZeroTotal = vals.count { it > 0f }
+                        if (nonZeroSeen < nonZeroTotal) return ""
+                        // Last non-zero segment of this bar. Wrap the counter
+                        // so a redraw of the same entry (single-bar chart)
+                        // starts fresh instead of drifting past the total.
+                        nonZeroSeen = 0
                         val total = entry.y.toInt()
                         return if (total > 0) total.toString() else ""
                     }
