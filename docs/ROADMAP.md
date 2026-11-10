@@ -42,8 +42,8 @@
 > events to attribute RHR/HRV/SpO2/sleep deviations and surface the
 > recovery trajectory during cessation.
 >
-> **Pairs with:** [Bios ROADMAP §7.7](../../Bios/docs/ROADMAP.md) and
-> [Bios ECOSYSTEM_BOUNDARIES.md](../../Bios/docs/ECOSYSTEM_BOUNDARIES.md).
+> **Pairs with:** [Bios ROADMAP §7.7](https://github.com/thdelmas/Bios/blob/main/docs/ROADMAP.md) and
+> [Bios ECOSYSTEM_BOUNDARIES.md](https://github.com/thdelmas/Bios/blob/main/docs/ECOSYSTEM_BOUNDARIES.md).
 
 ### 1.1 ContentProvider client for Bios writes
 
@@ -136,7 +136,7 @@ Audit finding: tobacco and cannabis are on the bus, but caffeine and
 alcohol — the other two psychoactives — are not. W2F's `FuelLog`
 already captures caffeine events locally (for the `fuel_gap` mood
 signal); per the
-[Bios "case study: nutrition in W2F" rule](../../Bios/docs/ECOSYSTEM_BOUNDARIES.md),
+[Bios "case study: nutrition in W2F" rule](https://github.com/thdelmas/Bios/blob/main/docs/ECOSYSTEM_BOUNDARIES.md),
 the second consumer must hoist the keys to the canonical bus rather
 than keep parallel private tables.
 
@@ -178,7 +178,7 @@ copy ships.
 ## Phase 3: Cessation intelligence [PLANNED]
 
 > Use Bios reads to surface the cessation recovery trajectory. The new
-> `ConditionPattern` proposed in [Bios §7.7](../../Bios/docs/ROADMAP.md)
+> `ConditionPattern` proposed in [Bios §7.7](https://github.com/thdelmas/Bios/blob/main/docs/ROADMAP.md)
 > (cessation recovery signal) is information that should also surface
 > *inside* Smokeless's UI.
 
@@ -222,7 +222,7 @@ night (your baseline: 86%)." Data, not advice.
 
 ## Cross-references
 
-- [Bios ROADMAP §7.7](../../Bios/docs/ROADMAP.md) — substance-use companion plan
-- [Bios ECOSYSTEM_BOUNDARIES.md](../../Bios/docs/ECOSYSTEM_BOUNDARIES.md) — Smokeless's row
-- [Bios CONSUMER_API.md](../../Bios/docs/CONSUMER_API.md) — companion-write URI contract
+- [Bios ROADMAP §7.7](https://github.com/thdelmas/Bios/blob/main/docs/ROADMAP.md) — substance-use companion plan
+- [Bios ECOSYSTEM_BOUNDARIES.md](https://github.com/thdelmas/Bios/blob/main/docs/ECOSYSTEM_BOUNDARIES.md) — Smokeless's row
+- [Bios CONSUMER_API.md](https://github.com/thdelmas/Bios/blob/main/docs/CONSUMER_API.md) — companion-write URI contract
 - [docs/ECOSYSTEM.md](ECOSYSTEM.md) — Smokeless's metric-bus contract

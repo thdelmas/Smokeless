@@ -6,13 +6,11 @@ specialized capture surface (substance-use and craving event logging)
 that Bios cannot reasonably own, and it pushes computed events back to
 Bios's metric bus for cross-correlation.
 
-For the **visual overview** of the whole ecosystem and which edges ship vs.
-remain planned, see
-[miam-knowledge-base/docs/ecosystem-map.md](https://github.com/mi4m/miam-knowledge-base/blob/main/docs/ecosystem-map.md).
+The visual overview of the whole ecosystem (which edges ship vs. remain
+planned) is kept outside this repository.
 
-This document mirrors the structure of
-[W2F/docs/ECOSYSTEM.md](../../W2F/docs/ECOSYSTEM.md) and
-[Virgil/docs/ECOSYSTEM.md](../../Virgil/docs/ECOSYSTEM.md).
+This document mirrors the structure of the companion ECOSYSTEM documents,
+e.g. [Virgil/docs/ECOSYSTEM.md](https://github.com/thdelmas/Virgil/blob/main/docs/ECOSYSTEM.md).
 
 ---
 
@@ -59,7 +57,7 @@ All writes are opt-in (Settings toggle, default off).
 ## Reserved metric keys (paired with Bios §7.7)
 
 Canonical keys to be added to Bios's
-[`MetricType`](../../Bios/android/app/src/main/java/com/bios/app/model/Enums.kt)
+[`MetricType`](https://github.com/thdelmas/Bios/blob/main/android/app/src/main/java/com/bios/app/model/Enums.kt)
 enum. New `MetricDomain.INTAKE` and `MetricUnit.EVENT` are introduced for
 this purpose (event-shaped: value is always `1.0`, the timestamp is the
 signal).
@@ -91,7 +89,7 @@ Smokeless-private.
 ## Read URI consumption (Phase 3)
 
 Smokeless reads from Bios via the standard
-[`BiosHealthProvider`](../../Bios/docs/CONSUMER_API.md) read URI. No new
+[`BiosHealthProvider`](https://github.com/thdelmas/Bios/blob/main/docs/CONSUMER_API.md) read URI. No new
 contract needed — same pattern W2F uses to read sleep/HRV.
 
 **What Smokeless reads:**
@@ -129,9 +127,9 @@ logging continues. Status surfaces in Settings, not as a notification.
 
 ## Cross-references
 
-- [Bios ROADMAP §7.7](../../Bios/docs/ROADMAP.md) — substance-use companion plan
-- [Bios ECOSYSTEM_BOUNDARIES.md](../../Bios/docs/ECOSYSTEM_BOUNDARIES.md) — companion table
-- [Bios CONSUMER_API.md](../../Bios/docs/CONSUMER_API.md) — full URI contract
-- [W2F/docs/ECOSYSTEM.md](../../W2F/docs/ECOSYSTEM.md) — sibling companion (mental health)
-- [Virgil/docs/ECOSYSTEM.md](../../Virgil/docs/ECOSYSTEM.md) — sibling companion (safety)
+- [Bios ROADMAP §7.7](https://github.com/thdelmas/Bios/blob/main/docs/ROADMAP.md) — substance-use companion plan
+- [Bios ECOSYSTEM_BOUNDARIES.md](https://github.com/thdelmas/Bios/blob/main/docs/ECOSYSTEM_BOUNDARIES.md) — companion table
+- [Bios CONSUMER_API.md](https://github.com/thdelmas/Bios/blob/main/docs/CONSUMER_API.md) — full URI contract
+- W2F ECOSYSTEM.md — sibling companion (mental health); W2F is a private repository
+- [Virgil/docs/ECOSYSTEM.md](https://github.com/thdelmas/Virgil/blob/main/docs/ECOSYSTEM.md) — sibling companion (safety)
 - [ROADMAP.md](ROADMAP.md) — Smokeless's own phases
